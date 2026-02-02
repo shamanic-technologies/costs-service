@@ -20,6 +20,21 @@ When adding, modifying, or removing API endpoints in `src/routes/`, update the A
 
 ### Naming convention: `{provider}-{service-or-model}-{unit-type}`
 
+## Mandatory regression tests
+
+Every bugfix or issue resolution **must** include a regression test that:
+
+1. **Reproduces the bug** — the test must fail without the fix applied.
+2. **Passes with the fix** — confirms the fix works.
+3. **Lives in the right place**:
+   - Unit tests → `tests/unit/<feature>.test.ts`
+   - Integration tests → `tests/integration/<feature>.test.ts`
+4. **Uses a descriptive name** that references the issue, e.g. `it("should not return stale cost after update (issue #12)")`.
+
+All tests run in CI (`npm run test:unit` and `npm run test:integration`). A PR without a regression test for a bugfix will be considered incomplete.
+
+When adding a **new feature** (not just a fix), also add tests covering the happy path and main edge cases.
+
 ## Validation
 
 Run `npm run check:readme` to verify the README costs table matches `src/db/seed.ts`. This also runs in CI on every PR.
