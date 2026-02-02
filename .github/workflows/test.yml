@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   test-unit:
@@ -25,7 +26,12 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      - run: npm run test:integration
+      - name: Push schema to dev DB
+        run: npx drizzle-kit push --force
+        env:
+          COSTS_SERVICE_DATABASE_URL: ${{ secrets.COSTS_SERVICE_DATABASE_URL_DEV }}
+      - name: Run integration tests
+        run: npm run test:integration
         env:
           COSTS_SERVICE_DATABASE_URL: ${{ secrets.COSTS_SERVICE_DATABASE_URL_DEV }}
           COSTS_SERVICE_API_KEY: test-api-key
