@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "command": "bash -c 'if echo \"$CLAUDE_TOOL_INPUT\" | grep -q \"seed.ts\"; then echo \"REMINDER: You modified seed.ts. You MUST update the Unit costs catalog table in README.md to match. Run npm run check:readme to verify.\"; fi'"
+      },
+      {
+        "matcher": "Edit|Write",
+        "command": "bash -c 'if echo \"$CLAUDE_TOOL_INPUT\" | grep -q \"routes/\"; then echo \"REMINDER: You modified a route file. If you changed API endpoints, update the API table in README.md.\"; fi'"
+      }
+    ],
+    "Stop": [
+      {
+        "command": "bash -c 'if ! bash scripts/check-readme-costs.sh 2>&1; then echo \"WARNING: README costs table is out of sync with seed.ts. Please fix before committing.\"; fi'"
+      }
+    ]
+  }
+}
