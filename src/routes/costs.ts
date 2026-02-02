@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, lte, desc, sql as drizzleSql } from "drizzle-orm";
+import { eq, lte, desc, and } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { costUnits } from "../db/schema.js";
 import { requireApiKey } from "../middleware/auth.js";
@@ -41,9 +41,7 @@ router.get("/v1/costs/:name", async (req, res) => {
     const result = await db
       .select()
       .from(costUnits)
-      .where(
-        drizzleSql`${costUnits.name} = ${name} AND ${costUnits.effectiveFrom} <= ${now}`
-      )
+      .where(and(eq(costUnits.name, name), lte(costUnits.effectiveFrom, now)))
       .orderBy(desc(costUnits.effectiveFrom))
       .limit(1);
 
