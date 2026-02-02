@@ -4,6 +4,7 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import healthRoutes from "./routes/health.js";
 import costsRoutes from "./routes/costs.js";
 import { db } from "./db/index.js";
+import { seedCosts } from "./db/seed.js";
 
 const app = express();
 const PORT = process.env.PORT || 3011;
@@ -23,6 +24,9 @@ if (process.env.NODE_ENV !== "test") {
   migrate(db, { migrationsFolder: "./drizzle" })
     .then(() => {
       console.log("Migrations complete");
+      return seedCosts();
+    })
+    .then(() => {
       app.listen(Number(PORT), "::", () => {
         console.log(`Service running on port ${PORT}`);
       });
