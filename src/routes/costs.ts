@@ -27,7 +27,7 @@ router.get("/v1/costs", async (_req, res) => {
 
     res.json(current);
   } catch (err) {
-    console.error("Error listing costs:", err);
+    console.error("[Costs Service] Error listing costs:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -52,7 +52,7 @@ router.get("/v1/costs/:name", async (req, res) => {
 
     res.json(result[0]);
   } catch (err) {
-    console.error("Error getting cost:", err);
+    console.error("[Costs Service] Error getting cost:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -75,7 +75,7 @@ router.get("/v1/costs/:name/history", async (req, res) => {
 
     res.json(history);
   } catch (err) {
-    console.error("Error getting cost history:", err);
+    console.error("[Costs Service] Error getting cost history:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -107,7 +107,7 @@ router.put("/v1/costs/:name", requireApiKey, async (req, res) => {
       res.status(409).json({ error: "Cost unit with this name and effective_from already exists" });
       return;
     }
-    console.error("Error upserting cost:", err);
+    console.error("[Costs Service] Error upserting cost:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -129,7 +129,7 @@ router.delete("/v1/costs/:name", requireApiKey, async (req, res) => {
 
     res.json({ deleted: deleted.length });
   } catch (err) {
-    console.error("Error deleting cost:", err);
+    console.error("[Costs Service] Error deleting cost:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

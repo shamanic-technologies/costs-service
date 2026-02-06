@@ -23,16 +23,16 @@ app.use((_req, res) => {
 if (process.env.NODE_ENV !== "test") {
   migrate(db, { migrationsFolder: "./drizzle" })
     .then(() => {
-      console.log("Migrations complete");
+      console.log("[Costs Service] Migrations complete");
       return seedCosts();
     })
     .then(() => {
       app.listen(Number(PORT), "::", () => {
-        console.log(`Service running on port ${PORT}`);
+        console.log(`[Costs Service] Service running on port ${PORT}`);
       });
     })
     .catch((err) => {
-      console.error("Migration failed:", err);
+      console.error("[Costs Service] Migration failed:", err);
       process.exit(1);
     });
 }

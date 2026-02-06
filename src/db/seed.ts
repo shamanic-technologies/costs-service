@@ -65,5 +65,5 @@ export async function seedCosts() {
       .values(cost)
       .onConflictDoNothing();
   }
-  console.log(`Seed complete (${SEED_COSTS.length} cost(s) checked)`);
+  console.log(`[Costs Service] Seed complete (${SEED_COSTS.length} cost(s) checked)`);
 }
