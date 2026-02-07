@@ -11,9 +11,9 @@ const doc = {
     title: "Costs Service",
     description: "API for managing unit cost pricing",
   },
-  host: process.env.SERVICE_URL?.replace(/^https?:\/\//, "") || "localhost:3011",
+  host: process.env.COSTS_SERVICE_URL?.replace(/^https?:\/\//, "") || "localhost:3011",
   basePath: "/",
-  schemes: process.env.SERVICE_URL?.startsWith("https") ? ["https"] : ["http"],
+  schemes: process.env.COSTS_SERVICE_URL?.startsWith("https") ? ["https"] : ["http"],
 };
 
 const outputFile = path.resolve(__dirname, "../openapi.json");
