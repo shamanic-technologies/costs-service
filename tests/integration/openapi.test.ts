@@ -1,9 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
+import { execSync } from "child_process";
 import request from "supertest";
 import { createTestApp } from "../helpers/test-app.js";
 
 describe("OpenAPI endpoint", () => {
   const app = createTestApp();
+
+  beforeAll(() => {
+    execSync("npm run generate:openapi", { stdio: "ignore" });
+  });
 
   it("GET /openapi.json returns valid OpenAPI 3.0 spec", async () => {
     const response = await request(app).get("/openapi.json");
