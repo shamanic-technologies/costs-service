@@ -7,13 +7,13 @@ const __dirname = path.dirname(__filename);
 
 const doc = {
   info: {
-    version: "1.0.0",
     title: "Costs Service",
-    description: "API for managing unit cost pricing",
+    description: "Cost tracking and budget management service",
+    version: "1.0.0",
   },
-  host: process.env.COSTS_SERVICE_URL?.replace(/^https?:\/\//, "") || "localhost:3011",
+  host: process.env.COSTS_SERVICE_URL || "http://localhost:3011",
   basePath: "/",
-  schemes: process.env.COSTS_SERVICE_URL?.startsWith("https") ? ["https"] : ["http"],
+  schemes: ["https"],
 };
 
 const outputFile = path.resolve(__dirname, "../openapi.json");

@@ -38,6 +38,7 @@ All endpoints are prefixed with `/v1/costs`. Write endpoints require `x-api-key`
 | PUT | `/v1/costs/:name` | Yes | Insert a new price point |
 | DELETE | `/v1/costs/:name` | Yes | Delete all entries for a cost name |
 | GET | `/health` | No | Health check |
+| GET | `/openapi.json` | No | OpenAPI 3.0 spec |
 
 ### PUT body
 
