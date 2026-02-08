@@ -16,6 +16,16 @@ export const ErrorResponseSchema = z
   })
   .openapi("ErrorResponse");
 
+export const ValidationErrorResponseSchema = z
+  .object({
+    error: z.string(),
+    details: z.object({
+      formErrors: z.array(z.string()),
+      fieldErrors: z.record(z.string(), z.array(z.string())),
+    }).optional(),
+  })
+  .openapi("ValidationErrorResponse");
+
 export const CostUnitSchema = z
   .object({
     id: z.string().uuid(),
@@ -57,7 +67,11 @@ export const HealthResponseSchema = z
 
 const CostNameParam = registry.registerParameter(
   "CostName",
-  z.string().openapi({ param: { name: "name", in: "path" }, example: "anthropic-sonnet-4.5-tokens-input" })
+  z.string().openapi({
+    param: { name: "name", in: "path" },
+    description: "Cost unit identifier ({provider}-{service-or-model}-{unit-type})",
+    example: "anthropic-sonnet-4.5-tokens-input",
+  })
 );
 
 // --- Register paths ---
@@ -65,6 +79,7 @@ const CostNameParam = registry.registerParameter(
 registry.registerPath({
   method: "get",
   path: "/health",
+  operationId: "getHealth",
   summary: "Health check",
   responses: {
     200: {
@@ -77,6 +92,7 @@ registry.registerPath({
 registry.registerPath({
   method: "get",
   path: "/v1/costs",
+  operationId: "listCosts",
   summary: "List all current prices (latest per name)",
   responses: {
     200: {
@@ -93,6 +109,7 @@ registry.registerPath({
 registry.registerPath({
   method: "get",
   path: "/v1/costs/{name}",
+  operationId: "getCost",
   summary: "Get current price for a cost unit",
   request: { params: z.object({ name: CostNameParam }) },
   responses: {
@@ -114,6 +131,7 @@ registry.registerPath({
 registry.registerPath({
   method: "get",
   path: "/v1/costs/{name}/history",
+  operationId: "getCostHistory",
   summary: "Get all price points for a cost unit",
   request: { params: z.object({ name: CostNameParam }) },
   responses: {
@@ -135,11 +153,13 @@ registry.registerPath({
 registry.registerPath({
   method: "put",
   path: "/v1/costs/{name}",
+  operationId: "putCost",
   summary: "Insert a new price point for a cost unit",
   security: [{ ApiKeyAuth: [] }],
   request: {
     params: z.object({ name: CostNameParam }),
     body: {
+      required: true,
       content: { "application/json": { schema: PutCostBodySchema } },
     },
   },
@@ -149,10 +169,13 @@ registry.registerPath({
       content: { "application/json": { schema: CostUnitSchema } },
     },
     400: {
-      description: "Invalid request",
+      description: "Invalid request body",
+      content: { "application/json": { schema: ValidationErrorResponseSchema } },
+    },
+    401: {
+      description: "Unauthorized",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
-    401: { description: "Unauthorized" },
     409: {
       description: "Duplicate cost unit (name + effective_from already exists)",
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -167,6 +190,7 @@ registry.registerPath({
 registry.registerPath({
   method: "delete",
   path: "/v1/costs/{name}",
+  operationId: "deleteCost",
   summary: "Delete all entries for a cost unit",
   security: [{ ApiKeyAuth: [] }],
   request: { params: z.object({ name: CostNameParam }) },
@@ -175,7 +199,10 @@ registry.registerPath({
       description: "Number of deleted entries",
       content: { "application/json": { schema: DeleteCostResponseSchema } },
     },
-    401: { description: "Unauthorized" },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
     404: {
       description: "Cost unit not found",
       content: { "application/json": { schema: ErrorResponseSchema } },
