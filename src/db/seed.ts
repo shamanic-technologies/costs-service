@@ -56,6 +56,32 @@ const SEED_COSTS = [
     costPerUnitInUsdCents: "0.1800000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Firecrawl — scrape: 1 credit per page
+  // Hobby plan $19/mo ÷ 3k credits = 0.6333¢/credit (worst-case paid plan)
+  // https://www.firecrawl.dev/pricing
+  {
+    name: "firecrawl-scrape-credit",
+    costPerUnitInUsdCents: "0.6333333333",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Firecrawl — map: 1 credit per page
+  {
+    name: "firecrawl-map-credit",
+    costPerUnitInUsdCents: "0.6333333333",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Google Gemini 3 Flash (Preview): $0.50/MTok input, $3.00/MTok output
+  // https://ai.google.dev/gemini-api/docs/pricing
+  {
+    name: "gemini-3-flash-tokens-input",
+    costPerUnitInUsdCents: "0.0000500000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "gemini-3-flash-tokens-output",
+    costPerUnitInUsdCents: "0.0003000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
 ];
 
 export async function seedCosts() {

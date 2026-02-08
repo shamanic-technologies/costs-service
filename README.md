@@ -17,6 +17,10 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `anthropic-haiku-4.5-tokens-input` | 0.0001 | 1 token | Anthropic |
 | `anthropic-haiku-4.5-tokens-output` | 0.0005 | 1 token | Anthropic |
 | `postmark-email-send` | 0.18 | 1 email | Postmark |
+| `firecrawl-scrape-credit` | 0.6333333333 | 1 scrape credit | Firecrawl |
+| `firecrawl-map-credit` | 0.6333333333 | 1 map credit | Firecrawl |
+| `gemini-3-flash-tokens-input` | 0.00005 | 1 token | Google |
+| `gemini-3-flash-tokens-output` | 0.0003 | 1 token | Google |
 
 ### Naming convention
 
