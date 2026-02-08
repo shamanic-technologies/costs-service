@@ -1,27 +1,20 @@
-import swaggerAutogen from "swagger-autogen";
-import path from "path";
-import { fileURLToPath } from "url";
+import { OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
+import { registry } from "../src/schemas.js";
+import * as fs from "fs";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const generator = new OpenApiGeneratorV3(registry.definitions);
 
-const doc = {
+const document = generator.generateDocument({
+  openapi: "3.0.0",
   info: {
     title: "Costs Service",
     description: "Cost tracking and budget management service",
     version: "1.0.0",
   },
-  host: process.env.COSTS_SERVICE_URL || "http://localhost:3011",
-  basePath: "/",
-  schemes: ["https"],
-};
-
-const outputFile = path.resolve(__dirname, "../openapi.json");
-const routes = [
-  path.resolve(__dirname, "../src/routes/health.ts"),
-  path.resolve(__dirname, "../src/routes/costs.ts"),
-];
-
-swaggerAutogen({ openapi: "3.0.0" })(outputFile, routes, doc).then(() => {
-  console.log("[Costs Service] OpenAPI spec generated at openapi.json");
+  servers: [
+    { url: process.env.COSTS_SERVICE_URL || "http://localhost:3011" },
+  ],
 });
+
+fs.writeFileSync("openapi.json", JSON.stringify(document, null, 2));
+console.log("[Costs Service] OpenAPI spec generated at openapi.json");

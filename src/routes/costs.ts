@@ -3,6 +3,7 @@ import { eq, lte, desc, and } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { costUnits } from "../db/schema.js";
 import { requireApiKey } from "../middleware/auth.js";
+import { PutCostBodySchema } from "../schemas.js";
 
 const router = Router();
 
@@ -84,12 +85,14 @@ router.get("/v1/costs/:name/history", async (req, res) => {
 router.put("/v1/costs/:name", requireApiKey, async (req, res) => {
   try {
     const { name } = req.params;
-    const { costPerUnitInUsdCents, effectiveFrom } = req.body;
+    const parsed = PutCostBodySchema.safeParse(req.body);
 
-    if (costPerUnitInUsdCents === undefined || costPerUnitInUsdCents === null) {
-      res.status(400).json({ error: "costPerUnitInUsdCents is required" });
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
       return;
     }
+
+    const { costPerUnitInUsdCents, effectiveFrom } = parsed.data;
 
     const [inserted] = await db
       .insert(costUnits)
