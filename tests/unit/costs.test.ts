@@ -8,10 +8,10 @@ describe("Instantly seed costs", () => {
     expect(cost!.costPerUnitInUsdCents).toBe("0.0000000000");
   });
 
-  it("should include instantly-lead-add at 4.7 cents", () => {
-    const cost = SEED_COSTS.find((c) => c.name === "instantly-lead-add");
+  it("should include instantly-email-send at 0.94 cents", () => {
+    const cost = SEED_COSTS.find((c) => c.name === "instantly-email-send");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("4.7000000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.9400000000");
   });
 });
 

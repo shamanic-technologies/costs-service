@@ -89,11 +89,11 @@ export const SEED_COSTS = [
     costPerUnitInUsdCents: "0.0000000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly — lead add: Growth plan $47/mo ÷ 1,000 contacts = 4.7¢/lead
+  // Instantly — email send: Growth plan $47/mo ÷ 5,000 emails = 0.94¢/email
   // https://instantly.ai/pricing
   {
-    name: "instantly-lead-add",
-    costPerUnitInUsdCents: "4.7000000000",
+    name: "instantly-email-send",
+    costPerUnitInUsdCents: "0.9400000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
 ];
