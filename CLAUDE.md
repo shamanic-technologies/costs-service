@@ -1,40 +1,31 @@
-# Project rules
+# Project: costs-service
 
-## README must stay in sync
+Microservice for managing unit costs. Tracks per-unit pricing for external APIs and services with time-based versioning.
 
-The `README.md` documents the project's API, setup, and unit costs catalog. **Any change that affects documented behavior must include a corresponding README update in the same commit.**
+## Commands
 
-### Unit costs catalog (mandatory sync)
+- `npm test` — run all tests (Vitest)
+- `npm run test:unit` — unit tests only
+- `npm run test:integration` — integration tests only
+- `npm run build` — compile TypeScript + generate OpenAPI spec
+- `npm run dev` — local dev server (tsx watch, port 3011)
+- `npm run generate:openapi` — regenerate `openapi.json` from Zod schemas
+- `npm run db:migrate` — run Drizzle migrations
+- `npm run db:push` — push schema to database
+- `npm run db:seed` — seed unit costs from `src/db/seed.ts`
+- `npm run db:studio` — open Drizzle Studio
+- `npm run check:readme` — verify README costs table matches seed data
 
-When adding, updating, or removing a unit cost in `src/db/seed.ts`, **you must update the "Unit costs catalog" table in `README.md`** in the same commit. CI will block the PR if they're out of sync.
+## Architecture
 
-Checklist:
-- New cost added to `SEED_COSTS` array? Add a row to the README table with: name, cost value, unit description, and provider.
-- Cost value changed? Update the matching row in the README table.
-- Cost removed from `SEED_COSTS`? Remove the matching row from the README table.
-- Run `npm run check:readme` to verify before committing.
-
-### API changes
-
-When adding, modifying, or removing API endpoints in `src/routes/`, update the API table in `README.md`.
-
-### Naming convention: `{provider}-{service-or-model}-{unit-type}`
-
-## Mandatory regression tests
-
-Every bugfix or issue resolution **must** include a regression test that:
-
-1. **Reproduces the bug** — the test must fail without the fix applied.
-2. **Passes with the fix** — confirms the fix works.
-3. **Lives in the right place**:
-   - Unit tests → `tests/unit/<feature>.test.ts`
-   - Integration tests → `tests/integration/<feature>.test.ts`
-4. **Uses a descriptive name** that references the issue, e.g. `it("should not return stale cost after update (issue #12)")`.
-
-All tests run in CI (`npm run test:unit` and `npm run test:integration`). A PR without a regression test for a bugfix will be considered incomplete.
-
-When adding a **new feature** (not just a fix), also add tests covering the happy path and main edge cases.
-
-## Validation
-
-Run `npm run check:readme` to verify the README costs table matches `src/db/seed.ts`. This also runs in CI on every PR.
+- `src/index.ts` — Express app entry point
+- `src/schemas.ts` — Zod schemas (source of truth for validation + OpenAPI)
+- `src/routes/costs.ts` — CRUD endpoints for unit costs (`/v1/costs`)
+- `src/routes/health.ts` — Health check endpoint
+- `src/middleware/auth.ts` — API key authentication middleware
+- `src/db/index.ts` — Drizzle ORM database connection
+- `src/db/schema.ts` — Drizzle table definitions
+- `src/db/seed.ts` — Seed data with all unit costs (must stay in sync with README)
+- `tests/unit/` — Unit tests
+- `tests/integration/` — Integration tests
+- `openapi.json` — Auto-generated from Zod schemas, do NOT edit manually
