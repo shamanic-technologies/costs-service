@@ -1,7 +1,7 @@
 import { db } from "./index.js";
 import { costUnits } from "./schema.js";
 
-const SEED_COSTS = [
+export const SEED_COSTS = [
   // Apollo — search is free via API (0 credits consumed)
   // https://docs.apollo.io/reference/people-api-search
   {
@@ -80,6 +80,20 @@ const SEED_COSTS = [
   {
     name: "gemini-3-flash-tokens-output",
     costPerUnitInUsdCents: "0.0003000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Instantly — campaign creation: unlimited on all plans = 0
+  // https://instantly.ai/pricing
+  {
+    name: "instantly-campaign-create",
+    costPerUnitInUsdCents: "0.0000000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Instantly — lead add: Growth plan $47/mo ÷ 1,000 contacts = 4.7¢/lead
+  // https://instantly.ai/pricing
+  {
+    name: "instantly-lead-add",
+    costPerUnitInUsdCents: "4.7000000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
 ];
