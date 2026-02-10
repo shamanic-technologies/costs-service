@@ -2,12 +2,6 @@ import { describe, it, expect } from "vitest";
 import { SEED_COSTS } from "../../src/db/seed.js";
 
 describe("Instantly seed costs", () => {
-  it("should include instantly-campaign-create at 0 cents", () => {
-    const cost = SEED_COSTS.find((c) => c.name === "instantly-campaign-create");
-    expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0000000000");
-  });
-
   it("should include instantly-email-send at 0.94 cents", () => {
     const cost = SEED_COSTS.find((c) => c.name === "instantly-email-send");
     expect(cost).toBeDefined();

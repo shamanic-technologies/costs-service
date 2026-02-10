@@ -21,7 +21,6 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `firecrawl-map-credit` | 0.6333333333 | 1 map credit | Firecrawl |
 | `gemini-3-flash-tokens-input` | 0.00005 | 1 token | Google |
 | `gemini-3-flash-tokens-output` | 0.0003 | 1 token | Google |
-| `instantly-campaign-create` | 0.00 | 1 campaign | Instantly |
 | `instantly-email-send` | 0.94 | 1 email | Instantly |
 
 ### Naming convention
