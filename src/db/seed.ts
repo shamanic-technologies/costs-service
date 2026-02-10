@@ -82,13 +82,6 @@ export const SEED_COSTS = [
     costPerUnitInUsdCents: "0.0003000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly — campaign creation: unlimited on all plans = 0
-  // https://instantly.ai/pricing
-  {
-    name: "instantly-campaign-create",
-    costPerUnitInUsdCents: "0.0000000000",
-    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
-  },
   // Instantly — email send: Growth plan $47/mo ÷ 5,000 emails = 0.94¢/email
   // https://instantly.ai/pricing
   {
