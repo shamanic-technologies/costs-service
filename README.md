@@ -22,6 +22,7 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `gemini-3-flash-tokens-input` | 0.00005 | 1 token | Google |
 | `gemini-3-flash-tokens-output` | 0.0003 | 1 token | Google |
 | `instantly-email-send` | 0.94 | 1 email | Instantly |
+| `twilio-sms-segment` | 1.33 | 1 SMS segment | Twilio |
 
 ### Naming convention
 

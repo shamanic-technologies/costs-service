@@ -89,6 +89,13 @@ export const SEED_COSTS = [
     costPerUnitInUsdCents: "0.9400000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Twilio — SMS: 1.33¢ per message segment
+  // https://www.twilio.com/en-us/sms/pricing/us
+  {
+    name: "twilio-sms-segment",
+    costPerUnitInUsdCents: "1.3300000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
 ];
 
 export async function seedCosts() {
