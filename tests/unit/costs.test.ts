@@ -9,6 +9,14 @@ describe("Instantly seed costs", () => {
   });
 });
 
+describe("Twilio seed costs", () => {
+  it("should include twilio-sms-segment at 1.33 cents", () => {
+    const cost = SEED_COSTS.find((c) => c.name === "twilio-sms-segment");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("1.3300000000");
+  });
+});
+
 describe("Cost resolution logic", () => {
   it("should pick the latest effective price from a list", () => {
     const costs = [
