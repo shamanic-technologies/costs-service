@@ -17,6 +17,20 @@ describe("Twilio seed costs", () => {
   });
 });
 
+describe("Anthropic Sonnet 4.6 seed costs", () => {
+  it("should include anthropic-sonnet-4.6-tokens-input at 0.0003 cents", () => {
+    const cost = SEED_COSTS.find((c) => c.name === "anthropic-sonnet-4.6-tokens-input");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0003000000");
+  });
+
+  it("should include anthropic-sonnet-4.6-tokens-output at 0.0015 cents", () => {
+    const cost = SEED_COSTS.find((c) => c.name === "anthropic-sonnet-4.6-tokens-output");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0015000000");
+  });
+});
+
 describe("Cost resolution logic", () => {
   it("should pick the latest effective price from a list", () => {
     const costs = [
