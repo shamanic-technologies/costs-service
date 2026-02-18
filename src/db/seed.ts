@@ -40,6 +40,18 @@ export const SEED_COSTS = [
     costPerUnitInUsdCents: "0.0015000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Anthropic Sonnet 4.6: $3/MTok input, $15/MTok output (same as 4.5)
+  // https://platform.claude.com/docs/en/about-claude/pricing
+  {
+    name: "anthropic-sonnet-4.6-tokens-input",
+    costPerUnitInUsdCents: "0.0003000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "anthropic-sonnet-4.6-tokens-output",
+    costPerUnitInUsdCents: "0.0015000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Anthropic Haiku 4.5: $1/MTok input, $5/MTok output
   {
     name: "anthropic-haiku-4.5-tokens-input",
