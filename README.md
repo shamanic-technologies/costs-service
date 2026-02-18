@@ -16,6 +16,8 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `anthropic-sonnet-4.5-tokens-output` | 0.0015 | 1 token | Anthropic |
 | `anthropic-sonnet-4.6-tokens-input` | 0.0003 | 1 token | Anthropic |
 | `anthropic-sonnet-4.6-tokens-output` | 0.0015 | 1 token | Anthropic |
+| `anthropic-opus-4-6-input-token` | 0.0005 | 1 token | Anthropic |
+| `anthropic-opus-4-6-output-token` | 0.0025 | 1 token | Anthropic |
 | `anthropic-haiku-4.5-tokens-input` | 0.0001 | 1 token | Anthropic |
 | `anthropic-haiku-4.5-tokens-output` | 0.0005 | 1 token | Anthropic |
 | `postmark-email-send` | 0.18 | 1 email | Postmark |
