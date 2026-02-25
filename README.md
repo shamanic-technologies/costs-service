@@ -9,7 +9,8 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | Name | Cost (USD cents/unit) | Unit | Provider |
 |---|---|---|---|
 | `apollo-search-credit` | 0.00 | 1 search credit | Apollo |
-| `apollo-enrichment-credit` | 0.98 | 1 enrichment credit | Apollo |
+| `apollo-enrichment-credit` | 2.36 | 1 enrichment credit | Apollo |
+| `apollo-person-match-credit` | 2.36 | 1 person match credit | Apollo |
 | `anthropic-opus-4.5-tokens-input` | 0.0005 | 1 token | Anthropic |
 | `anthropic-opus-4.5-tokens-output` | 0.0025 | 1 token | Anthropic |
 | `anthropic-sonnet-4.5-tokens-input` | 0.0003 | 1 token | Anthropic |

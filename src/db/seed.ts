@@ -10,11 +10,20 @@ export const SEED_COSTS = [
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Apollo — enrichment: 1 credit per person (email reveal)
-  // Basic plan ~0.98¢/credit ($49/mo ÷ 5k credits) — worst-case across plans
+  // $59/mo ÷ 2,500 credits = 2.36¢/credit
   // https://docs.apollo.io/reference/people-enrichment
   {
     name: "apollo-enrichment-credit",
-    costPerUnitInUsdCents: "0.9800000000",
+    costPerUnitInUsdCents: "2.3600000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Apollo — person match: 1 credit per match (name + domain → email)
+  // Same credit type as enrichment: $59/mo ÷ 2,500 credits = 2.36¢/credit
+  // Only charged when Apollo returns an email
+  // https://docs.apollo.io/reference/people-match
+  {
+    name: "apollo-person-match-credit",
+    costPerUnitInUsdCents: "2.3600000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Anthropic Opus 4.5: $5/MTok input, $25/MTok output
