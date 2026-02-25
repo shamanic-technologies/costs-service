@@ -45,6 +45,26 @@ describe("Anthropic Opus 4.6 seed costs", () => {
   });
 });
 
+describe("Apollo seed costs", () => {
+  it("should include apollo-enrichment-credit at 2.36 cents ($59/mo ÷ 2,500 credits)", () => {
+    const cost = SEED_COSTS.find((c) => c.name === "apollo-enrichment-credit");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("2.3600000000");
+  });
+
+  it("should include apollo-person-match-credit at 2.36 cents (same credit type as enrichment)", () => {
+    const cost = SEED_COSTS.find((c) => c.name === "apollo-person-match-credit");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("2.3600000000");
+  });
+
+  it("should include apollo-search-credit at 0.00 cents (free)", () => {
+    const cost = SEED_COSTS.find((c) => c.name === "apollo-search-credit");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0000000000");
+  });
+});
+
 describe("Cost resolution logic", () => {
   it("should pick the latest effective price from a list", () => {
     const costs = [
