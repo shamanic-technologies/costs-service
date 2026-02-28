@@ -1,12 +1,16 @@
 import { db, sql } from "../../src/db/index.js";
-import { costUnits } from "../../src/db/schema.js";
+import { costUnits, platformPlans } from "../../src/db/schema.js";
 
 export async function cleanTestData() {
   await db.delete(costUnits);
+  await db.delete(platformPlans);
 }
 
 export async function insertTestCost(data: {
   name: string;
+  provider: string;
+  planTier: string;
+  billingCycle: string;
   costPerUnitInUsdCents: string;
   effectiveFrom?: Date;
 }) {
@@ -14,11 +18,32 @@ export async function insertTestCost(data: {
     .insert(costUnits)
     .values({
       name: data.name,
+      provider: data.provider,
+      planTier: data.planTier,
+      billingCycle: data.billingCycle,
       costPerUnitInUsdCents: data.costPerUnitInUsdCents,
       effectiveFrom: data.effectiveFrom || new Date(),
     })
     .returning();
   return cost;
+}
+
+export async function insertPlatformPlan(data: {
+  provider: string;
+  planTier: string;
+  billingCycle: string;
+  effectiveFrom?: Date;
+}) {
+  const [plan] = await db
+    .insert(platformPlans)
+    .values({
+      provider: data.provider,
+      planTier: data.planTier,
+      billingCycle: data.billingCycle,
+      effectiveFrom: data.effectiveFrom || new Date(),
+    })
+    .returning();
+  return plan;
 }
 
 export async function closeDb() {
