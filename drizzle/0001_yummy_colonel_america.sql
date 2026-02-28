@@ -9,9 +9,9 @@ CREATE TABLE IF NOT EXISTS "platform_plans" (
 );
 --> statement-breakpoint
 DROP INDEX IF EXISTS "idx_cost_units_name_effective";--> statement-breakpoint
-ALTER TABLE "cost_units" ADD COLUMN "provider" text;--> statement-breakpoint
-ALTER TABLE "cost_units" ADD COLUMN "plan_tier" text;--> statement-breakpoint
-ALTER TABLE "cost_units" ADD COLUMN "billing_cycle" text;--> statement-breakpoint
+ALTER TABLE "cost_units" ADD COLUMN IF NOT EXISTS "provider" text;--> statement-breakpoint
+ALTER TABLE "cost_units" ADD COLUMN IF NOT EXISTS "plan_tier" text;--> statement-breakpoint
+ALTER TABLE "cost_units" ADD COLUMN IF NOT EXISTS "billing_cycle" text;--> statement-breakpoint
 UPDATE "cost_units" SET
   "provider" = CASE
     WHEN "name" LIKE 'apollo-%' THEN 'apollo'
