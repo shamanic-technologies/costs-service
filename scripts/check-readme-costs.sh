@@ -12,11 +12,10 @@ errors=0
 
 # --- Extract costs from seed.ts ---
 # Produces lines like: apollo-search-credit 0.0000000000
-seed_costs=$(grep -A1 'name:' "$SEED" \
-  | grep -v '^--$' \
-  | paste - - \
-  | sed -n 's/.*name: "\([^"]*\)".*costPerUnitInUsdCents: "\([^"]*\)".*/\1 \2/p' \
-  | sort)
+# Extract name lines and cost lines separately, then pair them
+seed_names_arr=$(grep 'name:' "$SEED" | sed -n 's/.*name: "\([^"]*\)".*/\1/p')
+seed_vals_arr=$(grep 'costPerUnitInUsdCents:' "$SEED" | sed -n 's/.*costPerUnitInUsdCents: "\([^"]*\)".*/\1/p')
+seed_costs=$(paste <(echo "$seed_names_arr") <(echo "$seed_vals_arr") | awk '{print $1, $2}' | sort)
 
 if [ -z "$seed_costs" ]; then
   echo "ERROR: Could not extract any costs from $SEED"
@@ -24,7 +23,7 @@ if [ -z "$seed_costs" ]; then
 fi
 
 # --- Extract costs from README table ---
-# Table rows look like: | `name` | 0.0005 | ... |
+# Table rows look like: | `name` | 0.0005 | ... | Provider | plan | billing |
 readme_costs=$(sed -n '/^| Name /,/^$/p' "$README" \
   | grep '^ *|.*`' \
   | sed 's/^ *| *`\([^`]*\)` *| *\([0-9.]*\).*/\1 \2/' \

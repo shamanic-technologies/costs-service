@@ -6,8 +6,9 @@ import path from "path";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import healthRoutes from "./routes/health.js";
 import costsRoutes from "./routes/costs.js";
+import platformPlansRoutes from "./routes/platform-plans.js";
 import { db } from "./db/index.js";
-import { seedCosts } from "./db/seed.js";
+import { seedCosts, seedPlatformPlans } from "./db/seed.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,6 +31,7 @@ app.get("/openapi.json", async (_req, res) => {
 
 app.use(healthRoutes);
 app.use(costsRoutes);
+app.use(platformPlansRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Not found" });
@@ -41,6 +43,9 @@ if (process.env.NODE_ENV !== "test") {
     .then(() => {
       console.log("[Costs Service] Migrations complete");
       return seedCosts();
+    })
+    .then(() => {
+      return seedPlatformPlans();
     })
     .then(() => {
       app.listen(Number(PORT), "::", () => {
