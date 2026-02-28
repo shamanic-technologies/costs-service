@@ -1,7 +1,7 @@
 import { pgTable, uuid, text, timestamp, numeric, uniqueIndex, index } from "drizzle-orm/pg-core";
 
-export const costUnits = pgTable(
-  "cost_units",
+export const providersCosts = pgTable(
+  "providers_costs",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
@@ -14,19 +14,19 @@ export const costUnits = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("idx_cost_units_name_plan_effective").on(
+    uniqueIndex("idx_providers_costs_name_plan_effective").on(
       table.name,
       table.planTier,
       table.billingCycle,
       table.effectiveFrom,
     ),
-    index("idx_cost_units_name").on(table.name),
-    index("idx_cost_units_provider").on(table.provider),
+    index("idx_providers_costs_name").on(table.name),
+    index("idx_providers_costs_provider").on(table.provider),
   ]
 );
 
-export type CostUnit = typeof costUnits.$inferSelect;
-export type NewCostUnit = typeof costUnits.$inferInsert;
+export type ProviderCost = typeof providersCosts.$inferSelect;
+export type NewProviderCost = typeof providersCosts.$inferInsert;
 
 export const platformPlans = pgTable(
   "platform_plans",

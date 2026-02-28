@@ -1,12 +1,12 @@
 import { db, sql } from "../../src/db/index.js";
-import { costUnits, platformPlans } from "../../src/db/schema.js";
+import { providersCosts, platformPlans } from "../../src/db/schema.js";
 
 export async function cleanTestData() {
-  await db.delete(costUnits);
+  await db.delete(providersCosts);
   await db.delete(platformPlans);
 }
 
-export async function insertTestCost(data: {
+export async function insertTestProviderCost(data: {
   name: string;
   provider: string;
   planTier: string;
@@ -15,7 +15,7 @@ export async function insertTestCost(data: {
   effectiveFrom?: Date;
 }) {
   const [cost] = await db
-    .insert(costUnits)
+    .insert(providersCosts)
     .values({
       name: data.name,
       provider: data.provider,

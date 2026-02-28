@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
 import { createTestApp, getAuthHeaders } from "../helpers/test-app.js";
-import { cleanTestData, insertTestCost, insertPlatformPlan, closeDb } from "../helpers/test-db.js";
+import { cleanTestData, insertTestProviderCost, insertPlatformPlan, closeDb } from "../helpers/test-db.js";
 
-describe("Costs CRUD", () => {
+describe("Providers Costs CRUD", () => {
   const app = createTestApp();
   const authHeaders = getAuthHeaders();
 
@@ -16,10 +16,10 @@ describe("Costs CRUD", () => {
     await closeDb();
   });
 
-  describe("PUT /v1/costs/:name", () => {
-    it("creates a new cost unit with plan info", async () => {
+  describe("PUT /v1/providers-costs/:name", () => {
+    it("creates a new provider cost with plan info", async () => {
       const res = await request(app)
-        .put("/v1/costs/test_cost")
+        .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
         .send({
           costPerUnitInUsdCents: "0.0003000000",
@@ -38,7 +38,7 @@ describe("Costs CRUD", () => {
 
     it("rejects without API key", async () => {
       const res = await request(app)
-        .put("/v1/costs/test_cost")
+        .put("/v1/providers-costs/test_cost")
         .send({
           costPerUnitInUsdCents: "0.01",
           provider: "test",
@@ -51,7 +51,7 @@ describe("Costs CRUD", () => {
 
     it("rejects without costPerUnitInUsdCents", async () => {
       const res = await request(app)
-        .put("/v1/costs/test_cost")
+        .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
         .send({ provider: "test", planTier: "basic", billingCycle: "monthly" });
 
@@ -60,7 +60,7 @@ describe("Costs CRUD", () => {
 
     it("rejects without provider", async () => {
       const res = await request(app)
-        .put("/v1/costs/test_cost")
+        .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
         .send({ costPerUnitInUsdCents: "0.01", planTier: "basic", billingCycle: "monthly" });
 
@@ -69,7 +69,7 @@ describe("Costs CRUD", () => {
 
     it("rejects without planTier", async () => {
       const res = await request(app)
-        .put("/v1/costs/test_cost")
+        .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
         .send({ costPerUnitInUsdCents: "0.01", provider: "test", billingCycle: "monthly" });
 
@@ -78,7 +78,7 @@ describe("Costs CRUD", () => {
 
     it("rejects without billingCycle", async () => {
       const res = await request(app)
-        .put("/v1/costs/test_cost")
+        .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
         .send({ costPerUnitInUsdCents: "0.01", provider: "test", planTier: "basic" });
 
@@ -87,7 +87,7 @@ describe("Costs CRUD", () => {
 
     it("allows multiple price points for the same name and plan", async () => {
       const res1 = await request(app)
-        .put("/v1/costs/test_cost")
+        .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
         .send({
           costPerUnitInUsdCents: "0.01",
@@ -99,7 +99,7 @@ describe("Costs CRUD", () => {
       expect(res1.status).toBe(200);
 
       const res2 = await request(app)
-        .put("/v1/costs/test_cost")
+        .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
         .send({
           costPerUnitInUsdCents: "0.02",
@@ -111,13 +111,13 @@ describe("Costs CRUD", () => {
       expect(res2.status).toBe(200);
 
       // History should have 2 entries
-      const history = await request(app).get("/v1/costs/test_cost/history");
+      const history = await request(app).get("/v1/providers-costs/test_cost/history");
       expect(history.body).toHaveLength(2);
     });
 
     it("allows same name with different plans", async () => {
       const res1 = await request(app)
-        .put("/v1/costs/test_cost")
+        .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
         .send({
           costPerUnitInUsdCents: "0.01",
@@ -129,7 +129,7 @@ describe("Costs CRUD", () => {
       expect(res1.status).toBe(200);
 
       const res2 = await request(app)
-        .put("/v1/costs/test_cost")
+        .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
         .send({
           costPerUnitInUsdCents: "0.005",
@@ -140,15 +140,14 @@ describe("Costs CRUD", () => {
         });
       expect(res2.status).toBe(200);
 
-      const history = await request(app).get("/v1/costs/test_cost/history");
+      const history = await request(app).get("/v1/providers-costs/test_cost/history");
       expect(history.body).toHaveLength(2);
     });
   });
 
-  describe("GET /v1/costs/:name", () => {
+  describe("GET /v1/providers-costs/:name", () => {
     it("returns the cost resolved via platform plan", async () => {
-      // Insert costs for two plans
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "multi_price",
         provider: "test-provider",
         planTier: "basic",
@@ -156,7 +155,7 @@ describe("Costs CRUD", () => {
         costPerUnitInUsdCents: "0.10",
         effectiveFrom: new Date("2025-01-01"),
       });
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "multi_price",
         provider: "test-provider",
         planTier: "business",
@@ -165,7 +164,6 @@ describe("Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      // Set platform plan to basic
       await insertPlatformPlan({
         provider: "test-provider",
         planTier: "basic",
@@ -173,14 +171,14 @@ describe("Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/costs/multi_price");
+      const res = await request(app).get("/v1/providers-costs/multi_price");
       expect(res.status).toBe(200);
       expect(res.body.costPerUnitInUsdCents).toBe("0.1000000000");
       expect(res.body.planTier).toBe("basic");
     });
 
     it("returns the latest effective price for the active plan", async () => {
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "multi_price",
         provider: "test-provider",
         planTier: "basic",
@@ -188,7 +186,7 @@ describe("Costs CRUD", () => {
         costPerUnitInUsdCents: "0.01",
         effectiveFrom: new Date("2025-01-01"),
       });
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "multi_price",
         provider: "test-provider",
         planTier: "basic",
@@ -196,8 +194,7 @@ describe("Costs CRUD", () => {
         costPerUnitInUsdCents: "0.05",
         effectiveFrom: new Date("2025-06-01"),
       });
-      // Future price — should not be returned
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "multi_price",
         provider: "test-provider",
         planTier: "basic",
@@ -213,13 +210,13 @@ describe("Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/costs/multi_price");
+      const res = await request(app).get("/v1/providers-costs/multi_price");
       expect(res.status).toBe(200);
       expect(res.body.costPerUnitInUsdCents).toBe("0.0500000000");
     });
 
     it("returns correct cost after platform plan change", async () => {
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "switchable",
         provider: "test-provider",
         planTier: "basic",
@@ -227,7 +224,7 @@ describe("Costs CRUD", () => {
         costPerUnitInUsdCents: "0.10",
         effectiveFrom: new Date("2025-01-01"),
       });
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "switchable",
         provider: "test-provider",
         planTier: "business",
@@ -236,7 +233,6 @@ describe("Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      // Platform starts on basic/monthly, then switches to business/annual
       await insertPlatformPlan({
         provider: "test-provider",
         planTier: "basic",
@@ -250,7 +246,7 @@ describe("Costs CRUD", () => {
         effectiveFrom: new Date("2025-06-01"),
       });
 
-      const res = await request(app).get("/v1/costs/switchable");
+      const res = await request(app).get("/v1/providers-costs/switchable");
       expect(res.status).toBe(200);
       expect(res.body.costPerUnitInUsdCents).toBe("0.0300000000");
       expect(res.body.planTier).toBe("business");
@@ -258,7 +254,7 @@ describe("Costs CRUD", () => {
     });
 
     it("returns 500 when no platform plan exists for provider", async () => {
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "orphan_cost",
         provider: "no-plan-provider",
         planTier: "basic",
@@ -267,18 +263,18 @@ describe("Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/costs/orphan_cost");
+      const res = await request(app).get("/v1/providers-costs/orphan_cost");
       expect(res.status).toBe(500);
       expect(res.body.error).toContain("No platform plan configured");
     });
 
     it("returns 404 for unknown name", async () => {
-      const res = await request(app).get("/v1/costs/nonexistent");
+      const res = await request(app).get("/v1/providers-costs/nonexistent");
       expect(res.status).toBe(404);
     });
 
     it("returns 404 when cost exists but not for the active plan", async () => {
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "wrong_plan",
         provider: "test-provider",
         planTier: "enterprise",
@@ -294,13 +290,13 @@ describe("Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/costs/wrong_plan");
+      const res = await request(app).get("/v1/providers-costs/wrong_plan");
       expect(res.status).toBe(404);
       expect(res.body.error).toContain("basic/monthly");
     });
   });
 
-  describe("GET /v1/costs", () => {
+  describe("GET /v1/providers-costs", () => {
     it("returns current price per name resolved via platform plan", async () => {
       await insertPlatformPlan({
         provider: "provider-a",
@@ -315,7 +311,7 @@ describe("Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "alpha",
         provider: "provider-a",
         planTier: "basic",
@@ -323,7 +319,7 @@ describe("Costs CRUD", () => {
         costPerUnitInUsdCents: "0.01",
         effectiveFrom: new Date("2025-01-01"),
       });
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "alpha",
         provider: "provider-a",
         planTier: "basic",
@@ -331,7 +327,7 @@ describe("Costs CRUD", () => {
         costPerUnitInUsdCents: "0.02",
         effectiveFrom: new Date("2025-06-01"),
       });
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "beta",
         provider: "provider-b",
         planTier: "growth",
@@ -340,7 +336,7 @@ describe("Costs CRUD", () => {
         effectiveFrom: new Date("2025-03-01"),
       });
 
-      const res = await request(app).get("/v1/costs");
+      const res = await request(app).get("/v1/providers-costs");
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(2);
 
@@ -358,7 +354,7 @@ describe("Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "alpha",
         provider: "provider-a",
         planTier: "basic",
@@ -366,7 +362,7 @@ describe("Costs CRUD", () => {
         costPerUnitInUsdCents: "0.01",
         effectiveFrom: new Date("2025-01-01"),
       });
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "orphan",
         provider: "no-plan",
         planTier: "basic",
@@ -375,16 +371,16 @@ describe("Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/costs");
+      const res = await request(app).get("/v1/providers-costs");
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].name).toBe("alpha");
     });
   });
 
-  describe("GET /v1/costs/:name/history", () => {
+  describe("GET /v1/providers-costs/:name/history", () => {
     it("returns all price points ordered by effective_from desc", async () => {
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "hist",
         provider: "test-provider",
         planTier: "basic",
@@ -392,7 +388,7 @@ describe("Costs CRUD", () => {
         costPerUnitInUsdCents: "0.01",
         effectiveFrom: new Date("2025-01-01"),
       });
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "hist",
         provider: "test-provider",
         planTier: "basic",
@@ -400,7 +396,7 @@ describe("Costs CRUD", () => {
         costPerUnitInUsdCents: "0.02",
         effectiveFrom: new Date("2025-06-01"),
       });
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "hist",
         provider: "test-provider",
         planTier: "basic",
@@ -409,23 +405,22 @@ describe("Costs CRUD", () => {
         effectiveFrom: new Date("2099-01-01"),
       });
 
-      const res = await request(app).get("/v1/costs/hist/history");
+      const res = await request(app).get("/v1/providers-costs/hist/history");
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(3);
-      // Most recent first
       expect(res.body[0].costPerUnitInUsdCents).toBe("0.0300000000");
       expect(res.body[2].costPerUnitInUsdCents).toBe("0.0100000000");
     });
 
     it("returns 404 for unknown name", async () => {
-      const res = await request(app).get("/v1/costs/nonexistent/history");
+      const res = await request(app).get("/v1/providers-costs/nonexistent/history");
       expect(res.status).toBe(404);
     });
   });
 
-  describe("GET /v1/costs/:name/plans", () => {
+  describe("GET /v1/providers-costs/:name/plans", () => {
     it("returns all plan options for a cost", async () => {
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "multi_plan",
         provider: "test-provider",
         planTier: "basic",
@@ -433,7 +428,7 @@ describe("Costs CRUD", () => {
         costPerUnitInUsdCents: "0.10",
         effectiveFrom: new Date("2025-01-01"),
       });
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "multi_plan",
         provider: "test-provider",
         planTier: "business",
@@ -441,7 +436,7 @@ describe("Costs CRUD", () => {
         costPerUnitInUsdCents: "0.05",
         effectiveFrom: new Date("2025-01-01"),
       });
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "multi_plan",
         provider: "test-provider",
         planTier: "business",
@@ -450,7 +445,7 @@ describe("Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/costs/multi_plan/plans");
+      const res = await request(app).get("/v1/providers-costs/multi_plan/plans");
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(3);
 
@@ -461,7 +456,7 @@ describe("Costs CRUD", () => {
     });
 
     it("returns latest effective price per plan option", async () => {
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "evolving",
         provider: "test-provider",
         planTier: "basic",
@@ -469,7 +464,7 @@ describe("Costs CRUD", () => {
         costPerUnitInUsdCents: "0.10",
         effectiveFrom: new Date("2025-01-01"),
       });
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "evolving",
         provider: "test-provider",
         planTier: "basic",
@@ -478,28 +473,28 @@ describe("Costs CRUD", () => {
         effectiveFrom: new Date("2025-06-01"),
       });
 
-      const res = await request(app).get("/v1/costs/evolving/plans");
+      const res = await request(app).get("/v1/providers-costs/evolving/plans");
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].costPerUnitInUsdCents).toBe("0.0800000000");
     });
 
     it("returns 404 for unknown name", async () => {
-      const res = await request(app).get("/v1/costs/nonexistent/plans");
+      const res = await request(app).get("/v1/providers-costs/nonexistent/plans");
       expect(res.status).toBe(404);
     });
   });
 
-  describe("DELETE /v1/costs/:name", () => {
+  describe("DELETE /v1/providers-costs/:name", () => {
     it("deletes all entries for a name", async () => {
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "to_delete",
         provider: "test-provider",
         planTier: "basic",
         billingCycle: "monthly",
         costPerUnitInUsdCents: "0.01",
       });
-      await insertTestCost({
+      await insertTestProviderCost({
         name: "to_delete",
         provider: "test-provider",
         planTier: "basic",
@@ -509,25 +504,25 @@ describe("Costs CRUD", () => {
       });
 
       const res = await request(app)
-        .delete("/v1/costs/to_delete")
+        .delete("/v1/providers-costs/to_delete")
         .set(authHeaders);
 
       expect(res.status).toBe(200);
       expect(res.body.deleted).toBe(2);
 
       // Verify gone
-      const check = await request(app).get("/v1/costs/to_delete");
+      const check = await request(app).get("/v1/providers-costs/to_delete");
       expect(check.status).toBe(404);
     });
 
     it("rejects without API key", async () => {
-      const res = await request(app).delete("/v1/costs/test");
+      const res = await request(app).delete("/v1/providers-costs/test");
       expect(res.status).toBe(401);
     });
 
     it("returns 404 for unknown name", async () => {
       const res = await request(app)
-        .delete("/v1/costs/nonexistent")
+        .delete("/v1/providers-costs/nonexistent")
         .set(authHeaders);
       expect(res.status).toBe(404);
     });

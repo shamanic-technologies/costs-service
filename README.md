@@ -39,7 +39,7 @@ Examples: `apollo-enrichment-credit`, `anthropic-opus-4.5-tokens-input`, `postma
 
 ## Platform plans
 
-Each provider has an active platform plan that determines which cost tier is used for billing. The `GET /v1/costs/:name` endpoint resolves costs via the active platform plan — no fallbacks.
+Each provider has an active platform plan that determines which cost tier is used for billing. The `GET /v1/prices/:name` endpoint resolves prices via the active platform plan — no fallbacks.
 
 | Provider | Current Plan | Billing |
 |---|---|---|
@@ -53,20 +53,29 @@ Each provider has an active platform plan that determines which cost tier is use
 
 ## API
 
-### Costs
+### Prices (consumer-facing)
 
-All endpoints are prefixed with `/v1/costs`. Write endpoints require `x-api-key` header.
+Consumer endpoints for getting resolved platform prices. No auth required. These resolve the provider cost via the active platform plan — consumers don't need to know about plans.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/v1/costs` | No | List current price for every cost name (resolved via platform plan) |
-| GET | `/v1/costs/:name` | No | Get current price for one cost name (resolved via platform plan) |
-| GET | `/v1/costs/:name/history` | No | Get all historical prices for a cost name |
-| GET | `/v1/costs/:name/plans` | No | List all known plan options for a cost name |
-| PUT | `/v1/costs/:name` | Yes | Insert a new price point |
-| DELETE | `/v1/costs/:name` | Yes | Delete all entries for a cost name |
+| GET | `/v1/prices` | No | List current platform price for every cost name |
+| GET | `/v1/prices/:name` | No | Get current platform price for one cost name |
 
-#### PUT /v1/costs/:name body
+### Providers costs (catalog)
+
+Admin endpoints for managing provider cost data. Write endpoints require `x-api-key` header.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/v1/providers-costs` | No | List all provider costs (resolved via platform plan) |
+| GET | `/v1/providers-costs/:name` | No | Get current provider cost for one name (resolved via platform plan) |
+| GET | `/v1/providers-costs/:name/history` | No | Get all historical prices for a cost name |
+| GET | `/v1/providers-costs/:name/plans` | No | List all known plan options for a cost name |
+| PUT | `/v1/providers-costs/:name` | Yes | Insert a new price point |
+| DELETE | `/v1/providers-costs/:name` | Yes | Delete all entries for a cost name |
+
+#### PUT /v1/providers-costs/:name body
 
 ```json
 {

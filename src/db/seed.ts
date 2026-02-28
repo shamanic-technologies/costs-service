@@ -1,7 +1,7 @@
 import { db } from "./index.js";
-import { costUnits, platformPlans } from "./schema.js";
+import { providersCosts, platformPlans } from "./schema.js";
 
-export const SEED_COSTS = [
+export const SEED_PROVIDERS_COSTS = [
   // Apollo — search is free via API (0 credits consumed)
   // https://docs.apollo.io/reference/people-api-search
   {
@@ -238,14 +238,14 @@ export const SEED_PLATFORM_PLANS = [
   },
 ];
 
-export async function seedCosts() {
-  for (const cost of SEED_COSTS) {
+export async function seedProvidersCosts() {
+  for (const cost of SEED_PROVIDERS_COSTS) {
     await db
-      .insert(costUnits)
+      .insert(providersCosts)
       .values(cost)
       .onConflictDoNothing();
   }
-  console.log(`[Costs Service] Seed complete (${SEED_COSTS.length} cost(s) checked)`);
+  console.log(`[Costs Service] Seed complete (${SEED_PROVIDERS_COSTS.length} provider cost(s) checked)`);
 }
 
 export async function seedPlatformPlans() {

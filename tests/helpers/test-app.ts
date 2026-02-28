@@ -4,8 +4,9 @@ import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
 import healthRoutes from "../../src/routes/health.js";
-import costsRoutes from "../../src/routes/costs.js";
+import providersCostsRoutes from "../../src/routes/providers-costs.js";
 import platformPlansRoutes from "../../src/routes/platform-plans.js";
+import pricesRoutes from "../../src/routes/prices.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,8 +24,9 @@ export function createTestApp() {
     }
   });
   app.use(healthRoutes);
-  app.use(costsRoutes);
+  app.use(providersCostsRoutes);
   app.use(platformPlansRoutes);
+  app.use(pricesRoutes);
   app.use((_req: express.Request, res: express.Response) => {
     res.status(404).json({ error: "Not found" });
   });

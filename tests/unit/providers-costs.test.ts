@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { SEED_COSTS, SEED_PLATFORM_PLANS } from "../../src/db/seed.js";
+import { SEED_PROVIDERS_COSTS, SEED_PLATFORM_PLANS } from "../../src/db/seed.js";
 
 describe("Instantly seed costs", () => {
   it("should include instantly-email-send at 0.94 cents on growth/monthly", () => {
-    const cost = SEED_COSTS.find((c) => c.name === "instantly-email-send");
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "instantly-email-send");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("0.9400000000");
     expect(cost!.provider).toBe("instantly");
@@ -14,7 +14,7 @@ describe("Instantly seed costs", () => {
 
 describe("Twilio seed costs", () => {
   it("should include twilio-sms-segment at 1.33 cents on pay-as-you-go/monthly", () => {
-    const cost = SEED_COSTS.find((c) => c.name === "twilio-sms-segment");
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "twilio-sms-segment");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("1.3300000000");
     expect(cost!.provider).toBe("twilio");
@@ -25,7 +25,7 @@ describe("Twilio seed costs", () => {
 
 describe("Anthropic Sonnet 4.6 seed costs", () => {
   it("should include anthropic-sonnet-4.6-tokens-input at 0.0003 cents", () => {
-    const cost = SEED_COSTS.find((c) => c.name === "anthropic-sonnet-4.6-tokens-input");
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-sonnet-4.6-tokens-input");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("0.0003000000");
     expect(cost!.provider).toBe("anthropic");
@@ -33,7 +33,7 @@ describe("Anthropic Sonnet 4.6 seed costs", () => {
   });
 
   it("should include anthropic-sonnet-4.6-tokens-output at 0.0015 cents", () => {
-    const cost = SEED_COSTS.find((c) => c.name === "anthropic-sonnet-4.6-tokens-output");
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-sonnet-4.6-tokens-output");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("0.0015000000");
   });
@@ -41,13 +41,13 @@ describe("Anthropic Sonnet 4.6 seed costs", () => {
 
 describe("Anthropic Opus 4.6 seed costs", () => {
   it("should include anthropic-opus-4-6-input-token at 0.0005 cents", () => {
-    const cost = SEED_COSTS.find((c) => c.name === "anthropic-opus-4-6-input-token");
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-opus-4-6-input-token");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("0.0005000000");
   });
 
   it("should include anthropic-opus-4-6-output-token at 0.0025 cents", () => {
-    const cost = SEED_COSTS.find((c) => c.name === "anthropic-opus-4-6-output-token");
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-opus-4-6-output-token");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("0.0025000000");
   });
@@ -55,7 +55,7 @@ describe("Anthropic Opus 4.6 seed costs", () => {
 
 describe("Apollo seed costs", () => {
   it("should include apollo-enrichment-credit at 2.36 cents (Basic $59/mo ÷ 2,500 credits)", () => {
-    const cost = SEED_COSTS.find((c) => c.name === "apollo-enrichment-credit");
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "apollo-enrichment-credit");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("2.3600000000");
     expect(cost!.provider).toBe("apollo");
@@ -64,13 +64,13 @@ describe("Apollo seed costs", () => {
   });
 
   it("should include apollo-person-match-credit at 2.36 cents (same credit type as enrichment)", () => {
-    const cost = SEED_COSTS.find((c) => c.name === "apollo-person-match-credit");
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "apollo-person-match-credit");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("2.3600000000");
   });
 
   it("should include apollo-search-credit at 0.00 cents (free)", () => {
-    const cost = SEED_COSTS.find((c) => c.name === "apollo-search-credit");
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "apollo-search-credit");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("0.0000000000");
   });
@@ -78,7 +78,7 @@ describe("Apollo seed costs", () => {
 
 describe("All seed costs have required plan fields", () => {
   it("every seed cost has provider, planTier, and billingCycle", () => {
-    for (const cost of SEED_COSTS) {
+    for (const cost of SEED_PROVIDERS_COSTS) {
       expect(cost.provider, `${cost.name} missing provider`).toBeDefined();
       expect(cost.provider.length, `${cost.name} has empty provider`).toBeGreaterThan(0);
       expect(cost.planTier, `${cost.name} missing planTier`).toBeDefined();
@@ -91,7 +91,7 @@ describe("All seed costs have required plan fields", () => {
 
 describe("Seed platform plans", () => {
   it("has a platform plan for every unique provider in seed costs", () => {
-    const costProviders = new Set(SEED_COSTS.map((c) => c.provider));
+    const costProviders = new Set(SEED_PROVIDERS_COSTS.map((c) => c.provider));
     const planProviders = new Set(SEED_PLATFORM_PLANS.map((p) => p.provider));
 
     for (const provider of costProviders) {
@@ -101,7 +101,7 @@ describe("Seed platform plans", () => {
 
   it("each platform plan matches a cost's plan tier and billing cycle", () => {
     for (const plan of SEED_PLATFORM_PLANS) {
-      const matchingCost = SEED_COSTS.find(
+      const matchingCost = SEED_PROVIDERS_COSTS.find(
         (c) => c.provider === plan.provider && c.planTier === plan.planTier && c.billingCycle === plan.billingCycle,
       );
       expect(matchingCost, `Platform plan for '${plan.provider}' (${plan.planTier}/${plan.billingCycle}) has no matching cost`).toBeDefined();
