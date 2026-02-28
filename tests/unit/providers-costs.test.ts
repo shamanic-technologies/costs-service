@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SEED_PROVIDERS_COSTS, SEED_PLATFORM_PLANS } from "../../src/db/seed.js";
+import { SEED_PROVIDERS_COSTS, SEED_PLATFORM_COSTS } from "../../src/db/seed.js";
 
 describe("Instantly seed costs", () => {
   it("should include instantly-email-send at 0.94 cents on growth/monthly", () => {
@@ -89,22 +89,22 @@ describe("All seed costs have required plan fields", () => {
   });
 });
 
-describe("Seed platform plans", () => {
-  it("has a platform plan for every unique provider in seed costs", () => {
+describe("Seed platform costs", () => {
+  it("has a platform cost for every unique provider in seed costs", () => {
     const costProviders = new Set(SEED_PROVIDERS_COSTS.map((c) => c.provider));
-    const planProviders = new Set(SEED_PLATFORM_PLANS.map((p) => p.provider));
+    const platformCostProviders = new Set(SEED_PLATFORM_COSTS.map((p) => p.provider));
 
     for (const provider of costProviders) {
-      expect(planProviders.has(provider), `Missing platform plan for provider '${provider}'`).toBe(true);
+      expect(platformCostProviders.has(provider), `Missing platform cost for provider '${provider}'`).toBe(true);
     }
   });
 
-  it("each platform plan matches a cost's plan tier and billing cycle", () => {
-    for (const plan of SEED_PLATFORM_PLANS) {
+  it("each platform cost matches a provider cost's plan tier and billing cycle", () => {
+    for (const pc of SEED_PLATFORM_COSTS) {
       const matchingCost = SEED_PROVIDERS_COSTS.find(
-        (c) => c.provider === plan.provider && c.planTier === plan.planTier && c.billingCycle === plan.billingCycle,
+        (c) => c.provider === pc.provider && c.planTier === pc.planTier && c.billingCycle === pc.billingCycle,
       );
-      expect(matchingCost, `Platform plan for '${plan.provider}' (${plan.planTier}/${plan.billingCycle}) has no matching cost`).toBeDefined();
+      expect(matchingCost, `Platform cost for '${pc.provider}' (${pc.planTier}/${pc.billingCycle}) has no matching provider cost`).toBeDefined();
     }
   });
 });

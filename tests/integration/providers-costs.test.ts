@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
 import { createTestApp, getAuthHeaders } from "../helpers/test-app.js";
-import { cleanTestData, insertTestProviderCost, insertPlatformPlan, closeDb } from "../helpers/test-db.js";
+import { cleanTestData, insertTestProviderCost, insertPlatformCost, closeDb } from "../helpers/test-db.js";
 
 describe("Providers Costs CRUD", () => {
   const app = createTestApp();
@@ -164,7 +164,7 @@ describe("Providers Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      await insertPlatformPlan({
+      await insertPlatformCost({
         provider: "test-provider",
         planTier: "basic",
         billingCycle: "monthly",
@@ -203,7 +203,7 @@ describe("Providers Costs CRUD", () => {
         effectiveFrom: new Date("2099-01-01"),
       });
 
-      await insertPlatformPlan({
+      await insertPlatformCost({
         provider: "test-provider",
         planTier: "basic",
         billingCycle: "monthly",
@@ -233,13 +233,13 @@ describe("Providers Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      await insertPlatformPlan({
+      await insertPlatformCost({
         provider: "test-provider",
         planTier: "basic",
         billingCycle: "monthly",
         effectiveFrom: new Date("2025-01-01"),
       });
-      await insertPlatformPlan({
+      await insertPlatformCost({
         provider: "test-provider",
         planTier: "business",
         billingCycle: "annual",
@@ -265,7 +265,7 @@ describe("Providers Costs CRUD", () => {
 
       const res = await request(app).get("/v1/providers-costs/orphan_cost");
       expect(res.status).toBe(500);
-      expect(res.body.error).toContain("No platform plan configured");
+      expect(res.body.error).toContain("No platform cost configured");
     });
 
     it("returns 404 for unknown name", async () => {
@@ -283,7 +283,7 @@ describe("Providers Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      await insertPlatformPlan({
+      await insertPlatformCost({
         provider: "test-provider",
         planTier: "basic",
         billingCycle: "monthly",
@@ -298,13 +298,13 @@ describe("Providers Costs CRUD", () => {
 
   describe("GET /v1/providers-costs", () => {
     it("returns current price per name resolved via platform plan", async () => {
-      await insertPlatformPlan({
+      await insertPlatformCost({
         provider: "provider-a",
         planTier: "basic",
         billingCycle: "monthly",
         effectiveFrom: new Date("2025-01-01"),
       });
-      await insertPlatformPlan({
+      await insertPlatformCost({
         provider: "provider-b",
         planTier: "growth",
         billingCycle: "monthly",
@@ -347,7 +347,7 @@ describe("Providers Costs CRUD", () => {
     });
 
     it("excludes costs whose provider has no platform plan", async () => {
-      await insertPlatformPlan({
+      await insertPlatformCost({
         provider: "provider-a",
         planTier: "basic",
         billingCycle: "monthly",

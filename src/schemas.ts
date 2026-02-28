@@ -49,7 +49,7 @@ export const PriceSchema = z
   })
   .openapi("Price");
 
-export const PlatformPlanSchema = z
+export const PlatformCostSchema = z
   .object({
     id: z.string().uuid(),
     provider: z.string(),
@@ -59,7 +59,7 @@ export const PlatformPlanSchema = z
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
   })
-  .openapi("PlatformPlan");
+  .openapi("PlatformCost");
 
 // --- PUT /v1/providers-costs/:name ---
 
@@ -73,15 +73,15 @@ export const PutProviderCostBodySchema = z
   })
   .openapi("PutProviderCostBody");
 
-// --- PUT /v1/platform-plans/:provider ---
+// --- PUT /v1/platform-costs/:provider ---
 
-export const PutPlatformPlanBodySchema = z
+export const PutPlatformCostBodySchema = z
   .object({
     planTier: z.string(),
     billingCycle: z.string(),
     effectiveFrom: z.string().datetime().optional(),
   })
-  .openapi("PutPlatformPlanBody");
+  .openapi("PutPlatformCostBody");
 
 // --- DELETE /v1/providers-costs/:name ---
 
@@ -284,12 +284,12 @@ registry.registerPath({
   },
 });
 
-// --- Prices (consumer-facing, resolved via platform plan) ---
+// --- Platform prices (consumer-facing, resolved via platform cost config) ---
 
 registry.registerPath({
   method: "get",
-  path: "/v1/prices",
-  operationId: "listPrices",
+  path: "/v1/platform-prices",
+  operationId: "listPlatformPrices",
   summary: "List current platform prices for all cost names",
   responses: {
     200: {
@@ -305,8 +305,8 @@ registry.registerPath({
 
 registry.registerPath({
   method: "get",
-  path: "/v1/prices/{name}",
-  operationId: "getPrice",
+  path: "/v1/platform-prices/{name}",
+  operationId: "getPlatformPrice",
   summary: "Get current platform price for a cost name",
   request: { params: z.object({ name: CostNameParam }) },
   responses: {
@@ -325,17 +325,17 @@ registry.registerPath({
   },
 });
 
-// --- Platform plans ---
+// --- Platform costs ---
 
 registry.registerPath({
   method: "get",
-  path: "/v1/platform-plans",
-  operationId: "listPlatformPlans",
-  summary: "List current platform plan per provider",
+  path: "/v1/platform-costs",
+  operationId: "listPlatformCosts",
+  summary: "List current platform cost config per provider",
   responses: {
     200: {
-      description: "Current platform plan for each provider",
-      content: { "application/json": { schema: z.array(PlatformPlanSchema) } },
+      description: "Current platform cost config for each provider",
+      content: { "application/json": { schema: z.array(PlatformCostSchema) } },
     },
     500: {
       description: "Internal server error",
@@ -346,17 +346,17 @@ registry.registerPath({
 
 registry.registerPath({
   method: "get",
-  path: "/v1/platform-plans/{provider}",
-  operationId: "getPlatformPlan",
-  summary: "Get current platform plan for a provider",
+  path: "/v1/platform-costs/{provider}",
+  operationId: "getPlatformCost",
+  summary: "Get current platform cost config for a provider",
   request: { params: z.object({ provider: ProviderParam }) },
   responses: {
     200: {
-      description: "Current platform plan",
-      content: { "application/json": { schema: PlatformPlanSchema } },
+      description: "Current platform cost config",
+      content: { "application/json": { schema: PlatformCostSchema } },
     },
     404: {
-      description: "No platform plan configured for this provider",
+      description: "No platform cost configured for this provider",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
     500: {
@@ -368,17 +368,17 @@ registry.registerPath({
 
 registry.registerPath({
   method: "get",
-  path: "/v1/platform-plans/{provider}/history",
-  operationId: "getPlatformPlanHistory",
-  summary: "Get platform plan change history for a provider",
+  path: "/v1/platform-costs/{provider}/history",
+  operationId: "getPlatformCostHistory",
+  summary: "Get platform cost change history for a provider",
   request: { params: z.object({ provider: ProviderParam }) },
   responses: {
     200: {
-      description: "Plan change history",
-      content: { "application/json": { schema: z.array(PlatformPlanSchema) } },
+      description: "Cost config change history",
+      content: { "application/json": { schema: z.array(PlatformCostSchema) } },
     },
     404: {
-      description: "No platform plan configured for this provider",
+      description: "No platform cost configured for this provider",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
     500: {
@@ -390,21 +390,21 @@ registry.registerPath({
 
 registry.registerPath({
   method: "put",
-  path: "/v1/platform-plans/{provider}",
-  operationId: "putPlatformPlan",
-  summary: "Set or update the platform plan for a provider",
+  path: "/v1/platform-costs/{provider}",
+  operationId: "putPlatformCost",
+  summary: "Set or update the platform cost config for a provider",
   security: [{ ApiKeyAuth: [] }],
   request: {
     params: z.object({ provider: ProviderParam }),
     body: {
       required: true,
-      content: { "application/json": { schema: PutPlatformPlanBodySchema } },
+      content: { "application/json": { schema: PutPlatformCostBodySchema } },
     },
   },
   responses: {
     200: {
-      description: "Inserted platform plan",
-      content: { "application/json": { schema: PlatformPlanSchema } },
+      description: "Inserted platform cost config",
+      content: { "application/json": { schema: PlatformCostSchema } },
     },
     400: {
       description: "Invalid request body",
@@ -415,7 +415,7 @@ registry.registerPath({
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
     409: {
-      description: "Duplicate platform plan (provider + effective_from already exists)",
+      description: "Duplicate platform cost (provider + effective_from already exists)",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
     500: {

@@ -1,9 +1,9 @@
 import { db, sql } from "../../src/db/index.js";
-import { providersCosts, platformPlans } from "../../src/db/schema.js";
+import { providersCosts, platformCosts } from "../../src/db/schema.js";
 
 export async function cleanTestData() {
   await db.delete(providersCosts);
-  await db.delete(platformPlans);
+  await db.delete(platformCosts);
 }
 
 export async function insertTestProviderCost(data: {
@@ -28,14 +28,14 @@ export async function insertTestProviderCost(data: {
   return cost;
 }
 
-export async function insertPlatformPlan(data: {
+export async function insertPlatformCost(data: {
   provider: string;
   planTier: string;
   billingCycle: string;
   effectiveFrom?: Date;
 }) {
-  const [plan] = await db
-    .insert(platformPlans)
+  const [cost] = await db
+    .insert(platformCosts)
     .values({
       provider: data.provider,
       planTier: data.planTier,
@@ -43,7 +43,7 @@ export async function insertPlatformPlan(data: {
       effectiveFrom: data.effectiveFrom || new Date(),
     })
     .returning();
-  return plan;
+  return cost;
 }
 
 export async function closeDb() {
