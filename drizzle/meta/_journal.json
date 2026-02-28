@@ -15,6 +15,13 @@
       "when": 1772260227508,
       "tag": "0001_yummy_colonel_america",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772330000000,
+      "tag": "0002_rename_to_providers_costs",
+      "breakpoints": true
     }
   ]
 }

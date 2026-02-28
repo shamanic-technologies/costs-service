@@ -26,7 +26,7 @@ export const ValidationErrorResponseSchema = z
   })
   .openapi("ValidationErrorResponse");
 
-export const CostUnitSchema = z
+export const ProviderCostSchema = z
   .object({
     id: z.string().uuid(),
     name: z.string(),
@@ -38,7 +38,16 @@ export const CostUnitSchema = z
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
   })
-  .openapi("CostUnit");
+  .openapi("ProviderCost");
+
+export const PriceSchema = z
+  .object({
+    name: z.string(),
+    pricePerUnitInUsdCents: z.string(),
+    provider: z.string(),
+    effectiveFrom: z.string().datetime(),
+  })
+  .openapi("Price");
 
 export const PlatformPlanSchema = z
   .object({
@@ -52,9 +61,9 @@ export const PlatformPlanSchema = z
   })
   .openapi("PlatformPlan");
 
-// --- PUT /v1/costs/:name ---
+// --- PUT /v1/providers-costs/:name ---
 
-export const PutCostBodySchema = z
+export const PutProviderCostBodySchema = z
   .object({
     costPerUnitInUsdCents: z.union([z.string(), z.number()]),
     provider: z.string(),
@@ -62,7 +71,7 @@ export const PutCostBodySchema = z
     billingCycle: z.string(),
     effectiveFrom: z.string().datetime().optional(),
   })
-  .openapi("PutCostBody");
+  .openapi("PutProviderCostBody");
 
 // --- PUT /v1/platform-plans/:provider ---
 
@@ -74,13 +83,13 @@ export const PutPlatformPlanBodySchema = z
   })
   .openapi("PutPlatformPlanBody");
 
-// --- DELETE /v1/costs/:name ---
+// --- DELETE /v1/providers-costs/:name ---
 
-export const DeleteCostResponseSchema = z
+export const DeleteProviderCostResponseSchema = z
   .object({
     deleted: z.number(),
   })
-  .openapi("DeleteCostResponse");
+  .openapi("DeleteProviderCostResponse");
 
 // --- Health ---
 
@@ -97,7 +106,7 @@ const CostNameParam = registry.registerParameter(
   "CostName",
   z.string().openapi({
     param: { name: "name", in: "path" },
-    description: "Cost unit identifier ({provider}-{service-or-model}-{unit-type})",
+    description: "Provider cost identifier ({provider}-{service-or-model}-{unit-type})",
     example: "anthropic-sonnet-4.5-tokens-input",
   })
 );
@@ -126,15 +135,17 @@ registry.registerPath({
   },
 });
 
+// --- Providers costs (catalog) ---
+
 registry.registerPath({
   method: "get",
-  path: "/v1/costs",
-  operationId: "listCosts",
-  summary: "List all current prices (resolved via platform plan per provider)",
+  path: "/v1/providers-costs",
+  operationId: "listProvidersCosts",
+  summary: "List all provider costs (resolved via platform plan per provider)",
   responses: {
     200: {
-      description: "List of current cost units",
-      content: { "application/json": { schema: z.array(CostUnitSchema) } },
+      description: "List of current provider costs",
+      content: { "application/json": { schema: z.array(ProviderCostSchema) } },
     },
     500: {
       description: "Internal server error",
@@ -145,17 +156,17 @@ registry.registerPath({
 
 registry.registerPath({
   method: "get",
-  path: "/v1/costs/{name}",
-  operationId: "getCost",
-  summary: "Get current price for a cost unit (resolved via platform plan)",
+  path: "/v1/providers-costs/{name}",
+  operationId: "getProviderCost",
+  summary: "Get current provider cost (resolved via platform plan)",
   request: { params: z.object({ name: CostNameParam }) },
   responses: {
     200: {
-      description: "Current cost unit",
-      content: { "application/json": { schema: CostUnitSchema } },
+      description: "Current provider cost",
+      content: { "application/json": { schema: ProviderCostSchema } },
     },
     404: {
-      description: "Cost unit not found",
+      description: "Provider cost not found",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
     500: {
@@ -167,17 +178,17 @@ registry.registerPath({
 
 registry.registerPath({
   method: "get",
-  path: "/v1/costs/{name}/history",
-  operationId: "getCostHistory",
-  summary: "Get all price points for a cost unit",
+  path: "/v1/providers-costs/{name}/history",
+  operationId: "getProviderCostHistory",
+  summary: "Get all price points for a provider cost",
   request: { params: z.object({ name: CostNameParam }) },
   responses: {
     200: {
       description: "Price history",
-      content: { "application/json": { schema: z.array(CostUnitSchema) } },
+      content: { "application/json": { schema: z.array(ProviderCostSchema) } },
     },
     404: {
-      description: "Cost unit not found",
+      description: "Provider cost not found",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
     500: {
@@ -189,17 +200,17 @@ registry.registerPath({
 
 registry.registerPath({
   method: "get",
-  path: "/v1/costs/{name}/plans",
-  operationId: "getCostPlans",
-  summary: "List all known plan options for a cost unit",
+  path: "/v1/providers-costs/{name}/plans",
+  operationId: "getProviderCostPlans",
+  summary: "List all known plan options for a provider cost",
   request: { params: z.object({ name: CostNameParam }) },
   responses: {
     200: {
       description: "All plan/billing cycle combinations for this cost",
-      content: { "application/json": { schema: z.array(CostUnitSchema) } },
+      content: { "application/json": { schema: z.array(ProviderCostSchema) } },
     },
     404: {
-      description: "Cost unit not found",
+      description: "Provider cost not found",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
     500: {
@@ -211,21 +222,21 @@ registry.registerPath({
 
 registry.registerPath({
   method: "put",
-  path: "/v1/costs/{name}",
-  operationId: "putCost",
-  summary: "Insert a new price point for a cost unit",
+  path: "/v1/providers-costs/{name}",
+  operationId: "putProviderCost",
+  summary: "Insert a new price point for a provider cost",
   security: [{ ApiKeyAuth: [] }],
   request: {
     params: z.object({ name: CostNameParam }),
     body: {
       required: true,
-      content: { "application/json": { schema: PutCostBodySchema } },
+      content: { "application/json": { schema: PutProviderCostBodySchema } },
     },
   },
   responses: {
     200: {
-      description: "Inserted cost unit",
-      content: { "application/json": { schema: CostUnitSchema } },
+      description: "Inserted provider cost",
+      content: { "application/json": { schema: ProviderCostSchema } },
     },
     400: {
       description: "Invalid request body",
@@ -236,7 +247,7 @@ registry.registerPath({
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
     409: {
-      description: "Duplicate cost unit (name + plan_tier + billing_cycle + effective_from already exists)",
+      description: "Duplicate provider cost (name + plan_tier + billing_cycle + effective_from already exists)",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
     500: {
@@ -248,26 +259,67 @@ registry.registerPath({
 
 registry.registerPath({
   method: "delete",
-  path: "/v1/costs/{name}",
-  operationId: "deleteCost",
-  summary: "Delete all entries for a cost unit",
+  path: "/v1/providers-costs/{name}",
+  operationId: "deleteProviderCost",
+  summary: "Delete all entries for a provider cost",
   security: [{ ApiKeyAuth: [] }],
   request: { params: z.object({ name: CostNameParam }) },
   responses: {
     200: {
       description: "Number of deleted entries",
-      content: { "application/json": { schema: DeleteCostResponseSchema } },
+      content: { "application/json": { schema: DeleteProviderCostResponseSchema } },
     },
     401: {
       description: "Unauthorized",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
     404: {
-      description: "Cost unit not found",
+      description: "Provider cost not found",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
     500: {
       description: "Internal server error",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+});
+
+// --- Prices (consumer-facing, resolved via platform plan) ---
+
+registry.registerPath({
+  method: "get",
+  path: "/v1/prices",
+  operationId: "listPrices",
+  summary: "List current platform prices for all cost names",
+  responses: {
+    200: {
+      description: "Current prices resolved via platform plan",
+      content: { "application/json": { schema: z.array(PriceSchema) } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/v1/prices/{name}",
+  operationId: "getPrice",
+  summary: "Get current platform price for a cost name",
+  request: { params: z.object({ name: CostNameParam }) },
+  responses: {
+    200: {
+      description: "Current price",
+      content: { "application/json": { schema: PriceSchema } },
+    },
+    404: {
+      description: "Price not found",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+    500: {
+      description: "Internal server error (e.g. no platform plan configured)",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
   },

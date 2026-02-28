@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { eq, lte, desc, and } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { costUnits, platformPlans } from "../db/schema.js";
+import { providersCosts, platformPlans } from "../db/schema.js";
 import { requireApiKey } from "../middleware/auth.js";
-import { PutCostBodySchema } from "../schemas.js";
+import { PutProviderCostBodySchema } from "../schemas.js";
 
 const router = Router();
 
@@ -19,8 +19,8 @@ async function getCurrentPlatformPlan(provider: string) {
   return plan ?? null;
 }
 
-// GET /v1/costs — list all current prices (resolved via platform plan)
-router.get("/v1/costs", async (_req, res) => {
+// GET /v1/providers-costs — list all current provider costs (resolved via platform plan)
+router.get("/v1/providers-costs", async (_req, res) => {
   try {
     const now = new Date();
 
@@ -41,9 +41,9 @@ router.get("/v1/costs", async (_req, res) => {
     // 2. Get all costs where effectiveFrom <= now
     const allCosts = await db
       .select()
-      .from(costUnits)
-      .where(lte(costUnits.effectiveFrom, now))
-      .orderBy(costUnits.name, desc(costUnits.effectiveFrom));
+      .from(providersCosts)
+      .where(lte(providersCosts.effectiveFrom, now))
+      .orderBy(providersCosts.name, desc(providersCosts.effectiveFrom));
 
     // 3. Filter by matching platform plan, deduplicate per name
     const seen = new Set<string>();
@@ -58,26 +58,26 @@ router.get("/v1/costs", async (_req, res) => {
 
     res.json(current);
   } catch (err) {
-    console.error("[Costs Service] Error listing costs:", err);
+    console.error("[Costs Service] Error listing providers costs:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// GET /v1/costs/:name — current price for one name (resolved via platform plan)
-router.get("/v1/costs/:name", async (req, res) => {
+// GET /v1/providers-costs/:name — current provider cost for one name (resolved via platform plan)
+router.get("/v1/providers-costs/:name", async (req, res) => {
   try {
     const { name } = req.params;
     const now = new Date();
 
     // 1. Find the provider for this cost name
     const [anyCost] = await db
-      .select({ provider: costUnits.provider })
-      .from(costUnits)
-      .where(eq(costUnits.name, name))
+      .select({ provider: providersCosts.provider })
+      .from(providersCosts)
+      .where(eq(providersCosts.name, name))
       .limit(1);
 
     if (!anyCost) {
-      res.status(404).json({ error: "Cost unit not found" });
+      res.status(404).json({ error: "Provider cost not found" });
       return;
     }
 
@@ -91,16 +91,16 @@ router.get("/v1/costs/:name", async (req, res) => {
     // 3. Get the cost matching our plan
     const [result] = await db
       .select()
-      .from(costUnits)
+      .from(providersCosts)
       .where(
         and(
-          eq(costUnits.name, name),
-          eq(costUnits.planTier, plan.planTier),
-          eq(costUnits.billingCycle, plan.billingCycle),
-          lte(costUnits.effectiveFrom, now),
+          eq(providersCosts.name, name),
+          eq(providersCosts.planTier, plan.planTier),
+          eq(providersCosts.billingCycle, plan.billingCycle),
+          lte(providersCosts.effectiveFrom, now),
         ),
       )
-      .orderBy(desc(costUnits.effectiveFrom))
+      .orderBy(desc(providersCosts.effectiveFrom))
       .limit(1);
 
     if (!result) {
@@ -112,36 +112,36 @@ router.get("/v1/costs/:name", async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    console.error("[Costs Service] Error getting cost:", err);
+    console.error("[Costs Service] Error getting provider cost:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// GET /v1/costs/:name/history — all price points for a name (all plans)
-router.get("/v1/costs/:name/history", async (req, res) => {
+// GET /v1/providers-costs/:name/history — all price points for a name (all plans)
+router.get("/v1/providers-costs/:name/history", async (req, res) => {
   try {
     const { name } = req.params;
 
     const history = await db
       .select()
-      .from(costUnits)
-      .where(eq(costUnits.name, name))
-      .orderBy(desc(costUnits.effectiveFrom));
+      .from(providersCosts)
+      .where(eq(providersCosts.name, name))
+      .orderBy(desc(providersCosts.effectiveFrom));
 
     if (history.length === 0) {
-      res.status(404).json({ error: "Cost unit not found" });
+      res.status(404).json({ error: "Provider cost not found" });
       return;
     }
 
     res.json(history);
   } catch (err) {
-    console.error("[Costs Service] Error getting cost history:", err);
+    console.error("[Costs Service] Error getting provider cost history:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// GET /v1/costs/:name/plans — all plan options for a cost name
-router.get("/v1/costs/:name/plans", async (req, res) => {
+// GET /v1/providers-costs/:name/plans — all plan options for a cost name
+router.get("/v1/providers-costs/:name/plans", async (req, res) => {
   try {
     const { name } = req.params;
     const now = new Date();
@@ -149,12 +149,12 @@ router.get("/v1/costs/:name/plans", async (req, res) => {
     // Get latest effective price per (plan_tier, billing_cycle) combo
     const allCosts = await db
       .select()
-      .from(costUnits)
-      .where(and(eq(costUnits.name, name), lte(costUnits.effectiveFrom, now)))
-      .orderBy(costUnits.planTier, costUnits.billingCycle, desc(costUnits.effectiveFrom));
+      .from(providersCosts)
+      .where(and(eq(providersCosts.name, name), lte(providersCosts.effectiveFrom, now)))
+      .orderBy(providersCosts.planTier, providersCosts.billingCycle, desc(providersCosts.effectiveFrom));
 
     if (allCosts.length === 0) {
-      res.status(404).json({ error: "Cost unit not found" });
+      res.status(404).json({ error: "Provider cost not found" });
       return;
     }
 
@@ -169,16 +169,16 @@ router.get("/v1/costs/:name/plans", async (req, res) => {
 
     res.json(plans);
   } catch (err) {
-    console.error("[Costs Service] Error getting cost plans:", err);
+    console.error("[Costs Service] Error getting provider cost plans:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// PUT /v1/costs/:name — insert new price point
-router.put("/v1/costs/:name", requireApiKey, async (req, res) => {
+// PUT /v1/providers-costs/:name — insert new price point
+router.put("/v1/providers-costs/:name", requireApiKey, async (req, res) => {
   try {
     const { name } = req.params;
-    const parsed = PutCostBodySchema.safeParse(req.body);
+    const parsed = PutProviderCostBodySchema.safeParse(req.body);
 
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
@@ -188,7 +188,7 @@ router.put("/v1/costs/:name", requireApiKey, async (req, res) => {
     const { costPerUnitInUsdCents, provider, planTier, billingCycle, effectiveFrom } = parsed.data;
 
     const [inserted] = await db
-      .insert(costUnits)
+      .insert(providersCosts)
       .values({
         name,
         provider,
@@ -202,32 +202,32 @@ router.put("/v1/costs/:name", requireApiKey, async (req, res) => {
     res.json(inserted);
   } catch (err: any) {
     if (err?.code === "23505") {
-      res.status(409).json({ error: "Cost unit with this name, plan, billing cycle, and effective_from already exists" });
+      res.status(409).json({ error: "Provider cost with this name, plan, billing cycle, and effective_from already exists" });
       return;
     }
-    console.error("[Costs Service] Error upserting cost:", err);
+    console.error("[Costs Service] Error upserting provider cost:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// DELETE /v1/costs/:name — delete all entries for a name
-router.delete("/v1/costs/:name", requireApiKey, async (req, res) => {
+// DELETE /v1/providers-costs/:name — delete all entries for a name
+router.delete("/v1/providers-costs/:name", requireApiKey, async (req, res) => {
   try {
     const { name } = req.params;
 
     const deleted = await db
-      .delete(costUnits)
-      .where(eq(costUnits.name, name))
+      .delete(providersCosts)
+      .where(eq(providersCosts.name, name))
       .returning();
 
     if (deleted.length === 0) {
-      res.status(404).json({ error: "Cost unit not found" });
+      res.status(404).json({ error: "Provider cost not found" });
       return;
     }
 
     res.json({ deleted: deleted.length });
   } catch (err) {
-    console.error("[Costs Service] Error deleting cost:", err);
+    console.error("[Costs Service] Error deleting provider cost:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
