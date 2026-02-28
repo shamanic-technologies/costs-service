@@ -1,38 +1,38 @@
 import { Router } from "express";
 import { eq, lte, desc, and } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { providersCosts, platformPlans } from "../db/schema.js";
+import { providersCosts, platformCosts } from "../db/schema.js";
 
 const router = Router();
 
-/** Resolve the current platform plan for a provider. Returns null if none configured. */
-async function getCurrentPlatformPlan(provider: string) {
+/** Resolve the current platform cost config for a provider. Returns null if none configured. */
+async function getCurrentPlatformCost(provider: string) {
   const now = new Date();
-  const [plan] = await db
+  const [cost] = await db
     .select()
-    .from(platformPlans)
-    .where(and(eq(platformPlans.provider, provider), lte(platformPlans.effectiveFrom, now)))
-    .orderBy(desc(platformPlans.effectiveFrom))
+    .from(platformCosts)
+    .where(and(eq(platformCosts.provider, provider), lte(platformCosts.effectiveFrom, now)))
+    .orderBy(desc(platformCosts.effectiveFrom))
     .limit(1);
-  return plan ?? null;
+  return cost ?? null;
 }
 
-// GET /v1/prices — list current platform prices for all cost names
-router.get("/v1/prices", async (_req, res) => {
+// GET /v1/platform-prices — list current platform prices for all cost names
+router.get("/v1/platform-prices", async (_req, res) => {
   try {
     const now = new Date();
 
-    // 1. Get all current platform plans (latest per provider)
-    const allPlans = await db
+    // 1. Get all current platform costs (latest per provider)
+    const allPlatformCosts = await db
       .select()
-      .from(platformPlans)
-      .where(lte(platformPlans.effectiveFrom, now))
-      .orderBy(platformPlans.provider, desc(platformPlans.effectiveFrom));
+      .from(platformCosts)
+      .where(lte(platformCosts.effectiveFrom, now))
+      .orderBy(platformCosts.provider, desc(platformCosts.effectiveFrom));
 
     const planMap = new Map<string, { planTier: string; billingCycle: string }>();
-    for (const plan of allPlans) {
-      if (!planMap.has(plan.provider)) {
-        planMap.set(plan.provider, { planTier: plan.planTier, billingCycle: plan.billingCycle });
+    for (const pc of allPlatformCosts) {
+      if (!planMap.has(pc.provider)) {
+        planMap.set(pc.provider, { planTier: pc.planTier, billingCycle: pc.billingCycle });
       }
     }
 
@@ -43,7 +43,7 @@ router.get("/v1/prices", async (_req, res) => {
       .where(lte(providersCosts.effectiveFrom, now))
       .orderBy(providersCosts.name, desc(providersCosts.effectiveFrom));
 
-    // 3. Filter by matching platform plan, deduplicate per name
+    // 3. Filter by matching platform cost config, deduplicate per name
     const seen = new Set<string>();
     const prices = allCosts
       .filter((row) => {
@@ -63,13 +63,13 @@ router.get("/v1/prices", async (_req, res) => {
 
     res.json(prices);
   } catch (err) {
-    console.error("[Costs Service] Error listing prices:", err);
+    console.error("[Costs Service] Error listing platform prices:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// GET /v1/prices/:name — current platform price for one cost name
-router.get("/v1/prices/:name", async (req, res) => {
+// GET /v1/platform-prices/:name — current platform price for one cost name
+router.get("/v1/platform-prices/:name", async (req, res) => {
   try {
     const { name } = req.params;
     const now = new Date();
@@ -86,10 +86,10 @@ router.get("/v1/prices/:name", async (req, res) => {
       return;
     }
 
-    // 2. Get current platform plan for this provider
-    const plan = await getCurrentPlatformPlan(anyCost.provider);
-    if (!plan) {
-      res.status(500).json({ error: `No platform plan configured for provider '${anyCost.provider}'` });
+    // 2. Get current platform cost config for this provider
+    const platformCost = await getCurrentPlatformCost(anyCost.provider);
+    if (!platformCost) {
+      res.status(500).json({ error: `No platform cost configured for provider '${anyCost.provider}'` });
       return;
     }
 
@@ -100,8 +100,8 @@ router.get("/v1/prices/:name", async (req, res) => {
       .where(
         and(
           eq(providersCosts.name, name),
-          eq(providersCosts.planTier, plan.planTier),
-          eq(providersCosts.billingCycle, plan.billingCycle),
+          eq(providersCosts.planTier, platformCost.planTier),
+          eq(providersCosts.billingCycle, platformCost.billingCycle),
           lte(providersCosts.effectiveFrom, now),
         ),
       )
@@ -110,7 +110,7 @@ router.get("/v1/prices/:name", async (req, res) => {
 
     if (!result) {
       res.status(404).json({
-        error: `No price found for '${name}' on plan '${plan.planTier}/${plan.billingCycle}'`,
+        error: `No price found for '${name}' on plan '${platformCost.planTier}/${platformCost.billingCycle}'`,
       });
       return;
     }
@@ -122,7 +122,7 @@ router.get("/v1/prices/:name", async (req, res) => {
       effectiveFrom: result.effectiveFrom,
     });
   } catch (err) {
-    console.error("[Costs Service] Error getting price:", err);
+    console.error("[Costs Service] Error getting platform price:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

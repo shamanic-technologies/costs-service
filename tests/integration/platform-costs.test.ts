@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
 import { createTestApp, getAuthHeaders } from "../helpers/test-app.js";
-import { cleanTestData, insertPlatformPlan, closeDb } from "../helpers/test-db.js";
+import { cleanTestData, insertPlatformCost, closeDb } from "../helpers/test-db.js";
 
-describe("Platform Plans CRUD", () => {
+describe("Platform Costs CRUD", () => {
   const app = createTestApp();
   const authHeaders = getAuthHeaders();
 
@@ -16,10 +16,10 @@ describe("Platform Plans CRUD", () => {
     await closeDb();
   });
 
-  describe("PUT /v1/platform-plans/:provider", () => {
-    it("creates a new platform plan", async () => {
+  describe("PUT /v1/platform-costs/:provider", () => {
+    it("creates a new platform cost", async () => {
       const res = await request(app)
-        .put("/v1/platform-plans/apollo")
+        .put("/v1/platform-costs/apollo")
         .set(authHeaders)
         .send({
           planTier: "business",
@@ -35,7 +35,7 @@ describe("Platform Plans CRUD", () => {
 
     it("rejects without API key", async () => {
       const res = await request(app)
-        .put("/v1/platform-plans/apollo")
+        .put("/v1/platform-costs/apollo")
         .send({ planTier: "basic", billingCycle: "monthly" });
 
       expect(res.status).toBe(401);
@@ -43,7 +43,7 @@ describe("Platform Plans CRUD", () => {
 
     it("rejects without planTier", async () => {
       const res = await request(app)
-        .put("/v1/platform-plans/apollo")
+        .put("/v1/platform-costs/apollo")
         .set(authHeaders)
         .send({ billingCycle: "monthly" });
 
@@ -52,7 +52,7 @@ describe("Platform Plans CRUD", () => {
 
     it("rejects without billingCycle", async () => {
       const res = await request(app)
-        .put("/v1/platform-plans/apollo")
+        .put("/v1/platform-costs/apollo")
         .set(authHeaders)
         .send({ planTier: "basic" });
 
@@ -60,7 +60,7 @@ describe("Platform Plans CRUD", () => {
     });
 
     it("returns 409 for duplicate provider + effectiveFrom", async () => {
-      await insertPlatformPlan({
+      await insertPlatformCost({
         provider: "apollo",
         planTier: "basic",
         billingCycle: "monthly",
@@ -68,7 +68,7 @@ describe("Platform Plans CRUD", () => {
       });
 
       const res = await request(app)
-        .put("/v1/platform-plans/apollo")
+        .put("/v1/platform-costs/apollo")
         .set(authHeaders)
         .send({
           planTier: "business",
@@ -81,7 +81,7 @@ describe("Platform Plans CRUD", () => {
 
     it("defaults effectiveFrom to now if omitted", async () => {
       const res = await request(app)
-        .put("/v1/platform-plans/apollo")
+        .put("/v1/platform-costs/apollo")
         .set(authHeaders)
         .send({ planTier: "basic", billingCycle: "monthly" });
 
@@ -90,28 +90,28 @@ describe("Platform Plans CRUD", () => {
     });
   });
 
-  describe("GET /v1/platform-plans", () => {
-    it("returns current plan per provider", async () => {
-      await insertPlatformPlan({
+  describe("GET /v1/platform-costs", () => {
+    it("returns current cost config per provider", async () => {
+      await insertPlatformCost({
         provider: "apollo",
         planTier: "basic",
         billingCycle: "monthly",
         effectiveFrom: new Date("2025-01-01"),
       });
-      await insertPlatformPlan({
+      await insertPlatformCost({
         provider: "apollo",
         planTier: "business",
         billingCycle: "annual",
         effectiveFrom: new Date("2025-06-01"),
       });
-      await insertPlatformPlan({
+      await insertPlatformCost({
         provider: "firecrawl",
         planTier: "hobby",
         billingCycle: "monthly",
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-plans");
+      const res = await request(app).get("/v1/platform-costs");
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(2);
 
@@ -122,37 +122,37 @@ describe("Platform Plans CRUD", () => {
       expect(firecrawl.planTier).toBe("hobby");
     });
 
-    it("excludes future plans", async () => {
-      await insertPlatformPlan({
+    it("excludes future entries", async () => {
+      await insertPlatformCost({
         provider: "apollo",
         planTier: "basic",
         billingCycle: "monthly",
         effectiveFrom: new Date("2025-01-01"),
       });
-      await insertPlatformPlan({
+      await insertPlatformCost({
         provider: "apollo",
         planTier: "enterprise",
         billingCycle: "annual",
         effectiveFrom: new Date("2099-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-plans");
+      const res = await request(app).get("/v1/platform-costs");
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].planTier).toBe("basic");
     });
   });
 
-  describe("GET /v1/platform-plans/:provider", () => {
-    it("returns current plan for a provider", async () => {
-      await insertPlatformPlan({
+  describe("GET /v1/platform-costs/:provider", () => {
+    it("returns current cost config for a provider", async () => {
+      await insertPlatformCost({
         provider: "apollo",
         planTier: "basic",
         billingCycle: "monthly",
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-plans/apollo");
+      const res = await request(app).get("/v1/platform-costs/apollo");
       expect(res.status).toBe(200);
       expect(res.body.provider).toBe("apollo");
       expect(res.body.planTier).toBe("basic");
@@ -160,33 +160,33 @@ describe("Platform Plans CRUD", () => {
     });
 
     it("returns 404 for unknown provider", async () => {
-      const res = await request(app).get("/v1/platform-plans/nonexistent");
+      const res = await request(app).get("/v1/platform-costs/nonexistent");
       expect(res.status).toBe(404);
     });
   });
 
-  describe("GET /v1/platform-plans/:provider/history", () => {
-    it("returns all plan changes ordered by effective_from desc", async () => {
-      await insertPlatformPlan({
+  describe("GET /v1/platform-costs/:provider/history", () => {
+    it("returns all changes ordered by effective_from desc", async () => {
+      await insertPlatformCost({
         provider: "apollo",
         planTier: "basic",
         billingCycle: "monthly",
         effectiveFrom: new Date("2025-01-01"),
       });
-      await insertPlatformPlan({
+      await insertPlatformCost({
         provider: "apollo",
         planTier: "business",
         billingCycle: "annual",
         effectiveFrom: new Date("2025-06-01"),
       });
-      await insertPlatformPlan({
+      await insertPlatformCost({
         provider: "apollo",
         planTier: "enterprise",
         billingCycle: "annual",
         effectiveFrom: new Date("2026-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-plans/apollo/history");
+      const res = await request(app).get("/v1/platform-costs/apollo/history");
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(3);
       expect(res.body[0].planTier).toBe("enterprise");
@@ -195,7 +195,7 @@ describe("Platform Plans CRUD", () => {
     });
 
     it("returns 404 for unknown provider", async () => {
-      const res = await request(app).get("/v1/platform-plans/nonexistent/history");
+      const res = await request(app).get("/v1/platform-costs/nonexistent/history");
       expect(res.status).toBe(404);
     });
   });

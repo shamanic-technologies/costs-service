@@ -1,5 +1,5 @@
 import { db } from "./index.js";
-import { providersCosts, platformPlans } from "./schema.js";
+import { providersCosts, platformCosts } from "./schema.js";
 
 export const SEED_PROVIDERS_COSTS = [
   // Apollo — search is free via API (0 credits consumed)
@@ -193,7 +193,7 @@ export const SEED_PROVIDERS_COSTS = [
   },
 ];
 
-export const SEED_PLATFORM_PLANS = [
+export const SEED_PLATFORM_COSTS = [
   {
     provider: "apollo",
     planTier: "basic",
@@ -248,12 +248,12 @@ export async function seedProvidersCosts() {
   console.log(`[Costs Service] Seed complete (${SEED_PROVIDERS_COSTS.length} provider cost(s) checked)`);
 }
 
-export async function seedPlatformPlans() {
-  for (const plan of SEED_PLATFORM_PLANS) {
+export async function seedPlatformCosts() {
+  for (const cost of SEED_PLATFORM_COSTS) {
     await db
-      .insert(platformPlans)
-      .values(plan)
+      .insert(platformCosts)
+      .values(cost)
       .onConflictDoNothing();
   }
-  console.log(`[Costs Service] Platform plans seed complete (${SEED_PLATFORM_PLANS.length} plan(s) checked)`);
+  console.log(`[Costs Service] Platform costs seed complete (${SEED_PLATFORM_COSTS.length} platform cost(s) checked)`);
 }

@@ -37,9 +37,9 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 
 Examples: `apollo-enrichment-credit`, `anthropic-opus-4.5-tokens-input`, `postmark-email-send`
 
-## Platform plans
+## Platform costs
 
-Each provider has an active platform plan that determines which cost tier is used for billing. The `GET /v1/prices/:name` endpoint resolves prices via the active platform plan — no fallbacks.
+Each provider has an active platform cost config that determines which cost tier is used for billing. The `GET /v1/platform-prices/:name` endpoint resolves prices via the active platform cost — no fallbacks.
 
 | Provider | Current Plan | Billing |
 |---|---|---|
@@ -53,14 +53,14 @@ Each provider has an active platform plan that determines which cost tier is use
 
 ## API
 
-### Prices (consumer-facing)
+### Platform prices (consumer-facing)
 
-Consumer endpoints for getting resolved platform prices. No auth required. These resolve the provider cost via the active platform plan — consumers don't need to know about plans.
+Consumer endpoints for getting resolved platform prices. No auth required. These resolve the provider cost via the active platform cost config — consumers don't need to know about plans.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/v1/prices` | No | List current platform price for every cost name |
-| GET | `/v1/prices/:name` | No | Get current platform price for one cost name |
+| GET | `/v1/platform-prices` | No | List current platform price for every cost name |
+| GET | `/v1/platform-prices/:name` | No | Get current platform price for one cost name |
 
 ### Providers costs (catalog)
 
@@ -89,16 +89,16 @@ Admin endpoints for managing provider cost data. Write endpoints require `x-api-
 
 `effectiveFrom` defaults to now if omitted. All other fields are required.
 
-### Platform plans
+### Platform costs
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/v1/platform-plans` | No | List current plan per provider |
-| GET | `/v1/platform-plans/:provider` | No | Get current plan for a provider |
-| GET | `/v1/platform-plans/:provider/history` | No | Plan change history for a provider |
-| PUT | `/v1/platform-plans/:provider` | Yes | Set/update plan for a provider |
+| GET | `/v1/platform-costs` | No | List current cost config per provider |
+| GET | `/v1/platform-costs/:provider` | No | Get current cost config for a provider |
+| GET | `/v1/platform-costs/:provider/history` | No | Cost config change history for a provider |
+| PUT | `/v1/platform-costs/:provider` | Yes | Set/update cost config for a provider |
 
-#### PUT /v1/platform-plans/:provider body
+#### PUT /v1/platform-costs/:provider body
 
 ```json
 {

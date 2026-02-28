@@ -28,8 +28,8 @@ export const providersCosts = pgTable(
 export type ProviderCost = typeof providersCosts.$inferSelect;
 export type NewProviderCost = typeof providersCosts.$inferInsert;
 
-export const platformPlans = pgTable(
-  "platform_plans",
+export const platformCosts = pgTable(
+  "platform_costs",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     provider: text("provider").notNull(),
@@ -40,10 +40,10 @@ export const platformPlans = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("idx_platform_plans_provider_effective").on(table.provider, table.effectiveFrom),
-    index("idx_platform_plans_provider").on(table.provider),
+    uniqueIndex("idx_platform_costs_provider_effective").on(table.provider, table.effectiveFrom),
+    index("idx_platform_costs_provider").on(table.provider),
   ]
 );
 
-export type PlatformPlan = typeof platformPlans.$inferSelect;
-export type NewPlatformPlan = typeof platformPlans.$inferInsert;
+export type PlatformCost = typeof platformCosts.$inferSelect;
+export type NewPlatformCost = typeof platformCosts.$inferInsert;
