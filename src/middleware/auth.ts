@@ -8,3 +8,23 @@ export function requireApiKey(req: Request, res: Response, next: NextFunction) {
   }
   next();
 }
+
+const IDENTITY_EXEMPT_PATHS = new Set(["/health", "/openapi.json"]);
+
+export function requireIdentityHeaders(req: Request, res: Response, next: NextFunction) {
+  if (IDENTITY_EXEMPT_PATHS.has(req.path)) {
+    next();
+    return;
+  }
+
+  const orgId = req.headers["x-org-id"] as string | undefined;
+  const userId = req.headers["x-user-id"] as string | undefined;
+
+  if (!orgId || !userId) {
+    const missing = [!orgId && "x-org-id", !userId && "x-user-id"].filter(Boolean);
+    res.status(400).json({ error: `Missing required headers: ${missing.join(", ")}` });
+    return;
+  }
+
+  next();
+}

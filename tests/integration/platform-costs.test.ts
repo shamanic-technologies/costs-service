@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
-import { createTestApp, getAuthHeaders } from "../helpers/test-app.js";
+import { createTestApp, getAuthHeaders, getIdentityHeaders } from "../helpers/test-app.js";
 import { cleanTestData, insertPlatformCost, closeDb } from "../helpers/test-db.js";
 
 describe("Platform Costs CRUD", () => {
   const app = createTestApp();
   const authHeaders = getAuthHeaders();
+  const identityHeaders = getIdentityHeaders();
 
   beforeEach(async () => {
     await cleanTestData();
@@ -36,6 +37,7 @@ describe("Platform Costs CRUD", () => {
     it("rejects without API key", async () => {
       const res = await request(app)
         .put("/v1/platform-costs/apollo")
+        .set(identityHeaders)
         .send({ planTier: "basic", billingCycle: "monthly" });
 
       expect(res.status).toBe(401);
@@ -111,7 +113,7 @@ describe("Platform Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-costs");
+      const res = await request(app).get("/v1/platform-costs").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(2);
 
@@ -136,7 +138,7 @@ describe("Platform Costs CRUD", () => {
         effectiveFrom: new Date("2099-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-costs");
+      const res = await request(app).get("/v1/platform-costs").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].planTier).toBe("basic");
@@ -152,7 +154,7 @@ describe("Platform Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-costs/apollo");
+      const res = await request(app).get("/v1/platform-costs/apollo").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body.provider).toBe("apollo");
       expect(res.body.planTier).toBe("basic");
@@ -160,7 +162,7 @@ describe("Platform Costs CRUD", () => {
     });
 
     it("returns 404 for unknown provider", async () => {
-      const res = await request(app).get("/v1/platform-costs/nonexistent");
+      const res = await request(app).get("/v1/platform-costs/nonexistent").set(identityHeaders);
       expect(res.status).toBe(404);
     });
   });
@@ -186,7 +188,7 @@ describe("Platform Costs CRUD", () => {
         effectiveFrom: new Date("2026-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-costs/apollo/history");
+      const res = await request(app).get("/v1/platform-costs/apollo/history").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(3);
       expect(res.body[0].planTier).toBe("enterprise");
@@ -195,7 +197,7 @@ describe("Platform Costs CRUD", () => {
     });
 
     it("returns 404 for unknown provider", async () => {
-      const res = await request(app).get("/v1/platform-costs/nonexistent/history");
+      const res = await request(app).get("/v1/platform-costs/nonexistent/history").set(identityHeaders);
       expect(res.status).toBe(404);
     });
   });

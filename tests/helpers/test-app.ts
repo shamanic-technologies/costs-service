@@ -7,6 +7,7 @@ import healthRoutes from "../../src/routes/health.js";
 import providersCostsRoutes from "../../src/routes/providers-costs.js";
 import platformCostsRoutes from "../../src/routes/platform-costs.js";
 import platformPricesRoutes from "../../src/routes/platform-prices.js";
+import { requireIdentityHeaders } from "../../src/middleware/auth.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,7 @@ export function createTestApp() {
   const app = express();
   app.use(cors());
   app.use(express.json());
+  app.use(requireIdentityHeaders);
   app.get("/openapi.json", (_req, res) => {
     if (existsSync(openapiPath)) {
       res.json(JSON.parse(readFileSync(openapiPath, "utf-8")));
@@ -33,9 +35,21 @@ export function createTestApp() {
   return app;
 }
 
+export const TEST_ORG_ID = "00000000-0000-0000-0000-000000000001";
+export const TEST_USER_ID = "00000000-0000-0000-0000-000000000002";
+
 export function getAuthHeaders() {
   return {
     "X-API-Key": "test-api-key",
     "Content-Type": "application/json",
+    "x-org-id": TEST_ORG_ID,
+    "x-user-id": TEST_USER_ID,
+  };
+}
+
+export function getIdentityHeaders() {
+  return {
+    "x-org-id": TEST_ORG_ID,
+    "x-user-id": TEST_USER_ID,
   };
 }

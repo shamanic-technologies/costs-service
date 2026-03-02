@@ -8,6 +8,7 @@ import healthRoutes from "./routes/health.js";
 import providersCostsRoutes from "./routes/providers-costs.js";
 import platformCostsRoutes from "./routes/platform-costs.js";
 import platformPricesRoutes from "./routes/platform-prices.js";
+import { requireIdentityHeaders } from "./middleware/auth.js";
 import { db } from "./db/index.js";
 import { seedProvidersCosts, seedPlatformCosts } from "./db/seed.js";
 
@@ -19,6 +20,7 @@ const PORT = process.env.PORT || 3011;
 
 app.use(cors());
 app.use(express.json());
+app.use(requireIdentityHeaders);
 
 app.get("/openapi.json", async (_req, res) => {
   try {

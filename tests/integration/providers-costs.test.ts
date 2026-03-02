@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
-import { createTestApp, getAuthHeaders } from "../helpers/test-app.js";
+import { createTestApp, getAuthHeaders, getIdentityHeaders } from "../helpers/test-app.js";
 import { cleanTestData, insertTestProviderCost, insertPlatformCost, closeDb } from "../helpers/test-db.js";
 
 describe("Providers Costs CRUD", () => {
   const app = createTestApp();
   const authHeaders = getAuthHeaders();
+  const identityHeaders = getIdentityHeaders();
 
   beforeEach(async () => {
     await cleanTestData();
@@ -39,6 +40,7 @@ describe("Providers Costs CRUD", () => {
     it("rejects without API key", async () => {
       const res = await request(app)
         .put("/v1/providers-costs/test_cost")
+        .set(identityHeaders)
         .send({
           costPerUnitInUsdCents: "0.01",
           provider: "test",
@@ -111,7 +113,7 @@ describe("Providers Costs CRUD", () => {
       expect(res2.status).toBe(200);
 
       // History should have 2 entries
-      const history = await request(app).get("/v1/providers-costs/test_cost/history");
+      const history = await request(app).get("/v1/providers-costs/test_cost/history").set(identityHeaders);
       expect(history.body).toHaveLength(2);
     });
 
@@ -140,7 +142,7 @@ describe("Providers Costs CRUD", () => {
         });
       expect(res2.status).toBe(200);
 
-      const history = await request(app).get("/v1/providers-costs/test_cost/history");
+      const history = await request(app).get("/v1/providers-costs/test_cost/history").set(identityHeaders);
       expect(history.body).toHaveLength(2);
     });
   });
@@ -171,7 +173,7 @@ describe("Providers Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/providers-costs/multi_price");
+      const res = await request(app).get("/v1/providers-costs/multi_price").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body.costPerUnitInUsdCents).toBe("0.1000000000");
       expect(res.body.planTier).toBe("basic");
@@ -210,7 +212,7 @@ describe("Providers Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/providers-costs/multi_price");
+      const res = await request(app).get("/v1/providers-costs/multi_price").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body.costPerUnitInUsdCents).toBe("0.0500000000");
     });
@@ -246,7 +248,7 @@ describe("Providers Costs CRUD", () => {
         effectiveFrom: new Date("2025-06-01"),
       });
 
-      const res = await request(app).get("/v1/providers-costs/switchable");
+      const res = await request(app).get("/v1/providers-costs/switchable").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body.costPerUnitInUsdCents).toBe("0.0300000000");
       expect(res.body.planTier).toBe("business");
@@ -263,13 +265,13 @@ describe("Providers Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/providers-costs/orphan_cost");
+      const res = await request(app).get("/v1/providers-costs/orphan_cost").set(identityHeaders);
       expect(res.status).toBe(500);
       expect(res.body.error).toContain("No platform cost configured");
     });
 
     it("returns 404 for unknown name", async () => {
-      const res = await request(app).get("/v1/providers-costs/nonexistent");
+      const res = await request(app).get("/v1/providers-costs/nonexistent").set(identityHeaders);
       expect(res.status).toBe(404);
     });
 
@@ -290,7 +292,7 @@ describe("Providers Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/providers-costs/wrong_plan");
+      const res = await request(app).get("/v1/providers-costs/wrong_plan").set(identityHeaders);
       expect(res.status).toBe(404);
       expect(res.body.error).toContain("basic/monthly");
     });
@@ -336,7 +338,7 @@ describe("Providers Costs CRUD", () => {
         effectiveFrom: new Date("2025-03-01"),
       });
 
-      const res = await request(app).get("/v1/providers-costs");
+      const res = await request(app).get("/v1/providers-costs").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(2);
 
@@ -371,7 +373,7 @@ describe("Providers Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/providers-costs");
+      const res = await request(app).get("/v1/providers-costs").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].name).toBe("alpha");
@@ -405,7 +407,7 @@ describe("Providers Costs CRUD", () => {
         effectiveFrom: new Date("2099-01-01"),
       });
 
-      const res = await request(app).get("/v1/providers-costs/hist/history");
+      const res = await request(app).get("/v1/providers-costs/hist/history").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(3);
       expect(res.body[0].costPerUnitInUsdCents).toBe("0.0300000000");
@@ -413,7 +415,7 @@ describe("Providers Costs CRUD", () => {
     });
 
     it("returns 404 for unknown name", async () => {
-      const res = await request(app).get("/v1/providers-costs/nonexistent/history");
+      const res = await request(app).get("/v1/providers-costs/nonexistent/history").set(identityHeaders);
       expect(res.status).toBe(404);
     });
   });
@@ -445,7 +447,7 @@ describe("Providers Costs CRUD", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/providers-costs/multi_plan/plans");
+      const res = await request(app).get("/v1/providers-costs/multi_plan/plans").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(3);
 
@@ -473,14 +475,14 @@ describe("Providers Costs CRUD", () => {
         effectiveFrom: new Date("2025-06-01"),
       });
 
-      const res = await request(app).get("/v1/providers-costs/evolving/plans");
+      const res = await request(app).get("/v1/providers-costs/evolving/plans").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].costPerUnitInUsdCents).toBe("0.0800000000");
     });
 
     it("returns 404 for unknown name", async () => {
-      const res = await request(app).get("/v1/providers-costs/nonexistent/plans");
+      const res = await request(app).get("/v1/providers-costs/nonexistent/plans").set(identityHeaders);
       expect(res.status).toBe(404);
     });
   });
@@ -511,12 +513,12 @@ describe("Providers Costs CRUD", () => {
       expect(res.body.deleted).toBe(2);
 
       // Verify gone
-      const check = await request(app).get("/v1/providers-costs/to_delete");
+      const check = await request(app).get("/v1/providers-costs/to_delete").set(identityHeaders);
       expect(check.status).toBe(404);
     });
 
     it("rejects without API key", async () => {
-      const res = await request(app).delete("/v1/providers-costs/test");
+      const res = await request(app).delete("/v1/providers-costs/test").set(identityHeaders);
       expect(res.status).toBe(401);
     });
 
