@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
-import { createTestApp } from "../helpers/test-app.js";
+import { createTestApp, getIdentityHeaders } from "../helpers/test-app.js";
 import { cleanTestData, insertTestProviderCost, insertPlatformCost, closeDb } from "../helpers/test-db.js";
 
 describe("Platform Prices (consumer-facing)", () => {
   const app = createTestApp();
+  const identityHeaders = getIdentityHeaders();
 
   beforeEach(async () => {
     await cleanTestData();
@@ -33,7 +34,7 @@ describe("Platform Prices (consumer-facing)", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-prices/test-token-input");
+      const res = await request(app).get("/v1/platform-prices/test-token-input").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body.name).toBe("test-token-input");
       expect(res.body.pricePerUnitInUsdCents).toBe("0.0003000000");
@@ -46,7 +47,7 @@ describe("Platform Prices (consumer-facing)", () => {
     });
 
     it("returns 404 for unknown name", async () => {
-      const res = await request(app).get("/v1/platform-prices/nonexistent");
+      const res = await request(app).get("/v1/platform-prices/nonexistent").set(identityHeaders);
       expect(res.status).toBe(404);
     });
 
@@ -60,7 +61,7 @@ describe("Platform Prices (consumer-facing)", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-prices/orphan");
+      const res = await request(app).get("/v1/platform-prices/orphan").set(identityHeaders);
       expect(res.status).toBe(500);
       expect(res.body.error).toContain("No platform cost configured");
     });
@@ -82,7 +83,7 @@ describe("Platform Prices (consumer-facing)", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-prices/wrong_plan");
+      const res = await request(app).get("/v1/platform-prices/wrong_plan").set(identityHeaders);
       expect(res.status).toBe(404);
       expect(res.body.error).toContain("basic/monthly");
     });
@@ -120,7 +121,7 @@ describe("Platform Prices (consumer-facing)", () => {
         effectiveFrom: new Date("2025-03-01"),
       });
 
-      const res = await request(app).get("/v1/platform-prices");
+      const res = await request(app).get("/v1/platform-prices").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(2);
 
@@ -158,15 +159,17 @@ describe("Platform Prices (consumer-facing)", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-prices");
+      const res = await request(app).get("/v1/platform-prices").set(identityHeaders);
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].name).toBe("alpha");
     });
 
-    it("does not require auth (consumer-facing)", async () => {
+    it("requires identity headers (x-org-id, x-user-id)", async () => {
       const res = await request(app).get("/v1/platform-prices");
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("x-org-id");
+      expect(res.body.error).toContain("x-user-id");
     });
   });
 });
