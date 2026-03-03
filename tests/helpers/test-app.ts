@@ -37,6 +37,7 @@ export function createTestApp() {
 
 export const TEST_ORG_ID = "00000000-0000-0000-0000-000000000001";
 export const TEST_USER_ID = "00000000-0000-0000-0000-000000000002";
+export const TEST_RUN_ID = "00000000-0000-0000-0000-000000000003";
 
 export function getAuthHeaders() {
   return {
@@ -44,6 +45,7 @@ export function getAuthHeaders() {
     "Content-Type": "application/json",
     "x-org-id": TEST_ORG_ID,
     "x-user-id": TEST_USER_ID,
+    "x-run-id": TEST_RUN_ID,
   };
 }
 
@@ -51,5 +53,6 @@ export function getIdentityHeaders() {
   return {
     "x-org-id": TEST_ORG_ID,
     "x-user-id": TEST_USER_ID,
+    "x-run-id": TEST_RUN_ID,
   };
 }

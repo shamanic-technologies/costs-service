@@ -19,9 +19,10 @@ export function requireIdentityHeaders(req: Request, res: Response, next: NextFu
 
   const orgId = req.headers["x-org-id"] as string | undefined;
   const userId = req.headers["x-user-id"] as string | undefined;
+  const runId = req.headers["x-run-id"] as string | undefined;
 
-  if (!orgId || !userId) {
-    const missing = [!orgId && "x-org-id", !userId && "x-user-id"].filter(Boolean);
+  if (!orgId || !userId || !runId) {
+    const missing = [!orgId && "x-org-id", !userId && "x-user-id", !runId && "x-run-id"].filter(Boolean);
     res.status(400).json({ error: `Missing required headers: ${missing.join(", ")}` });
     return;
   }

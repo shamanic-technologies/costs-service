@@ -140,9 +140,19 @@ const UserIdHeader = registry.registerParameter(
   })
 );
 
+const RunIdHeader = registry.registerParameter(
+  "RunId",
+  z.string().uuid().openapi({
+    param: { name: "x-run-id", in: "header" },
+    description: "Run UUID from runs-service identifying the current execution",
+    example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  })
+);
+
 const identityHeaders = z.object({
   "x-org-id": OrgIdHeader,
   "x-user-id": UserIdHeader,
+  "x-run-id": RunIdHeader,
 });
 
 // --- Register paths ---

@@ -165,11 +165,12 @@ describe("Platform Prices (consumer-facing)", () => {
       expect(res.body[0].name).toBe("alpha");
     });
 
-    it("requires identity headers (x-org-id, x-user-id)", async () => {
+    it("requires identity headers (x-org-id, x-user-id, x-run-id)", async () => {
       const res = await request(app).get("/v1/platform-prices");
       expect(res.status).toBe(400);
       expect(res.body.error).toContain("x-org-id");
       expect(res.body.error).toContain("x-user-id");
+      expect(res.body.error).toContain("x-run-id");
     });
   });
 });
