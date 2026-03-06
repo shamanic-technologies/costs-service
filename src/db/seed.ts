@@ -244,7 +244,13 @@ export async function seedProvidersCosts() {
     await db
       .insert(providersCosts)
       .values(cost)
-      .onConflictDoNothing();
+      .onConflictDoUpdate({
+        target: [providersCosts.name, providersCosts.planTier, providersCosts.billingCycle, providersCosts.effectiveFrom],
+        set: {
+          costPerUnitInUsdCents: cost.costPerUnitInUsdCents,
+          provider: cost.provider,
+        },
+      });
   }
 
   // Remove stale rows from old seeds (wrong plan_tier for known names)
@@ -275,7 +281,13 @@ export async function seedPlatformCosts() {
     await db
       .insert(platformCosts)
       .values(cost)
-      .onConflictDoNothing();
+      .onConflictDoUpdate({
+        target: [platformCosts.provider, platformCosts.effectiveFrom],
+        set: {
+          planTier: cost.planTier,
+          billingCycle: cost.billingCycle,
+        },
+      });
   }
 
   // Remove stale rows from old seeds (wrong plan_tier for known providers)

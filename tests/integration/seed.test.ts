@@ -79,6 +79,69 @@ describe("Seed cleanup", () => {
     expect(rows.some((r) => r.planTier === "default")).toBe(false);
   });
 
+  it("should update platform_costs plan_tier when seed value differs from existing row", async () => {
+    // Reproduce the bug: insert a platform cost with plan_tier "pay-as-you-go"
+    // but the seed says "basic" for postmark. The unique key is (provider, effective_from),
+    // so onConflictDoNothing would skip the insert, then cleanup deletes the old row,
+    // leaving NO row for that provider.
+    await insertPlatformCost({
+      provider: "postmark",
+      planTier: "pay-as-you-go",
+      billingCycle: "monthly",
+      effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+    });
+
+    // Also insert the matching provider cost so resolution works
+    await insertTestProviderCost({
+      name: "postmark-email-send",
+      provider: "postmark",
+      planTier: "pay-as-you-go",
+      billingCycle: "monthly",
+      costPerUnitInUsdCents: "0.1500000000",
+      effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+    });
+
+    await seedPlatformCosts();
+    await seedProvidersCosts();
+
+    // After seed: platform_costs should have the seed's plan_tier ("basic"), not be deleted
+    const rows = await db
+      .select()
+      .from(platformCosts)
+      .where(eq(platformCosts.provider, "postmark"));
+
+    expect(rows.length).toBeGreaterThanOrEqual(1);
+    expect(rows.some((r) => r.planTier === "basic")).toBe(true);
+    expect(rows.some((r) => r.planTier === "pay-as-you-go")).toBe(false);
+  });
+
+  it("should update providers_costs cost value when seed value differs from existing row", async () => {
+    // Insert a provider cost with a different cost value than the seed
+    const seedCost = SEED_PROVIDERS_COSTS.find((c) => c.name === "postmark-email-send")!;
+    await insertTestProviderCost({
+      name: seedCost.name,
+      provider: seedCost.provider,
+      planTier: seedCost.planTier,
+      billingCycle: seedCost.billingCycle,
+      costPerUnitInUsdCents: "0.9900000000", // wrong value
+      effectiveFrom: seedCost.effectiveFrom,
+    });
+
+    await seedProvidersCosts();
+
+    // After seed: cost value should be updated to match the seed
+    const rows = await db
+      .select()
+      .from(providersCosts)
+      .where(eq(providersCosts.name, "postmark-email-send"));
+
+    const matchingRow = rows.find(
+      (r) => r.planTier === seedCost.planTier && r.billingCycle === seedCost.billingCycle
+    );
+    expect(matchingRow).toBeDefined();
+    expect(matchingRow!.costPerUnitInUsdCents).toBe(seedCost.costPerUnitInUsdCents);
+  });
+
   it("should remove provider cost rows with unknown names after seeding", async () => {
     // Insert a cost with a name not in the seed
     await insertTestProviderCost({
