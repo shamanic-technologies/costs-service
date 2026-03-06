@@ -100,7 +100,7 @@ describe("Seed cleanup", () => {
       .where(eq(platformCosts.provider, "postmark"));
 
     expect(rows.length).toBeGreaterThanOrEqual(1);
-    expect(rows.some((r) => r.planTier === "pro")).toBe(true);
+    expect(rows.some((r) => r.planTier === "pro-10k")).toBe(true);
     expect(rows.some((r) => r.planTier === "pay-as-you-go")).toBe(false);
   });
 
@@ -114,7 +114,7 @@ describe("Seed cleanup", () => {
       .where(eq(providersCosts.name, "postmark-email-send"));
 
     const tiers = rows.map((r) => r.planTier).sort();
-    expect(tiers).toEqual(["basic", "platform", "pro"]);
+    expect(tiers).toEqual(["basic-10k", "platform-10k", "pro-10k"]);
   });
 
   it("should update providers_costs cost value when seed value differs from existing row", async () => {

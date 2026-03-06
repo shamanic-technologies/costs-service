@@ -124,31 +124,31 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: "0.0005000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Postmark — unit cost = plan price ÷ 10,000 emails (max per-email rate)
+  // Postmark — unit cost = plan price ÷ 10,000 emails (10k volume tier)
   // https://postmarkapp.com/pricing
-  // Basic: $15/mo ÷ 10k = 0.15¢/email
+  // Basic 10k tier: $15/mo ÷ 10k = 0.15¢/email
   {
     name: "postmark-email-send",
     provider: "postmark",
-    planTier: "basic",
+    planTier: "basic-10k",
     billingCycle: "monthly",
     costPerUnitInUsdCents: "0.1500000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Pro: $16.50/mo ÷ 10k = 0.165¢/email
+  // Pro 10k tier: $16.50/mo ÷ 10k = 0.165¢/email
   {
     name: "postmark-email-send",
     provider: "postmark",
-    planTier: "pro",
+    planTier: "pro-10k",
     billingCycle: "monthly",
     costPerUnitInUsdCents: "0.1650000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Platform: $18/mo ÷ 10k = 0.18¢/email
+  // Platform 10k tier: $18/mo ÷ 10k = 0.18¢/email
   {
     name: "postmark-email-send",
     provider: "postmark",
-    planTier: "platform",
+    planTier: "platform-10k",
     billingCycle: "monthly",
     costPerUnitInUsdCents: "0.1800000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
@@ -246,7 +246,7 @@ export const SEED_PLATFORM_COSTS = [
   },
   {
     provider: "postmark",
-    planTier: "pro",
+    planTier: "pro-10k",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },

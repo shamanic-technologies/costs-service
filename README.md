@@ -21,9 +21,9 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `anthropic-opus-4-6-output-token` | 0.0025 | 1 token | Anthropic | pay-as-you-go | monthly |
 | `anthropic-haiku-4.5-tokens-input` | 0.0001 | 1 token | Anthropic | pay-as-you-go | monthly |
 | `anthropic-haiku-4.5-tokens-output` | 0.0005 | 1 token | Anthropic | pay-as-you-go | monthly |
-| `postmark-email-send` | 0.15 | 1 email | Postmark | basic | monthly |
-| `postmark-email-send` | 0.165 | 1 email | Postmark | pro | monthly |
-| `postmark-email-send` | 0.18 | 1 email | Postmark | platform | monthly |
+| `postmark-email-send` | 0.15 | 1 email | Postmark | basic-10k | monthly |
+| `postmark-email-send` | 0.165 | 1 email | Postmark | pro-10k | monthly |
+| `postmark-email-send` | 0.18 | 1 email | Postmark | platform-10k | monthly |
 | `firecrawl-scrape-credit` | 0.6333333333 | 1 scrape credit | Firecrawl | hobby | monthly |
 | `firecrawl-map-credit` | 0.6333333333 | 1 map credit | Firecrawl | hobby | monthly |
 | `gemini-3-flash-tokens-input` | 0.00005 | 1 token | Google | pay-as-you-go | monthly |
@@ -50,7 +50,7 @@ Each provider has an active platform cost config that determines which cost tier
 | firecrawl | hobby | monthly |
 | gemini | pay-as-you-go | monthly |
 | instantly | growth | monthly |
-| postmark | pro | monthly |
+| postmark | pro-10k | monthly |
 | twilio | pay-as-you-go | monthly |
 
 ## API
