@@ -1,5 +1,6 @@
 import { db } from "./index.js";
 import { providersCosts, platformCosts } from "./schema.js";
+import { notInArray, and, eq, ne } from "drizzle-orm";
 
 export const SEED_PROVIDERS_COSTS = [
   // Apollo — search is free via API (0 credits consumed)
@@ -245,6 +246,27 @@ export async function seedProvidersCosts() {
       .values(cost)
       .onConflictDoNothing();
   }
+
+  // Remove stale rows from old seeds (wrong plan_tier for known names)
+  const seenNames = new Set<string>();
+  for (const cost of SEED_PROVIDERS_COSTS) {
+    if (seenNames.has(cost.name)) continue;
+    seenNames.add(cost.name);
+    await db
+      .delete(providersCosts)
+      .where(and(eq(providersCosts.name, cost.name), ne(providersCosts.planTier, cost.planTier)));
+  }
+
+  // Remove rows with names not in the seed at all
+  const validNames = SEED_PROVIDERS_COSTS.map((c) => c.name);
+  const deleted = await db
+    .delete(providersCosts)
+    .where(notInArray(providersCosts.name, validNames))
+    .returning({ name: providersCosts.name });
+  if (deleted.length > 0) {
+    console.log(`[Costs Service] Removed ${deleted.length} orphaned provider cost(s): ${deleted.map((d) => d.name).join(", ")}`);
+  }
+
   console.log(`[Costs Service] Seed complete (${SEED_PROVIDERS_COSTS.length} provider cost(s) checked)`);
 }
 
@@ -255,5 +277,26 @@ export async function seedPlatformCosts() {
       .values(cost)
       .onConflictDoNothing();
   }
+
+  // Remove stale rows from old seeds (wrong plan_tier for known providers)
+  const seenProviders = new Set<string>();
+  for (const cost of SEED_PLATFORM_COSTS) {
+    if (seenProviders.has(cost.provider)) continue;
+    seenProviders.add(cost.provider);
+    await db
+      .delete(platformCosts)
+      .where(and(eq(platformCosts.provider, cost.provider), ne(platformCosts.planTier, cost.planTier)));
+  }
+
+  // Remove rows with providers not in the seed at all
+  const validProviders = SEED_PLATFORM_COSTS.map((c) => c.provider);
+  const deleted = await db
+    .delete(platformCosts)
+    .where(notInArray(platformCosts.provider, validProviders))
+    .returning({ provider: platformCosts.provider });
+  if (deleted.length > 0) {
+    console.log(`[Costs Service] Removed ${deleted.length} orphaned platform cost(s): ${deleted.map((d) => d.provider).join(", ")}`);
+  }
+
   console.log(`[Costs Service] Platform costs seed complete (${SEED_PLATFORM_COSTS.length} platform cost(s) checked)`);
 }
