@@ -1,6 +1,6 @@
 import { db } from "./index.js";
 import { providersCosts, platformCosts } from "./schema.js";
-import { notInArray, and, eq, ne } from "drizzle-orm";
+import { notInArray, and, eq, ne, sql } from "drizzle-orm";
 
 export const SEED_PROVIDERS_COSTS = [
   // Apollo — search is free via API (0 credits consumed)
@@ -259,18 +259,16 @@ export const SEED_PLATFORM_COSTS = [
 ];
 
 export async function seedProvidersCosts() {
-  for (const cost of SEED_PROVIDERS_COSTS) {
-    await db
-      .insert(providersCosts)
-      .values(cost)
-      .onConflictDoUpdate({
-        target: [providersCosts.name, providersCosts.planTier, providersCosts.billingCycle, providersCosts.effectiveFrom],
-        set: {
-          costPerUnitInUsdCents: cost.costPerUnitInUsdCents,
-          provider: cost.provider,
-        },
-      });
-  }
+  await db
+    .insert(providersCosts)
+    .values(SEED_PROVIDERS_COSTS)
+    .onConflictDoUpdate({
+      target: [providersCosts.name, providersCosts.planTier, providersCosts.billingCycle, providersCosts.effectiveFrom],
+      set: {
+        costPerUnitInUsdCents: sql`excluded.cost_per_unit_in_usd_cents`,
+        provider: sql`excluded.provider`,
+      },
+    });
 
   // Remove stale rows from old seeds (plan_tiers not in seed for known names)
   const validTiersByName = new Map<string, string[]>();
@@ -299,18 +297,16 @@ export async function seedProvidersCosts() {
 }
 
 export async function seedPlatformCosts() {
-  for (const cost of SEED_PLATFORM_COSTS) {
-    await db
-      .insert(platformCosts)
-      .values(cost)
-      .onConflictDoUpdate({
-        target: [platformCosts.provider, platformCosts.effectiveFrom],
-        set: {
-          planTier: cost.planTier,
-          billingCycle: cost.billingCycle,
-        },
-      });
-  }
+  await db
+    .insert(platformCosts)
+    .values(SEED_PLATFORM_COSTS)
+    .onConflictDoUpdate({
+      target: [platformCosts.provider, platformCosts.effectiveFrom],
+      set: {
+        planTier: sql`excluded.plan_tier`,
+        billingCycle: sql`excluded.billing_cycle`,
+      },
+    });
 
   // Remove stale rows from old seeds (wrong plan_tier for known providers)
   const seenProviders = new Set<string>();

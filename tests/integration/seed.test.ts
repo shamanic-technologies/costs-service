@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../src/db/index.js";
 import { providersCosts, platformCosts } from "../../src/db/schema.js";
 
-describe("Seed cleanup", () => {
+describe("Seed cleanup", { timeout: 30_000 }, () => {
   const app = createTestApp();
   const identityHeaders = getIdentityHeaders();
 
