@@ -80,9 +80,9 @@ describe("Seed cleanup", () => {
   });
 
   it("should update platform_costs plan_tier when seed value differs from existing row", async () => {
-    // Reproduce the bug: insert a platform cost with plan_tier "pay-as-you-go"
-    // but the seed says "basic" for postmark. The unique key is (provider, effective_from),
-    // so onConflictDoNothing would skip the insert, then cleanup deletes the old row,
+    // Reproduce the bug: insert a platform cost with a stale plan_tier.
+    // The unique key is (provider, effective_from), so onConflictDoNothing
+    // would skip the insert, then cleanup deletes the old row,
     // leaving NO row for that provider.
     await insertPlatformCost({
       provider: "postmark",
@@ -91,28 +91,30 @@ describe("Seed cleanup", () => {
       effectiveFrom: new Date("2025-01-01T00:00:00Z"),
     });
 
-    // Also insert the matching provider cost so resolution works
-    await insertTestProviderCost({
-      name: "postmark-email-send",
-      provider: "postmark",
-      planTier: "pay-as-you-go",
-      billingCycle: "monthly",
-      costPerUnitInUsdCents: "0.1500000000",
-      effectiveFrom: new Date("2025-01-01T00:00:00Z"),
-    });
-
     await seedPlatformCosts();
-    await seedProvidersCosts();
 
-    // After seed: platform_costs should have the seed's plan_tier ("basic"), not be deleted
+    // After seed: platform_costs should have the seed's plan_tier ("pro"), not be deleted
     const rows = await db
       .select()
       .from(platformCosts)
       .where(eq(platformCosts.provider, "postmark"));
 
     expect(rows.length).toBeGreaterThanOrEqual(1);
-    expect(rows.some((r) => r.planTier === "basic")).toBe(true);
+    expect(rows.some((r) => r.planTier === "pro")).toBe(true);
     expect(rows.some((r) => r.planTier === "pay-as-you-go")).toBe(false);
+  });
+
+  it("should keep all plan tiers for a cost name with multiple plans", async () => {
+    await seedProvidersCosts();
+
+    // postmark-email-send should have 3 plan tiers: basic, pro, platform
+    const rows = await db
+      .select()
+      .from(providersCosts)
+      .where(eq(providersCosts.name, "postmark-email-send"));
+
+    const tiers = rows.map((r) => r.planTier).sort();
+    expect(tiers).toEqual(["basic", "platform", "pro"]);
   });
 
   it("should update providers_costs cost value when seed value differs from existing row", async () => {

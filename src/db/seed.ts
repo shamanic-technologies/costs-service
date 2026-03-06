@@ -124,12 +124,31 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: "0.0005000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Postmark — Basic plan: $1.80/1k overage = 0.18¢/email
+  // Postmark — unit cost = plan price ÷ 10,000 emails (max per-email rate)
   // https://postmarkapp.com/pricing
+  // Basic: $15/mo ÷ 10k = 0.15¢/email
   {
     name: "postmark-email-send",
     provider: "postmark",
     planTier: "basic",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.1500000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Pro: $16.50/mo ÷ 10k = 0.165¢/email
+  {
+    name: "postmark-email-send",
+    provider: "postmark",
+    planTier: "pro",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.1650000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Platform: $18/mo ÷ 10k = 0.18¢/email
+  {
+    name: "postmark-email-send",
+    provider: "postmark",
+    planTier: "platform",
     billingCycle: "monthly",
     costPerUnitInUsdCents: "0.1800000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
@@ -227,7 +246,7 @@ export const SEED_PLATFORM_COSTS = [
   },
   {
     provider: "postmark",
-    planTier: "basic",
+    planTier: "pro",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
@@ -253,14 +272,17 @@ export async function seedProvidersCosts() {
       });
   }
 
-  // Remove stale rows from old seeds (wrong plan_tier for known names)
-  const seenNames = new Set<string>();
+  // Remove stale rows from old seeds (plan_tiers not in seed for known names)
+  const validTiersByName = new Map<string, string[]>();
   for (const cost of SEED_PROVIDERS_COSTS) {
-    if (seenNames.has(cost.name)) continue;
-    seenNames.add(cost.name);
+    const tiers = validTiersByName.get(cost.name) ?? [];
+    if (!tiers.includes(cost.planTier)) tiers.push(cost.planTier);
+    validTiersByName.set(cost.name, tiers);
+  }
+  for (const [name, tiers] of validTiersByName) {
     await db
       .delete(providersCosts)
-      .where(and(eq(providersCosts.name, cost.name), ne(providersCosts.planTier, cost.planTier)));
+      .where(and(eq(providersCosts.name, name), notInArray(providersCosts.planTier, tiers)));
   }
 
   // Remove rows with names not in the seed at all
