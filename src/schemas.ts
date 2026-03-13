@@ -149,10 +149,42 @@ const RunIdHeader = registry.registerParameter(
   })
 );
 
+// --- Optional workflow tracking headers ---
+
+const CampaignIdHeader = registry.registerParameter(
+  "CampaignId",
+  z.string().optional().openapi({
+    param: { name: "x-campaign-id", in: "header" },
+    description: "Campaign identifier injected by workflow-service (optional)",
+    example: "camp_abc123",
+  })
+);
+
+const BrandIdHeader = registry.registerParameter(
+  "BrandId",
+  z.string().optional().openapi({
+    param: { name: "x-brand-id", in: "header" },
+    description: "Brand identifier injected by workflow-service (optional)",
+    example: "brand_xyz789",
+  })
+);
+
+const WorkflowNameHeader = registry.registerParameter(
+  "WorkflowName",
+  z.string().optional().openapi({
+    param: { name: "x-workflow-name", in: "header" },
+    description: "Workflow name injected by workflow-service (optional)",
+    example: "lead-enrichment-v2",
+  })
+);
+
 const identityHeaders = z.object({
   "x-org-id": OrgIdHeader,
   "x-user-id": UserIdHeader,
   "x-run-id": RunIdHeader,
+  "x-campaign-id": CampaignIdHeader,
+  "x-brand-id": BrandIdHeader,
+  "x-workflow-name": WorkflowNameHeader,
 });
 
 // --- Register paths ---
