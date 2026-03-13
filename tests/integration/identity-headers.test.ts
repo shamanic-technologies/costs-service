@@ -88,3 +88,57 @@ describe("Identity headers (x-org-id, x-user-id, x-run-id) requirement", () => {
     expect(res.status).not.toBe(400);
   });
 });
+
+describe("Workflow tracking headers (x-campaign-id, x-brand-id, x-workflow-name) are optional", () => {
+  const app = createTestApp();
+  const identityHeaders = getIdentityHeaders();
+
+  it("accepts requests without workflow tracking headers", async () => {
+    const res = await request(app)
+      .get("/v1/providers-costs")
+      .set(identityHeaders);
+    expect(res.status).not.toBe(400);
+  });
+
+  it("accepts requests with all workflow tracking headers", async () => {
+    const res = await request(app)
+      .get("/v1/providers-costs")
+      .set({
+        ...identityHeaders,
+        "x-campaign-id": "camp_abc123",
+        "x-brand-id": "brand_xyz789",
+        "x-workflow-name": "lead-enrichment-v2",
+      });
+    expect(res.status).not.toBe(400);
+  });
+
+  it("accepts requests with only some workflow tracking headers", async () => {
+    const res = await request(app)
+      .get("/v1/providers-costs")
+      .set({
+        ...identityHeaders,
+        "x-campaign-id": "camp_abc123",
+      });
+    expect(res.status).not.toBe(400);
+  });
+
+  it("documents workflow tracking headers in OpenAPI spec", async () => {
+    const res = await request(app).get("/openapi.json");
+    const spec = res.body;
+    const params = spec.paths["/v1/providers-costs"]?.get?.parameters ?? [];
+    const resolveParam = (p: { $ref?: string; name?: string; in?: string }) => {
+      if (p.$ref) {
+        const refName = p.$ref.replace("#/components/parameters/", "");
+        return spec.components?.parameters?.[refName] ?? p;
+      }
+      return p;
+    };
+    const headerNames = params
+      .map(resolveParam)
+      .filter((p: { in: string }) => p.in === "header")
+      .map((p: { name: string }) => p.name);
+    expect(headerNames).toContain("x-campaign-id");
+    expect(headerNames).toContain("x-brand-id");
+    expect(headerNames).toContain("x-workflow-name");
+  });
+});
