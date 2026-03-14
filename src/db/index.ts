@@ -8,5 +8,5 @@ if (!connectionString) {
   throw new Error("COSTS_SERVICE_DATABASE_URL is not set");
 }
 
-export const sql = postgres(connectionString);
+export const sql = postgres(connectionString, { prepare: false });
 export const db = drizzle(sql, { schema });
