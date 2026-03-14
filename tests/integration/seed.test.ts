@@ -160,6 +160,21 @@ describe("Seed cleanup", { timeout: 30_000 }, () => {
     expect(rows.length).toBeGreaterThanOrEqual(SEED_PLATFORM_COSTS.length);
   });
 
+  it("should verify seed names are present before cleanup runs", async () => {
+    // Structural regression: when seed insert silently failed (pgbouncer),
+    // the cleanup step deleted all manually-inserted data, wiping the table.
+    // The seed must now verify all seed names exist BEFORE running cleanup.
+    await seedProvidersCosts();
+
+    // After a successful seed, every unique name in SEED_PROVIDERS_COSTS must be present
+    const rows = await db.select({ name: providersCosts.name }).from(providersCosts);
+    const names = new Set(rows.map((r) => r.name));
+    const seedNames = [...new Set(SEED_PROVIDERS_COSTS.map((c) => c.name))];
+    for (const name of seedNames) {
+      expect(names.has(name), `expected seed name "${name}" to be in DB`).toBe(true);
+    }
+  });
+
   it("should remove provider cost rows with unknown names after seeding", async () => {
     // Insert a cost with a name not in the seed
     await insertTestProviderCost({

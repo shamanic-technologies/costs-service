@@ -270,6 +270,19 @@ export async function seedProvidersCosts() {
       },
     });
 
+  // Verify insert succeeded BEFORE running any cleanup.
+  // If the insert silently failed (e.g. pgbouncer prepared statement issue),
+  // cleanup would delete all existing data, leaving the table empty.
+  const seedNames = [...new Set(SEED_PROVIDERS_COSTS.map((c) => c.name))];
+  const insertedRows = await db.select({ name: providersCosts.name }).from(providersCosts);
+  const insertedNames = new Set(insertedRows.map((r) => r.name));
+  const missingSeedNames = seedNames.filter((n) => !insertedNames.has(n));
+  if (missingSeedNames.length > 0) {
+    throw new Error(
+      `[Costs Service] Seed insert failed: ${missingSeedNames.length} cost name(s) missing after upsert (${missingSeedNames.slice(0, 5).join(", ")}). Aborting startup — cleanup skipped to preserve existing data.`
+    );
+  }
+
   // Remove stale rows from old seeds (plan_tiers not in seed for known names)
   const validTiersByName = new Map<string, string[]>();
   for (const cost of SEED_PROVIDERS_COSTS) {
@@ -293,15 +306,9 @@ export async function seedProvidersCosts() {
     console.log(`[Costs Service] Removed ${deleted.length} orphaned provider cost(s): ${deleted.map((d) => d.name).join(", ")}`);
   }
 
-  // Verify rows actually persisted
-  const rows = await db.select({ name: providersCosts.name }).from(providersCosts);
-  if (rows.length < SEED_PROVIDERS_COSTS.length) {
-    throw new Error(
-      `[Costs Service] Seed verification failed: expected at least ${SEED_PROVIDERS_COSTS.length} provider cost rows, found ${rows.length}. Aborting startup.`
-    );
-  }
-
-  console.log(`[Costs Service] Seed complete (${rows.length} provider cost(s) verified)`);
+  // Final count verification
+  const finalRows = await db.select({ name: providersCosts.name }).from(providersCosts);
+  console.log(`[Costs Service] Seed complete (${finalRows.length} provider cost(s) verified)`);
 }
 
 export async function seedPlatformCosts() {
@@ -315,6 +322,17 @@ export async function seedPlatformCosts() {
         billingCycle: sql`excluded.billing_cycle`,
       },
     });
+
+  // Verify insert succeeded BEFORE running any cleanup.
+  const seedProviders = [...new Set(SEED_PLATFORM_COSTS.map((c) => c.provider))];
+  const insertedRows = await db.select({ provider: platformCosts.provider }).from(platformCosts);
+  const insertedProviders = new Set(insertedRows.map((r) => r.provider));
+  const missingProviders = seedProviders.filter((p) => !insertedProviders.has(p));
+  if (missingProviders.length > 0) {
+    throw new Error(
+      `[Costs Service] Platform seed insert failed: ${missingProviders.length} provider(s) missing after upsert (${missingProviders.join(", ")}). Aborting startup — cleanup skipped to preserve existing data.`
+    );
+  }
 
   // Remove stale rows from old seeds (wrong plan_tier for known providers)
   const seenProviders = new Set<string>();
@@ -336,13 +354,7 @@ export async function seedPlatformCosts() {
     console.log(`[Costs Service] Removed ${deleted.length} orphaned platform cost(s): ${deleted.map((d) => d.provider).join(", ")}`);
   }
 
-  // Verify rows actually persisted
-  const rows = await db.select({ provider: platformCosts.provider }).from(platformCosts);
-  if (rows.length < SEED_PLATFORM_COSTS.length) {
-    throw new Error(
-      `[Costs Service] Platform seed verification failed: expected at least ${SEED_PLATFORM_COSTS.length} platform cost rows, found ${rows.length}. Aborting startup.`
-    );
-  }
-
-  console.log(`[Costs Service] Platform costs seed complete (${rows.length} platform cost(s) verified)`);
+  // Final count verification
+  const finalRows = await db.select({ provider: platformCosts.provider }).from(platformCosts);
+  console.log(`[Costs Service] Platform costs seed complete (${finalRows.length} platform cost(s) verified)`);
 }
