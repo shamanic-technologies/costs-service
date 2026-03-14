@@ -258,54 +258,31 @@ export const SEED_PLATFORM_COSTS = [
 ];
 
 export async function seedProvidersCosts() {
-  // Uses direct (non-pooler) connection to bypass pgbouncer, which was
-  // silently dropping writes in transaction mode. Wrapped in a transaction
-  // to guarantee atomicity: UPSERT + verify + cleanup all on one connection.
+  // Uses direct (non-pooler) connection to bypass pgbouncer write issues.
+  // UPSERT only — no DELETE. Orphan rows are harmless (API filters by platform plan).
   const { directSql } = await import("./index.js");
 
   const valuesClause = SEED_PROVIDERS_COSTS.map(
     (c) => `('${c.name}', '${c.provider}', '${c.planTier}', '${c.billingCycle}', ${c.costPerUnitInUsdCents}, '${c.effectiveFrom.toISOString()}'::timestamptz)`
   ).join(", ");
 
-  const seedKeysClause = SEED_PROVIDERS_COSTS.map(
-    (c) => `('${c.name}', '${c.planTier}', '${c.billingCycle}', '${c.effectiveFrom.toISOString()}'::timestamptz)`
-  ).join(", ");
+  await directSql.unsafe(`
+    INSERT INTO providers_costs (name, provider, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, effective_from)
+    VALUES ${valuesClause}
+    ON CONFLICT (name, plan_tier, billing_cycle, effective_from)
+    DO UPDATE SET
+      provider = EXCLUDED.provider,
+      cost_per_unit_in_usd_cents = EXCLUDED.cost_per_unit_in_usd_cents,
+      updated_at = now()
+  `);
 
-  await directSql.begin(async (tx: any) => {
-    await tx.unsafe(`
-      INSERT INTO providers_costs (name, provider, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, effective_from)
-      VALUES ${valuesClause}
-      ON CONFLICT (name, plan_tier, billing_cycle, effective_from)
-      DO UPDATE SET
-        provider = EXCLUDED.provider,
-        cost_per_unit_in_usd_cents = EXCLUDED.cost_per_unit_in_usd_cents,
-        updated_at = now()
-    `);
-
-    const [{ count }] = await tx.unsafe(`SELECT count(*)::int as count FROM providers_costs`);
-    if (count < SEED_PROVIDERS_COSTS.length) {
-      throw new Error(
-        `[Costs Service] Seed upsert failed: expected at least ${SEED_PROVIDERS_COSTS.length} rows, found ${count}. Rolling back.`
-      );
-    }
-
-    await tx.unsafe(`
-      DELETE FROM providers_costs
-      WHERE (name, plan_tier, billing_cycle, effective_from) NOT IN (${seedKeysClause})
-    `);
-
-    const [{ final }] = await tx.unsafe(`SELECT count(*)::int as final FROM providers_costs`);
-    console.log(`[Costs Service] Seed TX complete (${final} provider cost(s), upserted from ${count})`);
-  });
-
-  // Post-commit verification on a separate connection
-  const [{ count: postCount }] = await directSql.unsafe(`SELECT count(*)::int as count FROM providers_costs`);
-  if (postCount < SEED_PROVIDERS_COSTS.length) {
+  const [{ count }] = await directSql.unsafe(`SELECT count(*)::int as count FROM providers_costs`);
+  if (count < SEED_PROVIDERS_COSTS.length) {
     throw new Error(
-      `[Costs Service] CRITICAL: Seed data did not survive commit — ${postCount} rows found post-commit (expected ${SEED_PROVIDERS_COSTS.length}). Aborting startup.`
+      `[Costs Service] Seed upsert failed: expected at least ${SEED_PROVIDERS_COSTS.length} rows, found ${count}. Aborting startup.`
     );
   }
-  console.log(`[Costs Service] Seed verified post-commit (${postCount} provider cost(s))`);
+  console.log(`[Costs Service] Seed complete (${count} provider cost(s))`);
 }
 
 export async function seedPlatformCosts() {
@@ -315,42 +292,21 @@ export async function seedPlatformCosts() {
     (c) => `('${c.provider}', '${c.planTier}', '${c.billingCycle}', '${c.effectiveFrom.toISOString()}'::timestamptz)`
   ).join(", ");
 
-  const seedKeysClause = SEED_PLATFORM_COSTS.map(
-    (c) => `('${c.provider}', '${c.effectiveFrom.toISOString()}'::timestamptz)`
-  ).join(", ");
+  await directSql.unsafe(`
+    INSERT INTO platform_costs (provider, plan_tier, billing_cycle, effective_from)
+    VALUES ${valuesClause}
+    ON CONFLICT (provider, effective_from)
+    DO UPDATE SET
+      plan_tier = EXCLUDED.plan_tier,
+      billing_cycle = EXCLUDED.billing_cycle,
+      updated_at = now()
+  `);
 
-  await directSql.begin(async (tx: any) => {
-    await tx.unsafe(`
-      INSERT INTO platform_costs (provider, plan_tier, billing_cycle, effective_from)
-      VALUES ${valuesClause}
-      ON CONFLICT (provider, effective_from)
-      DO UPDATE SET
-        plan_tier = EXCLUDED.plan_tier,
-        billing_cycle = EXCLUDED.billing_cycle,
-        updated_at = now()
-    `);
-
-    const [{ count }] = await tx.unsafe(`SELECT count(*)::int as count FROM platform_costs`);
-    if (count < SEED_PLATFORM_COSTS.length) {
-      throw new Error(
-        `[Costs Service] Platform seed upsert failed: expected at least ${SEED_PLATFORM_COSTS.length} rows, found ${count}. Rolling back.`
-      );
-    }
-
-    await tx.unsafe(`
-      DELETE FROM platform_costs
-      WHERE (provider, effective_from) NOT IN (${seedKeysClause})
-    `);
-
-    const [{ final }] = await tx.unsafe(`SELECT count(*)::int as final FROM platform_costs`);
-    console.log(`[Costs Service] Platform seed TX complete (${final} platform cost(s))`);
-  });
-
-  const [{ count: postCount }] = await directSql.unsafe(`SELECT count(*)::int as count FROM platform_costs`);
-  if (postCount < SEED_PLATFORM_COSTS.length) {
+  const [{ count }] = await directSql.unsafe(`SELECT count(*)::int as count FROM platform_costs`);
+  if (count < SEED_PLATFORM_COSTS.length) {
     throw new Error(
-      `[Costs Service] CRITICAL: Platform seed data did not survive commit — ${postCount} rows found post-commit. Aborting startup.`
+      `[Costs Service] Platform seed upsert failed: expected at least ${SEED_PLATFORM_COSTS.length} rows, found ${count}. Aborting startup.`
     );
   }
-  console.log(`[Costs Service] Platform seed verified post-commit (${postCount} platform cost(s))`);
+  console.log(`[Costs Service] Platform seed complete (${count} platform cost(s))`);
 }
