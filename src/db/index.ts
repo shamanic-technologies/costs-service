@@ -10,3 +10,9 @@ if (!connectionString) {
 
 export const sql = postgres(connectionString, { prepare: false });
 export const db = drizzle(sql, { schema });
+
+// Direct (non-pooler) connection for seed operations.
+// pgbouncer transaction mode can silently drop writes; the seed runs once
+// at startup so a direct connection is safe and avoids pooler issues.
+const directConnectionString = connectionString.replace("-pooler.", ".");
+export const directSql = postgres(directConnectionString, { prepare: false });
