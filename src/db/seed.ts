@@ -293,7 +293,15 @@ export async function seedProvidersCosts() {
     console.log(`[Costs Service] Removed ${deleted.length} orphaned provider cost(s): ${deleted.map((d) => d.name).join(", ")}`);
   }
 
-  console.log(`[Costs Service] Seed complete (${SEED_PROVIDERS_COSTS.length} provider cost(s) checked)`);
+  // Verify rows actually persisted
+  const rows = await db.select({ name: providersCosts.name }).from(providersCosts);
+  if (rows.length < SEED_PROVIDERS_COSTS.length) {
+    throw new Error(
+      `[Costs Service] Seed verification failed: expected at least ${SEED_PROVIDERS_COSTS.length} provider cost rows, found ${rows.length}. Aborting startup.`
+    );
+  }
+
+  console.log(`[Costs Service] Seed complete (${rows.length} provider cost(s) verified)`);
 }
 
 export async function seedPlatformCosts() {
@@ -328,5 +336,13 @@ export async function seedPlatformCosts() {
     console.log(`[Costs Service] Removed ${deleted.length} orphaned platform cost(s): ${deleted.map((d) => d.provider).join(", ")}`);
   }
 
-  console.log(`[Costs Service] Platform costs seed complete (${SEED_PLATFORM_COSTS.length} platform cost(s) checked)`);
+  // Verify rows actually persisted
+  const rows = await db.select({ provider: platformCosts.provider }).from(platformCosts);
+  if (rows.length < SEED_PLATFORM_COSTS.length) {
+    throw new Error(
+      `[Costs Service] Platform seed verification failed: expected at least ${SEED_PLATFORM_COSTS.length} platform cost rows, found ${rows.length}. Aborting startup.`
+    );
+  }
+
+  console.log(`[Costs Service] Platform costs seed complete (${rows.length} platform cost(s) verified)`);
 }

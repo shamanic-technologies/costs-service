@@ -144,6 +144,22 @@ describe("Seed cleanup", { timeout: 30_000 }, () => {
     expect(matchingRow!.costPerUnitInUsdCents).toBe(seedCost.costPerUnitInUsdCents);
   });
 
+  it("should verify provider costs row count after seeding (seed verification)", async () => {
+    // Regression: seed previously logged success without verifying data persisted,
+    // causing silent empty-table failures in production
+    await seedProvidersCosts();
+
+    const rows = await db.select().from(providersCosts);
+    expect(rows.length).toBeGreaterThanOrEqual(SEED_PROVIDERS_COSTS.length);
+  });
+
+  it("should verify platform costs row count after seeding (seed verification)", async () => {
+    await seedPlatformCosts();
+
+    const rows = await db.select().from(platformCosts);
+    expect(rows.length).toBeGreaterThanOrEqual(SEED_PLATFORM_COSTS.length);
+  });
+
   it("should remove provider cost rows with unknown names after seeding", async () => {
     // Insert a cost with a name not in the seed
     await insertTestProviderCost({
