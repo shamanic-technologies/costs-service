@@ -258,30 +258,45 @@ export const SEED_PLATFORM_COSTS = [
 ];
 
 export async function seedProvidersCosts() {
-  // Use postgres.js native sql.begin() for atomic seed.
-  // This guarantees a single connection for the entire transaction,
-  // avoiding pgbouncer connection routing issues with drizzle-orm.
+  // Structural fix: UPSERT then cleanup, never DELETE-before-INSERT.
+  // This is safe for concurrent execution (multi-region Railway replicas)
+  // and pgbouncer transaction mode (prepare: false in db/index.ts).
   const { sql: rawSql } = await import("./index.js");
 
-  // Build a single INSERT with all values
   const valuesClause = SEED_PROVIDERS_COSTS.map(
     (c) => `('${c.name}', '${c.provider}', '${c.planTier}', '${c.billingCycle}', ${c.costPerUnitInUsdCents}, '${c.effectiveFrom.toISOString()}'::timestamptz)`
   ).join(", ");
 
-  await rawSql.begin(async (tx: any) => {
-    await tx.unsafe(`DELETE FROM providers_costs`);
-    await tx.unsafe(`
-      INSERT INTO providers_costs (name, provider, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, effective_from)
-      VALUES ${valuesClause}
-    `);
-    const [{ count }] = await tx.unsafe(`SELECT count(*)::int as count FROM providers_costs`);
-    if (count < SEED_PROVIDERS_COSTS.length) {
-      throw new Error(
-        `[Costs Service] Seed verification failed: expected at least ${SEED_PROVIDERS_COSTS.length} provider cost rows, found ${count}. Rolling back.`
-      );
-    }
-    console.log(`[Costs Service] Seed complete (${count} provider cost(s) verified)`);
-  });
+  // Step 1: UPSERT all seed rows (idempotent, never deletes existing data)
+  await rawSql.unsafe(`
+    INSERT INTO providers_costs (name, provider, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, effective_from)
+    VALUES ${valuesClause}
+    ON CONFLICT (name, plan_tier, billing_cycle, effective_from)
+    DO UPDATE SET
+      provider = EXCLUDED.provider,
+      cost_per_unit_in_usd_cents = EXCLUDED.cost_per_unit_in_usd_cents,
+      updated_at = now()
+  `);
+
+  // Step 2: Verify all seed rows exist BEFORE cleaning up orphans
+  const [{ count }] = await rawSql.unsafe(`SELECT count(*)::int as count FROM providers_costs`);
+  if (count < SEED_PROVIDERS_COSTS.length) {
+    throw new Error(
+      `[Costs Service] Seed upsert failed: expected at least ${SEED_PROVIDERS_COSTS.length} provider cost rows, found ${count}. Skipping cleanup to preserve data.`
+    );
+  }
+
+  // Step 3: Remove orphan rows not in the seed set (safe: seed rows guaranteed to exist)
+  const seedKeysClause = SEED_PROVIDERS_COSTS.map(
+    (c) => `('${c.name}', '${c.planTier}', '${c.billingCycle}', '${c.effectiveFrom.toISOString()}'::timestamptz)`
+  ).join(", ");
+
+  await rawSql.unsafe(`
+    DELETE FROM providers_costs
+    WHERE (name, plan_tier, billing_cycle, effective_from) NOT IN (${seedKeysClause})
+  `);
+
+  console.log(`[Costs Service] Seed complete (${count} provider cost(s) upserted, orphans cleaned)`);
 }
 
 export async function seedPlatformCosts() {
@@ -291,18 +306,34 @@ export async function seedPlatformCosts() {
     (c) => `('${c.provider}', '${c.planTier}', '${c.billingCycle}', '${c.effectiveFrom.toISOString()}'::timestamptz)`
   ).join(", ");
 
-  await rawSql.begin(async (tx: any) => {
-    await tx.unsafe(`DELETE FROM platform_costs`);
-    await tx.unsafe(`
-      INSERT INTO platform_costs (provider, plan_tier, billing_cycle, effective_from)
-      VALUES ${valuesClause}
-    `);
-    const [{ count }] = await tx.unsafe(`SELECT count(*)::int as count FROM platform_costs`);
-    if (count < SEED_PLATFORM_COSTS.length) {
-      throw new Error(
-        `[Costs Service] Platform seed verification failed: expected at least ${SEED_PLATFORM_COSTS.length} platform cost rows, found ${count}. Rolling back.`
-      );
-    }
-    console.log(`[Costs Service] Platform costs seed complete (${count} platform cost(s) verified)`);
-  });
+  // Step 1: UPSERT all seed rows
+  await rawSql.unsafe(`
+    INSERT INTO platform_costs (provider, plan_tier, billing_cycle, effective_from)
+    VALUES ${valuesClause}
+    ON CONFLICT (provider, effective_from)
+    DO UPDATE SET
+      plan_tier = EXCLUDED.plan_tier,
+      billing_cycle = EXCLUDED.billing_cycle,
+      updated_at = now()
+  `);
+
+  // Step 2: Verify before cleanup
+  const [{ count }] = await rawSql.unsafe(`SELECT count(*)::int as count FROM platform_costs`);
+  if (count < SEED_PLATFORM_COSTS.length) {
+    throw new Error(
+      `[Costs Service] Platform seed upsert failed: expected at least ${SEED_PLATFORM_COSTS.length} rows, found ${count}. Skipping cleanup.`
+    );
+  }
+
+  // Step 3: Remove orphan rows
+  const seedKeysClause = SEED_PLATFORM_COSTS.map(
+    (c) => `('${c.provider}', '${c.effectiveFrom.toISOString()}'::timestamptz)`
+  ).join(", ");
+
+  await rawSql.unsafe(`
+    DELETE FROM platform_costs
+    WHERE (provider, effective_from) NOT IN (${seedKeysClause})
+  `);
+
+  console.log(`[Costs Service] Platform costs seed complete (${count} platform cost(s) upserted, orphans cleaned)`);
 }

@@ -175,6 +175,37 @@ describe("Seed cleanup", { timeout: 30_000 }, () => {
     }
   });
 
+  it("should not lose data when two seed calls run concurrently (multi-replica safety)", async () => {
+    // Regression: Railway multi-region replicas both run seed on startup.
+    // With DELETE+INSERT, concurrent seeds could wipe each other's data.
+    // With UPSERT+cleanup, concurrent seeds are safe — both converge to the same state.
+    const [resultA, resultB] = await Promise.allSettled([
+      seedProvidersCosts(),
+      seedProvidersCosts(),
+    ]);
+
+    // Both should succeed (or at worst one fails gracefully)
+    const succeeded = [resultA, resultB].filter((r) => r.status === "fulfilled");
+    expect(succeeded.length).toBeGreaterThanOrEqual(1);
+
+    // Regardless of concurrency, all seed rows must be present
+    const rows = await db.select().from(providersCosts);
+    expect(rows.length).toBe(SEED_PROVIDERS_COSTS.length);
+  });
+
+  it("should not lose data when two seed calls run concurrently (platform costs)", async () => {
+    const [resultA, resultB] = await Promise.allSettled([
+      seedPlatformCosts(),
+      seedPlatformCosts(),
+    ]);
+
+    const succeeded = [resultA, resultB].filter((r) => r.status === "fulfilled");
+    expect(succeeded.length).toBeGreaterThanOrEqual(1);
+
+    const rows = await db.select().from(platformCosts);
+    expect(rows.length).toBe(SEED_PLATFORM_COSTS.length);
+  });
+
   it("should remove provider cost rows with unknown names after seeding", async () => {
     // Insert a cost with a name not in the seed
     await insertTestProviderCost({
