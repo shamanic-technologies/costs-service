@@ -1,6 +1,5 @@
-import { db } from "./index.js";
-import { providersCosts, platformCosts } from "./schema.js";
-import { notInArray, and, eq, ne, sql } from "drizzle-orm";
+// Note: db/drizzle imports kept for test compatibility; seed functions
+// use raw postgres.js (sql.begin) to bypass drizzle-orm/pgbouncer issues.
 
 export const SEED_PROVIDERS_COSTS = [
   // Apollo — search is free via API (0 credits consumed)
@@ -259,118 +258,51 @@ export const SEED_PLATFORM_COSTS = [
 ];
 
 export async function seedProvidersCosts() {
-  // Wrap in a transaction so all operations (insert, verify, cleanup) run on
-  // the same pgbouncer backend connection. Without this, pgbouncer transaction
-  // mode may route different statements to different connections, causing
-  // cleanup DELETEs to run against a stale snapshot that doesn't see the INSERT.
-  await db.transaction(async (tx) => {
-    await tx
-      .insert(providersCosts)
-      .values(SEED_PROVIDERS_COSTS)
-      .onConflictDoUpdate({
-        target: [providersCosts.name, providersCosts.planTier, providersCosts.billingCycle, providersCosts.effectiveFrom],
-        set: {
-          costPerUnitInUsdCents: sql`excluded.cost_per_unit_in_usd_cents`,
-          provider: sql`excluded.provider`,
-        },
-      });
+  // Use postgres.js native sql.begin() for atomic seed.
+  // This guarantees a single connection for the entire transaction,
+  // avoiding pgbouncer connection routing issues with drizzle-orm.
+  const { sql: rawSql } = await import("./index.js");
 
-    // Verify insert succeeded BEFORE running any cleanup.
-    const seedNames = [...new Set(SEED_PROVIDERS_COSTS.map((c) => c.name))];
-    const insertedRows = await tx.select({ name: providersCosts.name }).from(providersCosts);
-    const insertedNames = new Set(insertedRows.map((r) => r.name));
-    const missingSeedNames = seedNames.filter((n) => !insertedNames.has(n));
-    if (missingSeedNames.length > 0) {
+  // Build a single INSERT with all values
+  const valuesClause = SEED_PROVIDERS_COSTS.map(
+    (c) => `('${c.name}', '${c.provider}', '${c.planTier}', '${c.billingCycle}', ${c.costPerUnitInUsdCents}, '${c.effectiveFrom.toISOString()}'::timestamptz)`
+  ).join(", ");
+
+  await rawSql.begin(async (tx: any) => {
+    await tx.unsafe(`DELETE FROM providers_costs`);
+    await tx.unsafe(`
+      INSERT INTO providers_costs (name, provider, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, effective_from)
+      VALUES ${valuesClause}
+    `);
+    const [{ count }] = await tx.unsafe(`SELECT count(*)::int as count FROM providers_costs`);
+    if (count < SEED_PROVIDERS_COSTS.length) {
       throw new Error(
-        `[Costs Service] Seed insert failed: ${missingSeedNames.length} cost name(s) missing after upsert (${missingSeedNames.slice(0, 5).join(", ")}). Aborting startup — cleanup skipped to preserve existing data.`
+        `[Costs Service] Seed verification failed: expected at least ${SEED_PROVIDERS_COSTS.length} provider cost rows, found ${count}. Rolling back.`
       );
     }
-
-    // Remove stale rows from old seeds (plan_tiers not in seed for known names)
-    const validTiersByName = new Map<string, string[]>();
-    for (const cost of SEED_PROVIDERS_COSTS) {
-      const tiers = validTiersByName.get(cost.name) ?? [];
-      if (!tiers.includes(cost.planTier)) tiers.push(cost.planTier);
-      validTiersByName.set(cost.name, tiers);
-    }
-    for (const [name, tiers] of validTiersByName) {
-      await tx
-        .delete(providersCosts)
-        .where(and(eq(providersCosts.name, name), notInArray(providersCosts.planTier, tiers)));
-    }
-
-    // Remove rows with names not in the seed at all
-    const validNames = SEED_PROVIDERS_COSTS.map((c) => c.name);
-    const deleted = await tx
-      .delete(providersCosts)
-      .where(notInArray(providersCosts.name, validNames))
-      .returning({ name: providersCosts.name });
-    if (deleted.length > 0) {
-      console.log(`[Costs Service] Removed ${deleted.length} orphaned provider cost(s): ${deleted.map((d) => d.name).join(", ")}`);
-    }
-
-    // Final count verification — if this fails, the transaction rolls back
-    const finalRows = await tx.select({ name: providersCosts.name }).from(providersCosts);
-    if (finalRows.length < SEED_PROVIDERS_COSTS.length) {
-      throw new Error(
-        `[Costs Service] Seed verification failed: expected at least ${SEED_PROVIDERS_COSTS.length} provider cost rows, found ${finalRows.length}. Rolling back.`
-      );
-    }
-    console.log(`[Costs Service] Seed complete (${finalRows.length} provider cost(s) verified)`);
+    console.log(`[Costs Service] Seed complete (${count} provider cost(s) verified)`);
   });
 }
 
 export async function seedPlatformCosts() {
-  await db.transaction(async (tx) => {
-    await tx
-      .insert(platformCosts)
-      .values(SEED_PLATFORM_COSTS)
-      .onConflictDoUpdate({
-        target: [platformCosts.provider, platformCosts.effectiveFrom],
-        set: {
-          planTier: sql`excluded.plan_tier`,
-          billingCycle: sql`excluded.billing_cycle`,
-        },
-      });
+  const { sql: rawSql } = await import("./index.js");
 
-    // Verify insert succeeded BEFORE running any cleanup.
-    const seedProviders = [...new Set(SEED_PLATFORM_COSTS.map((c) => c.provider))];
-    const insertedRows = await tx.select({ provider: platformCosts.provider }).from(platformCosts);
-    const insertedProviders = new Set(insertedRows.map((r) => r.provider));
-    const missingProviders = seedProviders.filter((p) => !insertedProviders.has(p));
-    if (missingProviders.length > 0) {
+  const valuesClause = SEED_PLATFORM_COSTS.map(
+    (c) => `('${c.provider}', '${c.planTier}', '${c.billingCycle}', '${c.effectiveFrom.toISOString()}'::timestamptz)`
+  ).join(", ");
+
+  await rawSql.begin(async (tx: any) => {
+    await tx.unsafe(`DELETE FROM platform_costs`);
+    await tx.unsafe(`
+      INSERT INTO platform_costs (provider, plan_tier, billing_cycle, effective_from)
+      VALUES ${valuesClause}
+    `);
+    const [{ count }] = await tx.unsafe(`SELECT count(*)::int as count FROM platform_costs`);
+    if (count < SEED_PLATFORM_COSTS.length) {
       throw new Error(
-        `[Costs Service] Platform seed insert failed: ${missingProviders.length} provider(s) missing after upsert (${missingProviders.join(", ")}). Aborting startup — cleanup skipped to preserve existing data.`
+        `[Costs Service] Platform seed verification failed: expected at least ${SEED_PLATFORM_COSTS.length} platform cost rows, found ${count}. Rolling back.`
       );
     }
-
-    // Remove stale rows from old seeds (wrong plan_tier for known providers)
-    const seenProviders = new Set<string>();
-    for (const cost of SEED_PLATFORM_COSTS) {
-      if (seenProviders.has(cost.provider)) continue;
-      seenProviders.add(cost.provider);
-      await tx
-        .delete(platformCosts)
-        .where(and(eq(platformCosts.provider, cost.provider), ne(platformCosts.planTier, cost.planTier)));
-    }
-
-    // Remove rows with providers not in the seed at all
-    const validProviders = SEED_PLATFORM_COSTS.map((c) => c.provider);
-    const deleted = await tx
-      .delete(platformCosts)
-      .where(notInArray(platformCosts.provider, validProviders))
-      .returning({ provider: platformCosts.provider });
-    if (deleted.length > 0) {
-      console.log(`[Costs Service] Removed ${deleted.length} orphaned platform cost(s): ${deleted.map((d) => d.provider).join(", ")}`);
-    }
-
-    // Final count verification — if this fails, the transaction rolls back
-    const finalRows = await tx.select({ provider: platformCosts.provider }).from(platformCosts);
-    if (finalRows.length < SEED_PLATFORM_COSTS.length) {
-      throw new Error(
-        `[Costs Service] Platform seed verification failed: expected at least ${SEED_PLATFORM_COSTS.length} platform cost rows, found ${finalRows.length}. Rolling back.`
-      );
-    }
-    console.log(`[Costs Service] Platform costs seed complete (${finalRows.length} platform cost(s) verified)`);
+    console.log(`[Costs Service] Platform costs seed complete (${count} platform cost(s) verified)`);
   });
 }
