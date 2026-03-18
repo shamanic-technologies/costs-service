@@ -76,6 +76,17 @@ describe("Apollo seed costs", () => {
   });
 });
 
+describe("Gemini Google Search seed costs", () => {
+  it("should include gemini-3.1-pro-google-search-query at 1.4 cents on pay-as-you-go/monthly", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "gemini-3.1-pro-google-search-query");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("1.4000000000");
+    expect(cost!.provider).toBe("gemini");
+    expect(cost!.planTier).toBe("pay-as-you-go");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+});
+
 describe("All seed costs have required plan fields", () => {
   it("every seed cost has provider, planTier, and billingCycle", () => {
     for (const cost of SEED_PROVIDERS_COSTS) {

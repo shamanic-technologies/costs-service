@@ -190,6 +190,17 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: "0.0003000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Google Gemini 3.1 Pro — Google Search grounding: $14/1,000 queries = 1.4¢/query
+  // Billed per search query (not per request); one prompt can trigger multiple queries
+  // https://ai.google.dev/gemini-api/docs/pricing
+  {
+    name: "gemini-3.1-pro-google-search-query",
+    provider: "gemini",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "1.4000000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Instantly — email send: Growth plan $37/mo ÷ 5,000 emails = 0.74¢/email
   // https://instantly.ai/pricing
   {
