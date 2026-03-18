@@ -77,8 +77,8 @@ describe("Apollo seed costs", () => {
 });
 
 describe("Gemini Google Search seed costs", () => {
-  it("should include gemini-3.1-pro-google-search-query at 1.4 cents on pay-as-you-go/monthly", () => {
-    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "gemini-3.1-pro-google-search-query");
+  it("should include gemini-google-search-query at 1.4 cents on pay-as-you-go/monthly", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "gemini-google-search-query");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("1.4000000000");
     expect(cost!.provider).toBe("gemini");
