@@ -28,7 +28,7 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `firecrawl-map-credit` | 0.6333333333 | 1 map credit | Firecrawl | hobby | monthly |
 | `gemini-3-flash-tokens-input` | 0.00005 | 1 token | Google | pay-as-you-go | monthly |
 | `gemini-3-flash-tokens-output` | 0.0003 | 1 token | Google | pay-as-you-go | monthly |
-| `gemini-3.1-pro-google-search-query` | 1.4 | 1 search query | Google | pay-as-you-go | monthly |
+| `gemini-google-search-query` | 1.4 | 1 search query | Google | pay-as-you-go | monthly |
 | `instantly-email-send` | 0.94 | 1 email | Instantly | growth | monthly |
 | `twilio-sms-segment` | 1.33 | 1 SMS segment | Twilio | pay-as-you-go | monthly |
 
