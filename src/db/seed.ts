@@ -211,6 +211,26 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: "0.9400000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Serper.dev — search/web: $0.001/query = 0.1¢/query
+  // No free tier tracked — we bill from the first call
+  // https://serper.dev/pricing
+  {
+    name: "serper-dev-search-web-query",
+    provider: "serper-dev",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.1000000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Serper.dev — search/news: $0.001/query = 0.1¢/query
+  {
+    name: "serper-dev-search-news-query",
+    provider: "serper-dev",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.1000000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Twilio — SMS: 1.33¢ per message segment (pay-as-you-go)
   // https://www.twilio.com/en-us/sms/pricing/us
   {
@@ -257,6 +277,12 @@ export const SEED_PLATFORM_COSTS = [
   {
     provider: "postmark",
     planTier: "pro-10k",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    provider: "serper-dev",
+    planTier: "pay-as-you-go",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
