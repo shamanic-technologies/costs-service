@@ -211,20 +211,12 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: "0.9400000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Serper.dev — search/web: $0.001/query = 0.1¢/query
+  // Serper.dev — search query (web, news, batch): $0.001/query = 0.1¢/query
+  // All search types billed identically; batch bills per individual query
   // No free tier tracked — we bill from the first call
   // https://serper.dev/pricing
   {
-    name: "serper-dev-search-web-query",
-    provider: "serper-dev",
-    planTier: "pay-as-you-go",
-    billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.1000000000",
-    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
-  },
-  // Serper.dev — search/news: $0.001/query = 0.1¢/query
-  {
-    name: "serper-dev-search-news-query",
+    name: "serper-dev-search-query",
     provider: "serper-dev",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
