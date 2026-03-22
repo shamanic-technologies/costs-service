@@ -30,6 +30,8 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `gemini-3-flash-tokens-output` | 0.0003 | 1 token | Google | pay-as-you-go | monthly |
 | `gemini-google-search-query` | 1.4 | 1 search query | Google | pay-as-you-go | monthly |
 | `instantly-email-send` | 0.94 | 1 email | Instantly | growth | monthly |
+| `serper-dev-search-web-query` | 0.1 | 1 search query | Serper.dev | pay-as-you-go | monthly |
+| `serper-dev-search-news-query` | 0.1 | 1 search query | Serper.dev | pay-as-you-go | monthly |
 | `twilio-sms-segment` | 1.33 | 1 SMS segment | Twilio | pay-as-you-go | monthly |
 
 ### Naming convention
@@ -52,6 +54,7 @@ Each provider has an active platform cost config that determines which cost tier
 | gemini | pay-as-you-go | monthly |
 | instantly | growth | monthly |
 | postmark | pro-10k | monthly |
+| serper-dev | pay-as-you-go | monthly |
 | twilio | pay-as-you-go | monthly |
 
 ## API
