@@ -178,6 +178,15 @@ const WorkflowNameHeader = registry.registerParameter(
   })
 );
 
+const FeatureSlugHeader = registry.registerParameter(
+  "FeatureSlug",
+  z.string().optional().openapi({
+    param: { name: "x-feature-slug", in: "header" },
+    description: "Feature slug for tracking which feature triggered the request (optional)",
+    example: "press-outreach",
+  })
+);
+
 const identityHeaders = z.object({
   "x-org-id": OrgIdHeader,
   "x-user-id": UserIdHeader,
@@ -185,6 +194,7 @@ const identityHeaders = z.object({
   "x-campaign-id": CampaignIdHeader,
   "x-brand-id": BrandIdHeader,
   "x-workflow-name": WorkflowNameHeader,
+  "x-feature-slug": FeatureSlugHeader,
 });
 
 // --- Register paths ---
