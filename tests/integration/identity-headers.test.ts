@@ -89,7 +89,7 @@ describe("Identity headers (x-org-id, x-user-id, x-run-id) requirement", () => {
   });
 });
 
-describe("Workflow tracking headers (x-campaign-id, x-brand-id, x-workflow-name) are optional", () => {
+describe("Workflow tracking headers (x-campaign-id, x-brand-id, x-workflow-name, x-feature-slug) are optional", () => {
   const app = createTestApp();
   const identityHeaders = getIdentityHeaders();
 
@@ -108,6 +108,7 @@ describe("Workflow tracking headers (x-campaign-id, x-brand-id, x-workflow-name)
         "x-campaign-id": "camp_abc123",
         "x-brand-id": "brand_xyz789",
         "x-workflow-name": "lead-enrichment-v2",
+        "x-feature-slug": "press-outreach",
       });
     expect(res.status).not.toBe(400);
   });
@@ -118,6 +119,16 @@ describe("Workflow tracking headers (x-campaign-id, x-brand-id, x-workflow-name)
       .set({
         ...identityHeaders,
         "x-campaign-id": "camp_abc123",
+      });
+    expect(res.status).not.toBe(400);
+  });
+
+  it("accepts requests with only x-feature-slug", async () => {
+    const res = await request(app)
+      .get("/v1/providers-costs")
+      .set({
+        ...identityHeaders,
+        "x-feature-slug": "press-outreach",
       });
     expect(res.status).not.toBe(400);
   });
@@ -140,5 +151,6 @@ describe("Workflow tracking headers (x-campaign-id, x-brand-id, x-workflow-name)
     expect(headerNames).toContain("x-campaign-id");
     expect(headerNames).toContain("x-brand-id");
     expect(headerNames).toContain("x-workflow-name");
+    expect(headerNames).toContain("x-feature-slug");
   });
 });
