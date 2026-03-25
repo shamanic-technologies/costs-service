@@ -87,6 +87,17 @@ describe("Gemini Google Search seed costs", () => {
   });
 });
 
+describe("Firecrawl extract seed costs", () => {
+  it("should include firecrawl-extract-token at 0.0422222222 cents on hobby/monthly", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "firecrawl-extract-token");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0422222222");
+    expect(cost!.provider).toBe("firecrawl");
+    expect(cost!.planTier).toBe("hobby");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+});
+
 describe("All seed costs have required plan fields", () => {
   it("every seed cost has provider, planTier, and billingCycle", () => {
     for (const cost of SEED_PROVIDERS_COSTS) {

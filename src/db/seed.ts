@@ -172,6 +172,17 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: "0.6333333333",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Firecrawl — extract: token-based billing (1 credit = 15 tokens)
+  // Hobby plan $19/mo ÷ 3k credits = 0.6333¢/credit ÷ 15 tokens = 0.0422¢/token
+  // https://docs.firecrawl.dev/features/extract
+  {
+    name: "firecrawl-extract-token",
+    provider: "firecrawl",
+    planTier: "hobby",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.0422222222",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Google Gemini 3 Flash (Preview): $0.50/MTok input, $3.00/MTok output
   // https://ai.google.dev/gemini-api/docs/pricing
   {
