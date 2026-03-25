@@ -26,6 +26,7 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `postmark-email-send` | 0.18 | 1 email | Postmark | platform-10k | monthly |
 | `firecrawl-scrape-credit` | 0.6333333333 | 1 scrape credit | Firecrawl | hobby | monthly |
 | `firecrawl-map-credit` | 0.6333333333 | 1 map credit | Firecrawl | hobby | monthly |
+| `firecrawl-extract-token` | 0.0422222222 | 1 extract token | Firecrawl | hobby | monthly |
 | `gemini-3-flash-tokens-input` | 0.00005 | 1 token | Google | pay-as-you-go | monthly |
 | `gemini-3-flash-tokens-output` | 0.0003 | 1 token | Google | pay-as-you-go | monthly |
 | `gemini-google-search-query` | 1.4 | 1 search query | Google | pay-as-you-go | monthly |
