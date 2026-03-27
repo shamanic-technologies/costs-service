@@ -32,6 +32,7 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `gemini-google-search-query` | 1.4 | 1 search query | Google | pay-as-you-go | monthly |
 | `instantly-email-send` | 0.94 | 1 email | Instantly | growth | monthly |
 | `serper-dev-search-query` | 0.1 | 1 search query | Serper.dev | pay-as-you-go | monthly |
+| `serper-search-credit` | 0.1 | 1 search credit | Serper.dev | pay-as-you-go | monthly |
 | `twilio-sms-segment` | 1.33 | 1 SMS segment | Twilio | pay-as-you-go | monthly |
 
 ### Naming convention
