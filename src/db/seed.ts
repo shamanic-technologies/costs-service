@@ -234,16 +234,6 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: "0.1000000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Serper.dev — search credit (used by google-service for billing authorization)
-  // Same underlying Serper API, same pricing: $0.001/credit = 0.1¢/credit
-  {
-    name: "serper-search-credit",
-    provider: "serper-dev",
-    planTier: "pay-as-you-go",
-    billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.1000000000",
-    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
-  },
   // Twilio — SMS: 1.33¢ per message segment (pay-as-you-go)
   // https://www.twilio.com/en-us/sms/pricing/us
   {
