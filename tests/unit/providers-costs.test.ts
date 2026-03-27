@@ -98,6 +98,36 @@ describe("Firecrawl extract seed costs", () => {
   });
 });
 
+describe("Serper seed costs", () => {
+  it("should include serper-dev-query at 0.1 cents on pay-as-you-go/monthly", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "serper-dev-query");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.1000000000");
+    expect(cost!.provider).toBe("serper-dev");
+    expect(cost!.planTier).toBe("pay-as-you-go");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+
+  it("should have exactly one serper cost (unified as serper-dev-query)", () => {
+    const serperCosts = SEED_PROVIDERS_COSTS.filter((c) => c.provider === "serper-dev");
+    expect(serperCosts).toHaveLength(1);
+    expect(serperCosts[0].name).toBe("serper-dev-query");
+  });
+
+  it("should not contain legacy serper cost names", () => {
+    const legacyNames = [
+      "serper-dev-search-query",
+      "serper-dev-search-web-query",
+      "serper-dev-search-news-query",
+      "serper-search-credit",
+    ];
+    for (const name of legacyNames) {
+      const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === name);
+      expect(cost, `legacy cost '${name}' should not exist in seed`).toBeUndefined();
+    }
+  });
+});
+
 describe("All seed costs have required plan fields", () => {
   it("every seed cost has provider, planTier, and billingCycle", () => {
     for (const cost of SEED_PROVIDERS_COSTS) {

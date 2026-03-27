@@ -227,7 +227,7 @@ export const SEED_PROVIDERS_COSTS = [
   // No free tier tracked — we bill from the first call
   // https://serper.dev/pricing
   {
-    name: "serper-dev-search-query",
+    name: "serper-dev-query",
     provider: "serper-dev",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
