@@ -89,7 +89,7 @@ describe("Identity headers (x-org-id, x-user-id, x-run-id) requirement", () => {
   });
 });
 
-describe("Workflow tracking headers (x-campaign-id, x-brand-id, x-workflow-name, x-feature-slug) are optional", () => {
+describe("Workflow tracking headers (x-campaign-id, x-brand-id, x-workflow-slug, x-feature-slug) are optional", () => {
   const app = createTestApp();
   const identityHeaders = getIdentityHeaders();
 
@@ -107,7 +107,7 @@ describe("Workflow tracking headers (x-campaign-id, x-brand-id, x-workflow-name,
         ...identityHeaders,
         "x-campaign-id": "camp_abc123",
         "x-brand-id": "brand_xyz789",
-        "x-workflow-name": "lead-enrichment-v2",
+        "x-workflow-slug": "lead-enrichment-v2",
         "x-feature-slug": "press-outreach",
       });
     expect(res.status).not.toBe(400);
@@ -150,7 +150,7 @@ describe("Workflow tracking headers (x-campaign-id, x-brand-id, x-workflow-name,
       .map((p: { name: string }) => p.name);
     expect(headerNames).toContain("x-campaign-id");
     expect(headerNames).toContain("x-brand-id");
-    expect(headerNames).toContain("x-workflow-name");
+    expect(headerNames).toContain("x-workflow-slug");
     expect(headerNames).toContain("x-feature-slug");
   });
 });

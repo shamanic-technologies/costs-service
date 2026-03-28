@@ -169,11 +169,11 @@ const BrandIdHeader = registry.registerParameter(
   })
 );
 
-const WorkflowNameHeader = registry.registerParameter(
-  "WorkflowName",
+const WorkflowSlugHeader = registry.registerParameter(
+  "WorkflowSlug",
   z.string().optional().openapi({
-    param: { name: "x-workflow-name", in: "header" },
-    description: "Workflow name injected by workflow-service (optional)",
+    param: { name: "x-workflow-slug", in: "header" },
+    description: "Workflow slug injected by workflow-service (optional)",
     example: "lead-enrichment-v2",
   })
 );
@@ -193,7 +193,7 @@ const identityHeaders = z.object({
   "x-run-id": RunIdHeader,
   "x-campaign-id": CampaignIdHeader,
   "x-brand-id": BrandIdHeader,
-  "x-workflow-name": WorkflowNameHeader,
+  "x-workflow-slug": WorkflowSlugHeader,
   "x-feature-slug": FeatureSlugHeader,
 });
 

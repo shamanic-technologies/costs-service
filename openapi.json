@@ -1,0 +1,1236 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Costs Service",
+    "description": "Cost tracking and budget management service",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3011"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    },
+    "schemas": {
+      "CostName": {
+        "type": "string",
+        "description": "Provider cost identifier ({provider}-{service-or-model}-{unit-type})",
+        "example": "anthropic-sonnet-4.5-tokens-input"
+      },
+      "Provider": {
+        "type": "string",
+        "description": "Provider identifier (e.g. apollo, anthropic, firecrawl)",
+        "example": "apollo"
+      },
+      "OrgId": {
+        "type": "string",
+        "format": "uuid",
+        "description": "Internal org UUID from client-service",
+        "example": "550e8400-e29b-41d4-a716-446655440000"
+      },
+      "UserId": {
+        "type": "string",
+        "format": "uuid",
+        "description": "Internal user UUID from client-service",
+        "example": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+      },
+      "RunId": {
+        "type": "string",
+        "format": "uuid",
+        "description": "Run UUID from runs-service identifying the current execution",
+        "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      },
+      "CampaignId": {
+        "type": "string",
+        "description": "Campaign identifier injected by workflow-service (optional)",
+        "example": "camp_abc123"
+      },
+      "BrandId": {
+        "type": "string",
+        "description": "Brand identifier injected by workflow-service (optional)",
+        "example": "brand_xyz789"
+      },
+      "WorkflowSlug": {
+        "type": "string",
+        "description": "Workflow slug injected by workflow-service (optional)",
+        "example": "lead-enrichment-v2"
+      },
+      "FeatureSlug": {
+        "type": "string",
+        "description": "Feature slug for tracking which feature triggered the request (optional)",
+        "example": "press-outreach"
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "service"
+        ]
+      },
+      "ProviderCost": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "planTier": {
+            "type": "string"
+          },
+          "billingCycle": {
+            "type": "string"
+          },
+          "costPerUnitInUsdCents": {
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "planTier",
+          "billingCycle",
+          "costPerUnitInUsdCents",
+          "effectiveFrom",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "properties": {
+              "formErrors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "fieldErrors": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "required": [
+              "formErrors",
+              "fieldErrors"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "PutProviderCostBody": {
+        "type": "object",
+        "properties": {
+          "costPerUnitInUsdCents": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "provider": {
+            "type": "string"
+          },
+          "planTier": {
+            "type": "string"
+          },
+          "billingCycle": {
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "costPerUnitInUsdCents",
+          "provider",
+          "planTier",
+          "billingCycle"
+        ]
+      },
+      "DeleteProviderCostResponse": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "deleted"
+        ]
+      },
+      "Price": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "pricePerUnitInUsdCents": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "name",
+          "pricePerUnitInUsdCents",
+          "provider",
+          "effectiveFrom"
+        ]
+      },
+      "PlatformCost": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "planTier": {
+            "type": "string"
+          },
+          "billingCycle": {
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "planTier",
+          "billingCycle",
+          "effectiveFrom",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PutPlatformCostBody": {
+        "type": "object",
+        "properties": {
+          "planTier": {
+            "type": "string"
+          },
+          "billingCycle": {
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "planTier",
+          "billingCycle"
+        ]
+      }
+    },
+    "parameters": {
+      "CostName": {
+        "schema": {
+          "$ref": "#/components/schemas/CostName"
+        },
+        "required": true,
+        "description": "Provider cost identifier ({provider}-{service-or-model}-{unit-type})",
+        "name": "name",
+        "in": "path"
+      },
+      "Provider": {
+        "schema": {
+          "$ref": "#/components/schemas/Provider"
+        },
+        "required": true,
+        "description": "Provider identifier (e.g. apollo, anthropic, firecrawl)",
+        "name": "provider",
+        "in": "path"
+      },
+      "OrgId": {
+        "schema": {
+          "$ref": "#/components/schemas/OrgId"
+        },
+        "required": true,
+        "description": "Internal org UUID from client-service",
+        "name": "x-org-id",
+        "in": "header"
+      },
+      "UserId": {
+        "schema": {
+          "$ref": "#/components/schemas/UserId"
+        },
+        "required": true,
+        "description": "Internal user UUID from client-service",
+        "name": "x-user-id",
+        "in": "header"
+      },
+      "RunId": {
+        "schema": {
+          "$ref": "#/components/schemas/RunId"
+        },
+        "required": true,
+        "description": "Run UUID from runs-service identifying the current execution",
+        "name": "x-run-id",
+        "in": "header"
+      },
+      "CampaignId": {
+        "schema": {
+          "$ref": "#/components/schemas/CampaignId"
+        },
+        "required": false,
+        "description": "Campaign identifier injected by workflow-service (optional)",
+        "name": "x-campaign-id",
+        "in": "header"
+      },
+      "BrandId": {
+        "schema": {
+          "$ref": "#/components/schemas/BrandId"
+        },
+        "required": false,
+        "description": "Brand identifier injected by workflow-service (optional)",
+        "name": "x-brand-id",
+        "in": "header"
+      },
+      "WorkflowSlug": {
+        "schema": {
+          "$ref": "#/components/schemas/WorkflowSlug"
+        },
+        "required": false,
+        "description": "Workflow slug injected by workflow-service (optional)",
+        "name": "x-workflow-slug",
+        "in": "header"
+      },
+      "FeatureSlug": {
+        "schema": {
+          "$ref": "#/components/schemas/FeatureSlug"
+        },
+        "required": false,
+        "description": "Feature slug for tracking which feature triggered the request (optional)",
+        "name": "x-feature-slug",
+        "in": "header"
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/providers-costs": {
+      "get": {
+        "operationId": "listProvidersCosts",
+        "summary": "List all provider costs (resolved via platform plan per provider)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OrgId"
+          },
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/RunId"
+          },
+          {
+            "$ref": "#/components/parameters/CampaignId"
+          },
+          {
+            "$ref": "#/components/parameters/BrandId"
+          },
+          {
+            "$ref": "#/components/parameters/WorkflowSlug"
+          },
+          {
+            "$ref": "#/components/parameters/FeatureSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of current provider costs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderCost"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/providers-costs/{name}": {
+      "get": {
+        "operationId": "getProviderCost",
+        "summary": "Get current provider cost (resolved via platform plan)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CostName"
+          },
+          {
+            "$ref": "#/components/parameters/OrgId"
+          },
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/RunId"
+          },
+          {
+            "$ref": "#/components/parameters/CampaignId"
+          },
+          {
+            "$ref": "#/components/parameters/BrandId"
+          },
+          {
+            "$ref": "#/components/parameters/WorkflowSlug"
+          },
+          {
+            "$ref": "#/components/parameters/FeatureSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current provider cost",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderCost"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Provider cost not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error (e.g. no platform plan configured)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putProviderCost",
+        "summary": "Insert a new price point for a provider cost",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CostName"
+          },
+          {
+            "$ref": "#/components/parameters/OrgId"
+          },
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/RunId"
+          },
+          {
+            "$ref": "#/components/parameters/CampaignId"
+          },
+          {
+            "$ref": "#/components/parameters/BrandId"
+          },
+          {
+            "$ref": "#/components/parameters/WorkflowSlug"
+          },
+          {
+            "$ref": "#/components/parameters/FeatureSlug"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutProviderCostBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Inserted provider cost",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderCost"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate provider cost (name + plan_tier + billing_cycle + effective_from already exists)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteProviderCost",
+        "summary": "Delete all entries for a provider cost",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CostName"
+          },
+          {
+            "$ref": "#/components/parameters/OrgId"
+          },
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/RunId"
+          },
+          {
+            "$ref": "#/components/parameters/CampaignId"
+          },
+          {
+            "$ref": "#/components/parameters/BrandId"
+          },
+          {
+            "$ref": "#/components/parameters/WorkflowSlug"
+          },
+          {
+            "$ref": "#/components/parameters/FeatureSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Number of deleted entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteProviderCostResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Provider cost not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/providers-costs/{name}/history": {
+      "get": {
+        "operationId": "getProviderCostHistory",
+        "summary": "Get all price points for a provider cost",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CostName"
+          },
+          {
+            "$ref": "#/components/parameters/OrgId"
+          },
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/RunId"
+          },
+          {
+            "$ref": "#/components/parameters/CampaignId"
+          },
+          {
+            "$ref": "#/components/parameters/BrandId"
+          },
+          {
+            "$ref": "#/components/parameters/WorkflowSlug"
+          },
+          {
+            "$ref": "#/components/parameters/FeatureSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Price history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderCost"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Provider cost not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/providers-costs/{name}/plans": {
+      "get": {
+        "operationId": "getProviderCostPlans",
+        "summary": "List all known plan options for a provider cost",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CostName"
+          },
+          {
+            "$ref": "#/components/parameters/OrgId"
+          },
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/RunId"
+          },
+          {
+            "$ref": "#/components/parameters/CampaignId"
+          },
+          {
+            "$ref": "#/components/parameters/BrandId"
+          },
+          {
+            "$ref": "#/components/parameters/WorkflowSlug"
+          },
+          {
+            "$ref": "#/components/parameters/FeatureSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All plan/billing cycle combinations for this cost",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderCost"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Provider cost not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform-prices": {
+      "get": {
+        "operationId": "listPlatformPrices",
+        "summary": "List current platform prices for all cost names",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OrgId"
+          },
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/RunId"
+          },
+          {
+            "$ref": "#/components/parameters/CampaignId"
+          },
+          {
+            "$ref": "#/components/parameters/BrandId"
+          },
+          {
+            "$ref": "#/components/parameters/WorkflowSlug"
+          },
+          {
+            "$ref": "#/components/parameters/FeatureSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current prices resolved via platform plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Price"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform-prices/{name}": {
+      "get": {
+        "operationId": "getPlatformPrice",
+        "summary": "Get current platform price for a cost name",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CostName"
+          },
+          {
+            "$ref": "#/components/parameters/OrgId"
+          },
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/RunId"
+          },
+          {
+            "$ref": "#/components/parameters/CampaignId"
+          },
+          {
+            "$ref": "#/components/parameters/BrandId"
+          },
+          {
+            "$ref": "#/components/parameters/WorkflowSlug"
+          },
+          {
+            "$ref": "#/components/parameters/FeatureSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current price",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Price"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Price not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error (e.g. no platform plan configured)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform-costs": {
+      "get": {
+        "operationId": "listPlatformCosts",
+        "summary": "List current platform cost config per provider",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OrgId"
+          },
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/RunId"
+          },
+          {
+            "$ref": "#/components/parameters/CampaignId"
+          },
+          {
+            "$ref": "#/components/parameters/BrandId"
+          },
+          {
+            "$ref": "#/components/parameters/WorkflowSlug"
+          },
+          {
+            "$ref": "#/components/parameters/FeatureSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current platform cost config for each provider",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlatformCost"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform-costs/{provider}": {
+      "get": {
+        "operationId": "getPlatformCost",
+        "summary": "Get current platform cost config for a provider",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Provider"
+          },
+          {
+            "$ref": "#/components/parameters/OrgId"
+          },
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/RunId"
+          },
+          {
+            "$ref": "#/components/parameters/CampaignId"
+          },
+          {
+            "$ref": "#/components/parameters/BrandId"
+          },
+          {
+            "$ref": "#/components/parameters/WorkflowSlug"
+          },
+          {
+            "$ref": "#/components/parameters/FeatureSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current platform cost config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformCost"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No platform cost configured for this provider",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putPlatformCost",
+        "summary": "Set or update the platform cost config for a provider",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Provider"
+          },
+          {
+            "$ref": "#/components/parameters/OrgId"
+          },
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/RunId"
+          },
+          {
+            "$ref": "#/components/parameters/CampaignId"
+          },
+          {
+            "$ref": "#/components/parameters/BrandId"
+          },
+          {
+            "$ref": "#/components/parameters/WorkflowSlug"
+          },
+          {
+            "$ref": "#/components/parameters/FeatureSlug"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutPlatformCostBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Inserted platform cost config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformCost"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate platform cost (provider + effective_from already exists)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform-costs/{provider}/history": {
+      "get": {
+        "operationId": "getPlatformCostHistory",
+        "summary": "Get platform cost change history for a provider",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Provider"
+          },
+          {
+            "$ref": "#/components/parameters/OrgId"
+          },
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/RunId"
+          },
+          {
+            "$ref": "#/components/parameters/CampaignId"
+          },
+          {
+            "$ref": "#/components/parameters/BrandId"
+          },
+          {
+            "$ref": "#/components/parameters/WorkflowSlug"
+          },
+          {
+            "$ref": "#/components/parameters/FeatureSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cost config change history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlatformCost"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No platform cost configured for this provider",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
