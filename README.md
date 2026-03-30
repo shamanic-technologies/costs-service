@@ -29,6 +29,8 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `firecrawl-extract-token` | 0.0422222222 | 1 extract token | Firecrawl | hobby | monthly |
 | `gemini-3-flash-tokens-input` | 0.00005 | 1 token | Google | pay-as-you-go | monthly |
 | `gemini-3-flash-tokens-output` | 0.0003 | 1 token | Google | pay-as-you-go | monthly |
+| `gemini-3.1-flash-lite-tokens-input` | 0.00005 | 1 token | Google | pay-as-you-go | monthly |
+| `gemini-3.1-flash-lite-tokens-output` | 0.0003 | 1 token | Google | pay-as-you-go | monthly |
 | `gemini-google-search-query` | 1.4 | 1 search query | Google | pay-as-you-go | monthly |
 | `instantly-email-send` | 0.94 | 1 email | Instantly | growth | monthly |
 | `serper-dev-query` | 0.1 | 1 query | Serper.dev | pay-as-you-go | monthly |

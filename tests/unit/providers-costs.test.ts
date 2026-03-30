@@ -76,6 +76,26 @@ describe("Apollo seed costs", () => {
   });
 });
 
+describe("Gemini 3.1 Flash Lite seed costs", () => {
+  it("should include gemini-3.1-flash-lite-tokens-input at 0.00005 cents", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "gemini-3.1-flash-lite-tokens-input");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0000500000");
+    expect(cost!.provider).toBe("gemini");
+    expect(cost!.planTier).toBe("pay-as-you-go");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+
+  it("should include gemini-3.1-flash-lite-tokens-output at 0.0003 cents", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "gemini-3.1-flash-lite-tokens-output");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0003000000");
+    expect(cost!.provider).toBe("gemini");
+    expect(cost!.planTier).toBe("pay-as-you-go");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+});
+
 describe("Gemini Google Search seed costs", () => {
   it("should include gemini-google-search-query at 1.4 cents on pay-as-you-go/monthly", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "gemini-google-search-query");
