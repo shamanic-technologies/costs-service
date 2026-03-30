@@ -201,6 +201,24 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: "0.0003000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Google Gemini 3.1 Flash Lite (Preview): $0.50/MTok input, $3.00/MTok output
+  // https://ai.google.dev/gemini-api/docs/pricing
+  {
+    name: "gemini-3.1-flash-lite-tokens-input",
+    provider: "gemini",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.0000500000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "gemini-3.1-flash-lite-tokens-output",
+    provider: "gemini",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.0003000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Google Gemini — Google Search grounding: $14/1,000 queries = 1.4¢/query
   // Gemini 3+ bills per search query (not per prompt); one prompt can trigger multiple queries
   // https://ai.google.dev/gemini-api/docs/pricing
