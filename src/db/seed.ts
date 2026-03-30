@@ -186,16 +186,16 @@ export const SEED_PROVIDERS_COSTS = [
   // Google Gemini 3 Flash (Preview): $0.50/MTok input, $3.00/MTok output
   // https://ai.google.dev/gemini-api/docs/pricing
   {
-    name: "gemini-3-flash-tokens-input",
-    provider: "gemini",
+    name: "google-flash-3-tokens-input",
+    provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: "0.0000500000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
-    name: "gemini-3-flash-tokens-output",
-    provider: "gemini",
+    name: "google-flash-3-tokens-output",
+    provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: "0.0003000000",
@@ -204,27 +204,27 @@ export const SEED_PROVIDERS_COSTS = [
   // Google Gemini 3.1 Flash Lite (Preview): $0.50/MTok input, $3.00/MTok output
   // https://ai.google.dev/gemini-api/docs/pricing
   {
-    name: "gemini-3.1-flash-lite-tokens-input",
-    provider: "gemini",
+    name: "google-flash-lite-3.1-tokens-input",
+    provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: "0.0000500000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
-    name: "gemini-3.1-flash-lite-tokens-output",
-    provider: "gemini",
+    name: "google-flash-lite-3.1-tokens-output",
+    provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: "0.0003000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Google Gemini — Google Search grounding: $14/1,000 queries = 1.4¢/query
+  // Google — Google Search grounding: $14/1,000 queries = 1.4¢/query
   // Gemini 3+ bills per search query (not per prompt); one prompt can trigger multiple queries
   // https://ai.google.dev/gemini-api/docs/pricing
   {
-    name: "gemini-google-search-query",
-    provider: "gemini",
+    name: "google-search-query",
+    provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: "1.4000000000",
@@ -284,7 +284,7 @@ export const SEED_PLATFORM_COSTS = [
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
-    provider: "gemini",
+    provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),

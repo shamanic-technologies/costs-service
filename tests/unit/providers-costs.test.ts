@@ -76,32 +76,32 @@ describe("Apollo seed costs", () => {
   });
 });
 
-describe("Gemini 3.1 Flash Lite seed costs", () => {
-  it("should include gemini-3.1-flash-lite-tokens-input at 0.00005 cents", () => {
-    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "gemini-3.1-flash-lite-tokens-input");
+describe("Google Flash Lite 3.1 seed costs", () => {
+  it("should include google-flash-lite-3.1-tokens-input at 0.00005 cents", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-flash-lite-3.1-tokens-input");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("0.0000500000");
-    expect(cost!.provider).toBe("gemini");
+    expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
   });
 
-  it("should include gemini-3.1-flash-lite-tokens-output at 0.0003 cents", () => {
-    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "gemini-3.1-flash-lite-tokens-output");
+  it("should include google-flash-lite-3.1-tokens-output at 0.0003 cents", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-flash-lite-3.1-tokens-output");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("0.0003000000");
-    expect(cost!.provider).toBe("gemini");
+    expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
   });
 });
 
-describe("Gemini Google Search seed costs", () => {
-  it("should include gemini-google-search-query at 1.4 cents on pay-as-you-go/monthly", () => {
-    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "gemini-google-search-query");
+describe("Google Search seed costs", () => {
+  it("should include google-search-query at 1.4 cents on pay-as-you-go/monthly", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-search-query");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("1.4000000000");
-    expect(cost!.provider).toBe("gemini");
+    expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
   });
@@ -145,6 +145,18 @@ describe("Serper seed costs", () => {
       const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === name);
       expect(cost, `legacy cost '${name}' should not exist in seed`).toBeUndefined();
     }
+  });
+});
+
+describe("Google seed costs — no legacy gemini names", () => {
+  it("should not contain any cost names starting with 'gemini-'", () => {
+    const legacyNames = SEED_PROVIDERS_COSTS.filter((c) => c.name.startsWith("gemini-"));
+    expect(legacyNames, "legacy gemini-* cost names should not exist in seed").toHaveLength(0);
+  });
+
+  it("should not contain any provider values set to 'gemini'", () => {
+    const legacyProviders = SEED_PROVIDERS_COSTS.filter((c) => c.provider === "gemini");
+    expect(legacyProviders, "legacy gemini provider should not exist in seed").toHaveLength(0);
   });
 });
 
