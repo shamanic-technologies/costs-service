@@ -27,11 +27,11 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `firecrawl-scrape-credit` | 0.6333333333 | 1 scrape credit | Firecrawl | hobby | monthly |
 | `firecrawl-map-credit` | 0.6333333333 | 1 map credit | Firecrawl | hobby | monthly |
 | `firecrawl-extract-token` | 0.0422222222 | 1 extract token | Firecrawl | hobby | monthly |
-| `gemini-3-flash-tokens-input` | 0.00005 | 1 token | Google | pay-as-you-go | monthly |
-| `gemini-3-flash-tokens-output` | 0.0003 | 1 token | Google | pay-as-you-go | monthly |
-| `gemini-3.1-flash-lite-tokens-input` | 0.00005 | 1 token | Google | pay-as-you-go | monthly |
-| `gemini-3.1-flash-lite-tokens-output` | 0.0003 | 1 token | Google | pay-as-you-go | monthly |
-| `gemini-google-search-query` | 1.4 | 1 search query | Google | pay-as-you-go | monthly |
+| `google-flash-3-tokens-input` | 0.00005 | 1 token | Google | pay-as-you-go | monthly |
+| `google-flash-3-tokens-output` | 0.0003 | 1 token | Google | pay-as-you-go | monthly |
+| `google-flash-lite-3.1-tokens-input` | 0.00005 | 1 token | Google | pay-as-you-go | monthly |
+| `google-flash-lite-3.1-tokens-output` | 0.0003 | 1 token | Google | pay-as-you-go | monthly |
+| `google-search-query` | 1.4 | 1 search query | Google | pay-as-you-go | monthly |
 | `instantly-email-send` | 0.94 | 1 email | Instantly | growth | monthly |
 | `serper-dev-query` | 0.1 | 1 query | Serper.dev | pay-as-you-go | monthly |
 | `twilio-sms-segment` | 1.33 | 1 SMS segment | Twilio | pay-as-you-go | monthly |
@@ -53,7 +53,7 @@ Each provider has an active platform cost config that determines which cost tier
 | apollo | basic | monthly |
 | anthropic | pay-as-you-go | monthly |
 | firecrawl | hobby | monthly |
-| gemini | pay-as-you-go | monthly |
+| google | pay-as-you-go | monthly |
 | instantly | growth | monthly |
 | postmark | pro-10k | monthly |
 | serper-dev | pay-as-you-go | monthly |
