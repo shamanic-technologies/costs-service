@@ -106,9 +106,19 @@ describe("Workflow tracking headers (x-campaign-id, x-brand-id, x-workflow-slug,
       .set({
         ...identityHeaders,
         "x-campaign-id": "camp_abc123",
-        "x-brand-id": "brand_xyz789",
+        "x-brand-id": "550e8400-e29b-41d4-a716-446655440000",
         "x-workflow-slug": "lead-enrichment-v2",
         "x-feature-slug": "press-outreach",
+      });
+    expect(res.status).not.toBe(400);
+  });
+
+  it("accepts x-brand-id with comma-separated UUIDs (multi-brand)", async () => {
+    const res = await request(app)
+      .get("/v1/providers-costs")
+      .set({
+        ...identityHeaders,
+        "x-brand-id": "550e8400-e29b-41d4-a716-446655440000,6ba7b810-9dad-11d1-80b4-00c04fd430c8",
       });
     expect(res.status).not.toBe(400);
   });
