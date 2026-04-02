@@ -201,14 +201,14 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: "0.0003000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Google Gemini 3.1 Flash Lite (Preview): $0.50/MTok input, $3.00/MTok output
+  // Google Gemini 3.1 Flash Lite (Preview): $0.25/MTok input, $1.50/MTok output
   // https://ai.google.dev/gemini-api/docs/pricing
   {
     name: "google-flash-lite-3.1-tokens-input",
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0000500000",
+    costPerUnitInUsdCents: "0.0000250000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -216,7 +216,26 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0003000000",
+    costPerUnitInUsdCents: "0.0001500000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Google Gemini 3.1 Pro (Preview): $2.00/MTok input, $12.00/MTok output (≤200k context)
+  // >200k context: $4.00/MTok input, $18.00/MTok output — tracked at standard tier
+  // https://ai.google.dev/gemini-api/docs/pricing
+  {
+    name: "google-pro-3.1-tokens-input",
+    provider: "google",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.0002000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "google-pro-3.1-tokens-output",
+    provider: "google",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.0012000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google — Google Search grounding: $14/1,000 queries = 1.4¢/query
