@@ -77,19 +77,39 @@ describe("Apollo seed costs", () => {
 });
 
 describe("Google Flash Lite 3.1 seed costs", () => {
-  it("should include google-flash-lite-3.1-tokens-input at 0.00005 cents", () => {
+  it("should include google-flash-lite-3.1-tokens-input at 0.000025 cents ($0.25/MTok)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-flash-lite-3.1-tokens-input");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0000500000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0000250000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
   });
 
-  it("should include google-flash-lite-3.1-tokens-output at 0.0003 cents", () => {
+  it("should include google-flash-lite-3.1-tokens-output at 0.00015 cents ($1.50/MTok)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-flash-lite-3.1-tokens-output");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0003000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0001500000");
+    expect(cost!.provider).toBe("google");
+    expect(cost!.planTier).toBe("pay-as-you-go");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+});
+
+describe("Google Pro 3.1 seed costs", () => {
+  it("should include google-pro-3.1-tokens-input at 0.0002 cents ($2.00/MTok, ≤200k context)", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-pro-3.1-tokens-input");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0002000000");
+    expect(cost!.provider).toBe("google");
+    expect(cost!.planTier).toBe("pay-as-you-go");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+
+  it("should include google-pro-3.1-tokens-output at 0.0012 cents ($12.00/MTok, ≤200k context)", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-pro-3.1-tokens-output");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0012000000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");

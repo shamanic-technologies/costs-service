@@ -29,8 +29,10 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `firecrawl-extract-token` | 0.0422222222 | 1 extract token | Firecrawl | hobby | monthly |
 | `google-flash-3-tokens-input` | 0.00005 | 1 token | Google | pay-as-you-go | monthly |
 | `google-flash-3-tokens-output` | 0.0003 | 1 token | Google | pay-as-you-go | monthly |
-| `google-flash-lite-3.1-tokens-input` | 0.00005 | 1 token | Google | pay-as-you-go | monthly |
-| `google-flash-lite-3.1-tokens-output` | 0.0003 | 1 token | Google | pay-as-you-go | monthly |
+| `google-flash-lite-3.1-tokens-input` | 0.000025 | 1 token | Google | pay-as-you-go | monthly |
+| `google-flash-lite-3.1-tokens-output` | 0.00015 | 1 token | Google | pay-as-you-go | monthly |
+| `google-pro-3.1-tokens-input` | 0.0002 | 1 token | Google | pay-as-you-go | monthly |
+| `google-pro-3.1-tokens-output` | 0.0012 | 1 token | Google | pay-as-you-go | monthly |
 | `google-search-query` | 1.4 | 1 search query | Google | pay-as-you-go | monthly |
 | `instantly-email-send` | 0.94 | 1 email | Instantly | growth | monthly |
 | `serper-dev-query` | 0.1 | 1 query | Serper.dev | pay-as-you-go | monthly |
