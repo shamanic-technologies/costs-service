@@ -40,16 +40,21 @@ describe("Anthropic Sonnet 4.6 seed costs", () => {
 });
 
 describe("Anthropic Opus 4.6 seed costs", () => {
-  it("should include anthropic-opus-4-6-input-token at 0.0005 cents", () => {
-    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-opus-4-6-input-token");
+  it("should include anthropic-opus-4.6-tokens-input at 0.0005 cents", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-opus-4.6-tokens-input");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("0.0005000000");
   });
 
-  it("should include anthropic-opus-4-6-output-token at 0.0025 cents", () => {
-    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-opus-4-6-output-token");
+  it("should include anthropic-opus-4.6-tokens-output at 0.0025 cents", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-opus-4.6-tokens-output");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("0.0025000000");
+  });
+
+  it("should not contain legacy opus naming (anthropic-opus-4-6-*-token)", () => {
+    const legacy = SEED_PROVIDERS_COSTS.filter((c) => c.name.startsWith("anthropic-opus-4-6-"));
+    expect(legacy, "legacy anthropic-opus-4-6-* names should not exist").toHaveLength(0);
   });
 });
 
