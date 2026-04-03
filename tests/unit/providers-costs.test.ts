@@ -121,6 +121,66 @@ describe("Google Pro 3.1 seed costs", () => {
   });
 });
 
+describe("Google Pro 2.5 seed costs", () => {
+  it("should include google-pro-2.5-tokens-input at 0.000125 cents ($1.25/MTok, ≤200k context)", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-pro-2.5-tokens-input");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0001250000");
+    expect(cost!.provider).toBe("google");
+    expect(cost!.planTier).toBe("pay-as-you-go");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+
+  it("should include google-pro-2.5-tokens-output at 0.001 cents ($10.00/MTok, ≤200k context)", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-pro-2.5-tokens-output");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0010000000");
+    expect(cost!.provider).toBe("google");
+    expect(cost!.planTier).toBe("pay-as-you-go");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+});
+
+describe("Google Flash 2.5 seed costs", () => {
+  it("should include google-flash-2.5-tokens-input at 0.00003 cents ($0.30/MTok)", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-flash-2.5-tokens-input");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0000300000");
+    expect(cost!.provider).toBe("google");
+    expect(cost!.planTier).toBe("pay-as-you-go");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+
+  it("should include google-flash-2.5-tokens-output at 0.00025 cents ($2.50/MTok)", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-flash-2.5-tokens-output");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0002500000");
+    expect(cost!.provider).toBe("google");
+    expect(cost!.planTier).toBe("pay-as-you-go");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+});
+
+describe("Google Flash-Lite 2.5 seed costs", () => {
+  it("should include google-flash-lite-2.5-tokens-input at 0.00001 cents ($0.10/MTok)", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-flash-lite-2.5-tokens-input");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0000100000");
+    expect(cost!.provider).toBe("google");
+    expect(cost!.planTier).toBe("pay-as-you-go");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+
+  it("should include google-flash-lite-2.5-tokens-output at 0.00004 cents ($0.40/MTok)", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-flash-lite-2.5-tokens-output");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0000400000");
+    expect(cost!.provider).toBe("google");
+    expect(cost!.planTier).toBe("pay-as-you-go");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+});
+
 describe("Google Search seed costs", () => {
   it("should include google-search-query at 1.4 cents on pay-as-you-go/monthly", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-search-query");

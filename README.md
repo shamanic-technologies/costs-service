@@ -29,8 +29,14 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `firecrawl-extract-token` | 0.0422222222 | 1 extract token | Firecrawl | hobby | monthly |
 | `google-flash-3-tokens-input` | 0.00005 | 1 token | Google | pay-as-you-go | monthly |
 | `google-flash-3-tokens-output` | 0.0003 | 1 token | Google | pay-as-you-go | monthly |
+| `google-flash-2.5-tokens-input` | 0.00003 | 1 token | Google | pay-as-you-go | monthly |
+| `google-flash-2.5-tokens-output` | 0.00025 | 1 token | Google | pay-as-you-go | monthly |
+| `google-flash-lite-2.5-tokens-input` | 0.00001 | 1 token | Google | pay-as-you-go | monthly |
+| `google-flash-lite-2.5-tokens-output` | 0.00004 | 1 token | Google | pay-as-you-go | monthly |
 | `google-flash-lite-3.1-tokens-input` | 0.000025 | 1 token | Google | pay-as-you-go | monthly |
 | `google-flash-lite-3.1-tokens-output` | 0.00015 | 1 token | Google | pay-as-you-go | monthly |
+| `google-pro-2.5-tokens-input` | 0.000125 | 1 token | Google | pay-as-you-go | monthly |
+| `google-pro-2.5-tokens-output` | 0.001 | 1 token | Google | pay-as-you-go | monthly |
 | `google-pro-3.1-tokens-input` | 0.0002 | 1 token | Google | pay-as-you-go | monthly |
 | `google-pro-3.1-tokens-output` | 0.0012 | 1 token | Google | pay-as-you-go | monthly |
 | `google-search-query` | 1.4 | 1 search query | Google | pay-as-you-go | monthly |
