@@ -238,6 +238,60 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: "0.0012000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Google Gemini 2.5 Pro: $1.25/MTok input, $10.00/MTok output (≤200k context)
+  // https://ai.google.dev/gemini-api/docs/pricing
+  {
+    name: "google-pro-2.5-tokens-input",
+    provider: "google",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.0001250000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "google-pro-2.5-tokens-output",
+    provider: "google",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.0010000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Google Gemini 2.5 Flash: $0.30/MTok input, $2.50/MTok output
+  // https://ai.google.dev/gemini-api/docs/pricing
+  {
+    name: "google-flash-2.5-tokens-input",
+    provider: "google",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.0000300000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "google-flash-2.5-tokens-output",
+    provider: "google",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.0002500000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Google Gemini 2.5 Flash-Lite: $0.10/MTok input, $0.40/MTok output
+  // https://ai.google.dev/gemini-api/docs/pricing
+  {
+    name: "google-flash-lite-2.5-tokens-input",
+    provider: "google",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.0000100000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "google-flash-lite-2.5-tokens-output",
+    provider: "google",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.0000400000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Google — Google Search grounding: $14/1,000 queries = 1.4¢/query
   // Gemini 3+ bills per search query (not per prompt); one prompt can trigger multiple queries
   // https://ai.google.dev/gemini-api/docs/pricing
