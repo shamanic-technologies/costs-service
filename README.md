@@ -41,6 +41,7 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `google-pro-3.1-tokens-output` | 0.0012 | 1 token | Google | pay-as-you-go | monthly |
 | `google-search-query` | 1.4 | 1 search query | Google | pay-as-you-go | monthly |
 | `instantly-email-send` | 0.94 | 1 email | Instantly | growth | monthly |
+| `scrape-do-scrape-credit` | 0.0116 | 1 scrape credit | Scrape.do | hobby | monthly |
 | `serper-dev-query` | 0.1 | 1 query | Serper.dev | pay-as-you-go | monthly |
 | `twilio-sms-segment` | 1.33 | 1 SMS segment | Twilio | pay-as-you-go | monthly |
 
@@ -64,6 +65,7 @@ Each provider has an active platform cost config that determines which cost tier
 | google | pay-as-you-go | monthly |
 | instantly | growth | monthly |
 | postmark | pro-10k | monthly |
+| scrape-do | hobby | monthly |
 | serper-dev | pay-as-you-go | monthly |
 | twilio | pay-as-you-go | monthly |
 

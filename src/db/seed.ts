@@ -325,6 +325,18 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: "0.1000000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Scrape.do — scrape: 1 credit per successful API call
+  // Hobby plan $29/mo ÷ 250,000 credits = 0.0116¢/credit
+  // Only charged on successful responses (errors/timeouts are free)
+  // https://scrape.do/pricing/
+  {
+    name: "scrape-do-scrape-credit",
+    provider: "scrape-do",
+    planTier: "hobby",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.0116000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Twilio — SMS: 1.33¢ per message segment (pay-as-you-go)
   // https://www.twilio.com/en-us/sms/pricing/us
   {
@@ -371,6 +383,12 @@ export const SEED_PLATFORM_COSTS = [
   {
     provider: "postmark",
     planTier: "pro-10k",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    provider: "scrape-do",
+    planTier: "hobby",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
