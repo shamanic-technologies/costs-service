@@ -203,6 +203,17 @@ describe("Firecrawl extract seed costs", () => {
   });
 });
 
+describe("Scrape.do seed costs", () => {
+  it("should include scrape-do-scrape-credit at 0.0116 cents on hobby/monthly", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "scrape-do-scrape-credit");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0116000000");
+    expect(cost!.provider).toBe("scrape-do");
+    expect(cost!.planTier).toBe("hobby");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+});
+
 describe("Serper seed costs", () => {
   it("should include serper-dev-query at 0.1 cents on pay-as-you-go/monthly", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "serper-dev-query");
