@@ -185,6 +185,21 @@ router.put("/v1/providers-costs/:name", requireApiKey, async (req, res) => {
       return;
     }
 
+    // Reject unknown cost names — only allow new price points for costs that already exist in the catalog
+    const [existing] = await db
+      .select({ name: providersCosts.name })
+      .from(providersCosts)
+      .where(eq(providersCosts.name, name))
+      .limit(1);
+
+    if (!existing) {
+      console.error(`[costs-service] PUT /v1/providers-costs/${name} rejected: cost name not found in catalog`);
+      res.status(404).json({
+        error: `Unknown cost name '${name}'. Cost must already exist in the catalog. Check GET /v1/providers-costs for available names.`,
+      });
+      return;
+    }
+
     const { costPerUnitInUsdCents, provider, planTier, billingCycle, effectiveFrom } = parsed.data;
 
     const [inserted] = await db
