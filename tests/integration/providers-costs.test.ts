@@ -18,7 +18,17 @@ describe("Providers Costs CRUD", () => {
   });
 
   describe("PUT /v1/providers-costs/:name", () => {
-    it("creates a new provider cost with plan info", async () => {
+    it("inserts a new price point for an existing cost", async () => {
+      // Pre-seed the cost in the catalog
+      await insertTestProviderCost({
+        name: "test_cost",
+        provider: "test-provider",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.0001000000",
+        effectiveFrom: new Date("2024-01-01"),
+      });
+
       const res = await request(app)
         .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
@@ -37,6 +47,22 @@ describe("Providers Costs CRUD", () => {
       expect(res.body.costPerUnitInUsdCents).toBe("0.0003000000");
     });
 
+    it("returns 404 for unknown cost name not in catalog", async () => {
+      const res = await request(app)
+        .put("/v1/providers-costs/nonexistent-cost-xyz")
+        .set(authHeaders)
+        .send({
+          costPerUnitInUsdCents: "0.01",
+          provider: "fake-provider",
+          planTier: "basic",
+          billingCycle: "monthly",
+        });
+
+      expect(res.status).toBe(404);
+      expect(res.body.error).toContain("Unknown cost name");
+      expect(res.body.error).toContain("nonexistent-cost-xyz");
+    });
+
     it("rejects without API key", async () => {
       const res = await request(app)
         .put("/v1/providers-costs/test_cost")
@@ -52,6 +78,14 @@ describe("Providers Costs CRUD", () => {
     });
 
     it("rejects without costPerUnitInUsdCents", async () => {
+      await insertTestProviderCost({
+        name: "test_cost",
+        provider: "test-provider",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.01",
+      });
+
       const res = await request(app)
         .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
@@ -61,6 +95,14 @@ describe("Providers Costs CRUD", () => {
     });
 
     it("rejects without provider", async () => {
+      await insertTestProviderCost({
+        name: "test_cost",
+        provider: "test-provider",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.01",
+      });
+
       const res = await request(app)
         .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
@@ -70,6 +112,14 @@ describe("Providers Costs CRUD", () => {
     });
 
     it("rejects without planTier", async () => {
+      await insertTestProviderCost({
+        name: "test_cost",
+        provider: "test-provider",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.01",
+      });
+
       const res = await request(app)
         .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
@@ -79,6 +129,14 @@ describe("Providers Costs CRUD", () => {
     });
 
     it("rejects without billingCycle", async () => {
+      await insertTestProviderCost({
+        name: "test_cost",
+        provider: "test-provider",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.01",
+      });
+
       const res = await request(app)
         .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
@@ -88,6 +146,16 @@ describe("Providers Costs CRUD", () => {
     });
 
     it("allows multiple price points for the same name and plan", async () => {
+      // Pre-seed the cost
+      await insertTestProviderCost({
+        name: "test_cost",
+        provider: "test-provider",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.001",
+        effectiveFrom: new Date("2023-01-01"),
+      });
+
       const res1 = await request(app)
         .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
@@ -112,12 +180,22 @@ describe("Providers Costs CRUD", () => {
         });
       expect(res2.status).toBe(200);
 
-      // History should have 2 entries
+      // History should have 3 entries (1 seed + 2 via PUT)
       const history = await request(app).get("/v1/providers-costs/test_cost/history").set(identityHeaders);
-      expect(history.body).toHaveLength(2);
+      expect(history.body).toHaveLength(3);
     });
 
     it("allows same name with different plans", async () => {
+      // Pre-seed the cost
+      await insertTestProviderCost({
+        name: "test_cost",
+        provider: "test-provider",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.001",
+        effectiveFrom: new Date("2023-01-01"),
+      });
+
       const res1 = await request(app)
         .put("/v1/providers-costs/test_cost")
         .set(authHeaders)
@@ -143,7 +221,7 @@ describe("Providers Costs CRUD", () => {
       expect(res2.status).toBe(200);
 
       const history = await request(app).get("/v1/providers-costs/test_cost/history").set(identityHeaders);
-      expect(history.body).toHaveLength(2);
+      expect(history.body).toHaveLength(3);
     });
   });
 
