@@ -325,6 +325,10 @@ registry.registerPath({
       description: "Unauthorized",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    404: {
+      description: "Unknown cost name — cost must already exist in the catalog",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
     409: {
       description: "Duplicate provider cost (name + plan_tier + billing_cycle + effective_from already exists)",
       content: { "application/json": { schema: ErrorResponseSchema } },
