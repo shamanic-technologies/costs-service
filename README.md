@@ -40,7 +40,12 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `google-pro-3.1-tokens-input` | 0.0002 | 1 token | Google | pay-as-you-go | monthly |
 | `google-pro-3.1-tokens-output` | 0.0012 | 1 token | Google | pay-as-you-go | monthly |
 | `google-search-query` | 1.4 | 1 search query | Google | pay-as-you-go | monthly |
-| `instantly-email-send` | 0.94 | 1 email | Instantly | growth | monthly |
+| `instantly-contact-uploaded` | 4.7 | 1 contact | Instantly | growth | monthly |
+| `instantly-account-email-sent` | 1.6667 | 1 email | Instantly | growth | monthly |
+| `instantly-domain-email-sent` | 0.1984 | 1 email | Instantly | growth | yearly |
+| `instantly-contact-uploaded` | 0.388 | 1 contact | Instantly | hypergrowth | monthly |
+| `instantly-account-email-sent` | 1.6667 | 1 email | Instantly | hypergrowth | monthly |
+| `instantly-domain-email-sent` | 0.1984 | 1 email | Instantly | hypergrowth | monthly |
 | `scrape-do-scrape-credit` | 0.0116 | 1 scrape credit | Scrape.do | hobby | monthly |
 | `serper-dev-query` | 0.1 | 1 query | Serper.dev | pay-as-you-go | monthly |
 | `twilio-sms-segment` | 1.33 | 1 SMS segment | Twilio | pay-as-you-go | monthly |
@@ -63,7 +68,7 @@ Each provider has an active platform cost config that determines which cost tier
 | anthropic | pay-as-you-go | monthly |
 | firecrawl | hobby | monthly |
 | google | pay-as-you-go | monthly |
-| instantly | growth | monthly |
+| instantly | hypergrowth | monthly |
 | postmark | pro-10k | monthly |
 | scrape-do | hobby | monthly |
 | serper-dev | pay-as-you-go | monthly |
