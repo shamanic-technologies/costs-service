@@ -303,14 +303,64 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: "1.4000000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly — email send: Growth plan $37/mo ÷ 5,000 emails = 0.74¢/email
+  // Instantly — contact uploaded: Growth plan $47/mo ÷ 1,000 contacts = 4.70¢/contact
   // https://instantly.ai/pricing
   {
-    name: "instantly-email-send",
+    name: "instantly-contact-uploaded",
     provider: "instantly",
     planTier: "growth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.9400000000",
+    costPerUnitInUsdCents: "4.7000000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Instantly — email sent per account: $10/mo ÷ 600 emails = 1.6667¢/email
+  // https://instantly.ai/pricing
+  {
+    name: "instantly-account-email-sent",
+    provider: "instantly",
+    planTier: "growth",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "1.6667000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Instantly — email sent per domain: $15/year ÷ (30 × 252) emails = 0.1984¢/email
+  // https://instantly.ai/pricing
+  {
+    name: "instantly-domain-email-sent",
+    provider: "instantly",
+    planTier: "growth",
+    billingCycle: "yearly",
+    costPerUnitInUsdCents: "0.1984000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Instantly Hypergrowth — contact uploaded: $97/mo ÷ 25,000 contacts = 0.388¢/contact
+  // https://instantly.ai/pricing
+  {
+    name: "instantly-contact-uploaded",
+    provider: "instantly",
+    planTier: "hypergrowth",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.3880000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Instantly Hypergrowth — email sent per account: $10/mo ÷ 600 emails = 1.6667¢/email (same as Growth)
+  // https://instantly.ai/pricing
+  {
+    name: "instantly-account-email-sent",
+    provider: "instantly",
+    planTier: "hypergrowth",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "1.6667000000",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Instantly Hypergrowth — email sent per domain: $15/year ÷ (30 × 252) emails = 0.1984¢/email (same as Growth)
+  // https://instantly.ai/pricing
+  {
+    name: "instantly-domain-email-sent",
+    provider: "instantly",
+    planTier: "hypergrowth",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: "0.1984000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Serper.dev — search query (web, news, batch): $0.001/query = 0.1¢/query
@@ -376,7 +426,7 @@ export const SEED_PLATFORM_COSTS = [
   },
   {
     provider: "instantly",
-    planTier: "growth",
+    planTier: "hypergrowth",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },

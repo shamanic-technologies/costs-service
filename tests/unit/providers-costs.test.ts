@@ -2,13 +2,47 @@ import { describe, it, expect } from "vitest";
 import { SEED_PROVIDERS_COSTS, SEED_PLATFORM_COSTS } from "../../src/db/seed.js";
 
 describe("Instantly seed costs", () => {
-  it("should include instantly-email-send at 0.94 cents on growth/monthly", () => {
-    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "instantly-email-send");
+  it("should include instantly-contact-uploaded at 4.70 cents on growth/monthly", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "instantly-contact-uploaded" && c.planTier === "growth");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.9400000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("4.7000000000");
     expect(cost!.provider).toBe("instantly");
-    expect(cost!.planTier).toBe("growth");
     expect(cost!.billingCycle).toBe("monthly");
+  });
+
+  it("should include instantly-account-email-sent at 1.6667 cents on growth/monthly", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "instantly-account-email-sent" && c.planTier === "growth");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("1.6667000000");
+    expect(cost!.provider).toBe("instantly");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+
+  it("should include instantly-domain-email-sent at 0.1984 cents on growth/yearly", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "instantly-domain-email-sent" && c.planTier === "growth");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.1984000000");
+    expect(cost!.provider).toBe("instantly");
+    expect(cost!.billingCycle).toBe("yearly");
+  });
+
+  it("should include hypergrowth tier for instantly-contact-uploaded at 0.388 cents", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "instantly-contact-uploaded" && c.planTier === "hypergrowth");
+    expect(cost).toBeDefined();
+    expect(cost!.costPerUnitInUsdCents).toBe("0.3880000000");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+
+  it("should not contain legacy instantly-email-send", () => {
+    const legacy = SEED_PROVIDERS_COSTS.find((c) => c.name === "instantly-email-send");
+    expect(legacy, "legacy instantly-email-send should not exist in seed").toBeUndefined();
+  });
+
+  it("platform cost for instantly should be hypergrowth/monthly", () => {
+    const pc = SEED_PLATFORM_COSTS.find((p) => p.provider === "instantly");
+    expect(pc).toBeDefined();
+    expect(pc!.planTier).toBe("hypergrowth");
+    expect(pc!.billingCycle).toBe("monthly");
   });
 });
 
