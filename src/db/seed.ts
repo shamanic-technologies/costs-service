@@ -375,38 +375,16 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: "0.1000000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Scrape.do — scrape: 1 credit per successful API call
+  // Scrape.do — 1 API credit (quantity varies by request type via scrape.do-request-cost header)
   // Hobby plan $29/mo ÷ 250,000 credits = 0.0116¢/credit
   // Only charged on successful responses (errors/timeouts are free)
   // https://scrape.do/pricing/
   {
-    name: "scrape-do-scrape-credit",
+    name: "scrape-do-credit",
     provider: "scrape-do",
     planTier: "hobby",
     billingCycle: "monthly",
     costPerUnitInUsdCents: "0.0116000000",
-    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
-  },
-  // Scrape.do — render: 3 credits per request (render=true, headless Chromium)
-  // 3 × 0.0116¢ = 0.0348¢/request
-  // https://scrape.do/pricing/
-  {
-    name: "scrape-do-render-credit",
-    provider: "scrape-do",
-    planTier: "hobby",
-    billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0348000000",
-    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
-  },
-  // Scrape.do — render + super proxy: 8 credits per request (render=true, super=true)
-  // 8 × 0.0116¢ = 0.0928¢/request
-  // https://scrape.do/pricing/
-  {
-    name: "scrape-do-render-super-credit",
-    provider: "scrape-do",
-    planTier: "hobby",
-    billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0928000000",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Twilio — SMS: 1.33¢ per message segment (pay-as-you-go)

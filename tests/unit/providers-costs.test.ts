@@ -238,13 +238,31 @@ describe("Firecrawl extract seed costs", () => {
 });
 
 describe("Scrape.do seed costs", () => {
-  it("should include scrape-do-scrape-credit at 0.0116 cents on hobby/monthly", () => {
-    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "scrape-do-scrape-credit");
+  it("should include scrape-do-credit at 0.0116 cents on hobby/monthly", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "scrape-do-credit");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("0.0116000000");
     expect(cost!.provider).toBe("scrape-do");
     expect(cost!.planTier).toBe("hobby");
     expect(cost!.billingCycle).toBe("monthly");
+  });
+
+  it("should have exactly one scrape-do cost (unified as scrape-do-credit)", () => {
+    const scrapeDoCosts = SEED_PROVIDERS_COSTS.filter((c) => c.provider === "scrape-do");
+    expect(scrapeDoCosts).toHaveLength(1);
+    expect(scrapeDoCosts[0].name).toBe("scrape-do-credit");
+  });
+
+  it("should not contain legacy scrape-do cost names", () => {
+    const legacyNames = [
+      "scrape-do-scrape-credit",
+      "scrape-do-render-credit",
+      "scrape-do-render-super-credit",
+    ];
+    for (const name of legacyNames) {
+      const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === name);
+      expect(cost, `legacy cost '${name}' should not exist in seed`).toBeUndefined();
+    }
   });
 });
 

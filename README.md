@@ -46,9 +46,7 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 | `instantly-contact-uploaded` | 0.388 | 1 contact | Instantly | hypergrowth | monthly |
 | `instantly-account-email-sent` | 1.6667 | 1 email | Instantly | hypergrowth | monthly |
 | `instantly-domain-email-sent` | 0.1984 | 1 email | Instantly | hypergrowth | monthly |
-| `scrape-do-scrape-credit` | 0.0116 | 1 scrape credit | Scrape.do | hobby | monthly |
-| `scrape-do-render-credit` | 0.0348 | 1 render request (3 credits) | Scrape.do | hobby | monthly |
-| `scrape-do-render-super-credit` | 0.0928 | 1 render+super request (8 credits) | Scrape.do | hobby | monthly |
+| `scrape-do-credit` | 0.0116 | 1 API credit (quantity from `scrape.do-request-cost` header) | Scrape.do | hobby | monthly |
 | `serper-dev-query` | 0.1 | 1 query | Serper.dev | pay-as-you-go | monthly |
 | `twilio-sms-segment` | 1.33 | 1 SMS segment | Twilio | pay-as-you-go | monthly |
 
