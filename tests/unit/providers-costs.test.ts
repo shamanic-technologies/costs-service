@@ -93,8 +93,8 @@ describe("Anthropic Opus 4.6 seed costs", () => {
 });
 
 describe("Apollo seed costs", () => {
-  it("should include apollo-enrichment-credit at 2.36 cents (Basic $59/mo ÷ 2,500 credits)", () => {
-    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "apollo-enrichment-credit");
+  it("should include unified apollo-credit at 2.36 cents (Basic $59/mo ÷ 2,500 credits)", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "apollo-credit");
     expect(cost).toBeDefined();
     expect(cost!.costPerUnitInUsdCents).toBe("2.3600000000");
     expect(cost!.provider).toBe("apollo");
@@ -102,16 +102,11 @@ describe("Apollo seed costs", () => {
     expect(cost!.billingCycle).toBe("monthly");
   });
 
-  it("should include apollo-person-match-credit at 2.36 cents (same credit type as enrichment)", () => {
-    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "apollo-person-match-credit");
-    expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("2.3600000000");
-  });
-
-  it("should include apollo-search-credit at 0.00 cents (free)", () => {
-    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "apollo-search-credit");
-    expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0000000000");
+  it("should not have legacy apollo-enrichment-credit or apollo-person-match-credit entries", () => {
+    const legacy = SEED_PROVIDERS_COSTS.filter(
+      (c) => c.name === "apollo-enrichment-credit" || c.name === "apollo-person-match-credit" || c.name === "apollo-search-credit"
+    );
+    expect(legacy).toHaveLength(0);
   });
 });
 
