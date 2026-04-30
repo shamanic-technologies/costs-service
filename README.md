@@ -8,9 +8,7 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 
 | Name | Cost (USD cents/unit) | Unit | Provider | Plan | Billing |
 |---|---|---|---|---|---|
-| `apollo-search-credit` | 0.00 | 1 search credit | Apollo | basic | monthly |
-| `apollo-enrichment-credit` | 2.36 | 1 enrichment credit | Apollo | basic | monthly |
-| `apollo-person-match-credit` | 2.36 | 1 person match credit | Apollo | basic | monthly |
+| `apollo-credit` | 2.36 | 1 Apollo credit | Apollo | basic | monthly |
 | `anthropic-opus-4.5-tokens-input` | 0.0005 | 1 token | Anthropic | pay-as-you-go | monthly |
 | `anthropic-opus-4.5-tokens-output` | 0.0025 | 1 token | Anthropic | pay-as-you-go | monthly |
 | `anthropic-sonnet-4.5-tokens-input` | 0.0003 | 1 token | Anthropic | pay-as-you-go | monthly |
@@ -56,7 +54,7 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 {provider}-{service-or-model}-{unit-type}
 ```
 
-Examples: `apollo-enrichment-credit`, `anthropic-opus-4.5-tokens-input`, `postmark-email-send`
+Examples: `apollo-credit`, `anthropic-opus-4.5-tokens-input`, `postmark-email-send`
 
 ## Platform costs
 
