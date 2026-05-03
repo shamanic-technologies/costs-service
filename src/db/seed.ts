@@ -1,6 +1,25 @@
 // Note: db/drizzle imports kept for test compatibility; seed functions
 // use raw postgres.js (sql.begin) to bypass drizzle-orm/pgbouncer issues.
 
+const USD_CENTS_DECIMAL_SCALE = 10;
+
+export const COST_RISK_MULTIPLIER = 2;
+
+export function applyCostRiskMultiplier(costPerUnitInUsdCents: string): string {
+  if (!/^\d+\.\d{10}$/.test(costPerUnitInUsdCents)) {
+    throw new Error(`Invalid seed cost format: ${costPerUnitInUsdCents}`);
+  }
+
+  const [wholePart, fractionalPart] = costPerUnitInUsdCents.split(".");
+  const scaledCost = BigInt(`${wholePart}${fractionalPart}`);
+  const scaledMultiplier = scaledCost * BigInt(COST_RISK_MULTIPLIER);
+  const divisor = 10n ** BigInt(USD_CENTS_DECIMAL_SCALE);
+  const whole = scaledMultiplier / divisor;
+  const fractional = (scaledMultiplier % divisor).toString().padStart(USD_CENTS_DECIMAL_SCALE, "0");
+
+  return `${whole}.${fractional}`;
+}
+
 export const SEED_PROVIDERS_COSTS = [
   // Apollo — unified credit: Basic plan $59/mo ÷ 2,500 credits = 2.36¢/credit
   // Covers enrichment + person match. Quantity comes from Apollo webhook (credits_consumed).
@@ -10,7 +29,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "apollo",
     planTier: "basic",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "2.3600000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("2.3600000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Anthropic Opus 4.5: $5/MTok input, $25/MTok output
@@ -20,7 +39,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "anthropic",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0005000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -28,7 +47,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "anthropic",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0025000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0025000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Anthropic Sonnet 4.5: $3/MTok input, $15/MTok output
@@ -37,7 +56,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "anthropic",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0003000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0003000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -45,7 +64,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "anthropic",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0015000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0015000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Anthropic Sonnet 4.6: $3/MTok input, $15/MTok output (same as 4.5)
@@ -55,7 +74,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "anthropic",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0003000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0003000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -63,7 +82,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "anthropic",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0015000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0015000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Anthropic Opus 4.6: $5/MTok input, $25/MTok output (same as 4.5)
@@ -73,7 +92,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "anthropic",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0005000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -81,7 +100,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "anthropic",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0025000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0025000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Anthropic Haiku 4.5: $1/MTok input, $5/MTok output
@@ -90,7 +109,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "anthropic",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0001000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -98,7 +117,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "anthropic",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0005000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Postmark — unit cost = plan price ÷ 10,000 emails (10k volume tier)
@@ -109,7 +128,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "postmark",
     planTier: "basic-10k",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.1500000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.1500000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Pro 10k tier: $16.50/mo ÷ 10k = 0.165¢/email
@@ -118,7 +137,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "postmark",
     planTier: "pro-10k",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.1650000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.1650000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Platform 10k tier: $18/mo ÷ 10k = 0.18¢/email
@@ -127,7 +146,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "postmark",
     planTier: "platform-10k",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.1800000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.1800000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Firecrawl — scrape: 1 credit per page
@@ -138,7 +157,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "firecrawl",
     planTier: "hobby",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.6333333333",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.6333333333"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Firecrawl — map: 1 credit per page
@@ -147,7 +166,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "firecrawl",
     planTier: "hobby",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.6333333333",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.6333333333"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Firecrawl — extract: token-based billing (1 credit = 15 tokens)
@@ -158,7 +177,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "firecrawl",
     planTier: "hobby",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0422222222",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0422222222"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 3 Flash (Preview): $0.50/MTok input, $3.00/MTok output
@@ -168,7 +187,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0000500000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000500000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -176,7 +195,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0003000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0003000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 3.1 Flash Lite (Preview): $0.25/MTok input, $1.50/MTok output
@@ -186,7 +205,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0000250000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000250000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -194,7 +213,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0001500000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001500000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 3.1 Pro (Preview): $2.00/MTok input, $12.00/MTok output (≤200k context)
@@ -205,7 +224,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0002000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0002000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -213,7 +232,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0012000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0012000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 2.5 Pro: $1.25/MTok input, $10.00/MTok output (≤200k context)
@@ -223,7 +242,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0001250000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001250000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -231,7 +250,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0010000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0010000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 2.5 Flash: $0.30/MTok input, $2.50/MTok output
@@ -241,7 +260,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0000300000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000300000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -249,7 +268,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0002500000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0002500000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 2.5 Flash-Lite: $0.10/MTok input, $0.40/MTok output
@@ -259,7 +278,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0000100000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000100000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -267,7 +286,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0000400000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000400000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google — Google Search grounding: $14/1,000 queries = 1.4¢/query
@@ -278,7 +297,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "google",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "1.4000000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.4000000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly — contact uploaded: Growth plan $47/mo ÷ 1,000 contacts = 4.70¢/contact
@@ -288,7 +307,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "instantly",
     planTier: "growth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "4.7000000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("4.7000000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly — email sent per account: $10/mo ÷ 600 emails = 1.6667¢/email
@@ -298,7 +317,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "instantly",
     planTier: "growth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "1.6667000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.6667000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly — email sent per domain: $15/year ÷ (30 × 252) emails = 0.1984¢/email
@@ -308,7 +327,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "instantly",
     planTier: "growth",
     billingCycle: "yearly",
-    costPerUnitInUsdCents: "0.1984000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.1984000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly Hypergrowth — contact uploaded: $97/mo ÷ 25,000 contacts = 0.388¢/contact
@@ -318,7 +337,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "instantly",
     planTier: "hypergrowth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.3880000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.3880000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly Hypergrowth — email sent per account: $10/mo ÷ 600 emails = 1.6667¢/email (same as Growth)
@@ -328,7 +347,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "instantly",
     planTier: "hypergrowth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "1.6667000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.6667000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly Hypergrowth — email sent per domain: $15/year ÷ (30 × 252) emails = 0.1984¢/email (same as Growth)
@@ -338,7 +357,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "instantly",
     planTier: "hypergrowth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.1984000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.1984000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Serper.dev — search query (web, news, batch): $0.001/query = 0.1¢/query
@@ -350,7 +369,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "serper-dev",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.1000000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.1000000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Scrape.do — 1 API credit (quantity varies by request type via scrape.do-request-cost header)
@@ -362,7 +381,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "scrape-do",
     planTier: "hobby",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "0.0116000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0116000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Twilio — SMS: 1.33¢ per message segment (pay-as-you-go)
@@ -372,7 +391,7 @@ export const SEED_PROVIDERS_COSTS = [
     provider: "twilio",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: "1.3300000000",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.3300000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
 ];
