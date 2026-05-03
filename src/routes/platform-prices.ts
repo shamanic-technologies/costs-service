@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, lte, desc, and } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { providersCosts, platformCosts } from "../db/schema.js";
+import { getTraceIdentityHeaders, traceEvent } from "../lib/trace-event.js";
 
 const router = Router();
 
@@ -18,7 +19,7 @@ async function getCurrentPlatformCost(provider: string) {
 }
 
 // GET /v1/platform-prices — list current platform prices for all cost names
-router.get("/v1/platform-prices", async (_req, res) => {
+router.get("/v1/platform-prices", async (req, res) => {
   try {
     const now = new Date();
 
@@ -60,6 +61,13 @@ router.get("/v1/platform-prices", async (_req, res) => {
         provider: row.provider,
         effectiveFrom: row.effectiveFrom,
       }));
+
+    traceEvent({
+      runId: req.headers["x-run-id"] as string | undefined,
+      event: "platform_prices.listed",
+      detail: `Listed ${prices.length} platform prices resolved from ${allCosts.length} candidate provider costs and ${planMap.size} active platform provider configs.`,
+      identityHeaders: getTraceIdentityHeaders(req),
+    });
 
     res.json(prices);
   } catch (err) {

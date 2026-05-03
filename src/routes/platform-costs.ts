@@ -4,6 +4,7 @@ import { db } from "../db/index.js";
 import { platformCosts } from "../db/schema.js";
 import { requireApiKey } from "../middleware/auth.js";
 import { PutPlatformCostBodySchema } from "../schemas.js";
+import { getTraceIdentityHeaders, traceEvent } from "../lib/trace-event.js";
 
 const router = Router();
 
@@ -103,6 +104,13 @@ router.put("/v1/platform-costs/:provider", requireApiKey, async (req, res) => {
         effectiveFrom: effectiveFrom ? new Date(effectiveFrom) : new Date(),
       })
       .returning();
+
+    traceEvent({
+      runId: req.headers["x-run-id"] as string | undefined,
+      event: "platform_cost.updated",
+      detail: `Inserted platform cost config for provider '${provider}' using plan '${planTier}/${billingCycle}' effective ${inserted.effectiveFrom.toISOString()}.`,
+      identityHeaders: getTraceIdentityHeaders(req),
+    });
 
     res.json(inserted);
   } catch (err: any) {
