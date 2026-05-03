@@ -4,6 +4,7 @@ import { db } from "../db/index.js";
 import { providersCosts, platformCosts } from "../db/schema.js";
 import { requireApiKey } from "../middleware/auth.js";
 import { PutProviderCostBodySchema } from "../schemas.js";
+import { getTraceIdentityHeaders, traceEvent } from "../lib/trace-event.js";
 
 const router = Router();
 
@@ -20,7 +21,7 @@ async function getCurrentPlatformCost(provider: string) {
 }
 
 // GET /v1/providers-costs — list all current provider costs (resolved via platform plan)
-router.get("/v1/providers-costs", async (_req, res) => {
+router.get("/v1/providers-costs", async (req, res) => {
   try {
     const now = new Date();
 
@@ -54,6 +55,13 @@ router.get("/v1/providers-costs", async (_req, res) => {
       if (row.planTier !== plan.planTier || row.billingCycle !== plan.billingCycle) return false;
       seen.add(row.name);
       return true;
+    });
+
+    traceEvent({
+      runId: req.headers["x-run-id"] as string | undefined,
+      event: "providers_costs.listed",
+      detail: `Listed ${current.length} current provider costs resolved against ${planMap.size} active platform provider configs.`,
+      identityHeaders: getTraceIdentityHeaders(req),
     });
 
     res.json(current);
@@ -109,6 +117,13 @@ router.get("/v1/providers-costs/:name", async (req, res) => {
       });
       return;
     }
+
+    traceEvent({
+      runId: req.headers["x-run-id"] as string | undefined,
+      event: "provider_cost.resolved",
+      detail: `Resolved provider cost '${name}' for provider '${result.provider}' using active plan '${platformCost.planTier}/${platformCost.billingCycle}' effective ${result.effectiveFrom.toISOString()}.`,
+      identityHeaders: getTraceIdentityHeaders(req),
+    });
 
     res.json(result);
   } catch (err) {
@@ -213,6 +228,13 @@ router.put("/v1/providers-costs/:name", requireApiKey, async (req, res) => {
         effectiveFrom: effectiveFrom ? new Date(effectiveFrom) : new Date(),
       })
       .returning();
+
+    traceEvent({
+      runId: req.headers["x-run-id"] as string | undefined,
+      event: "provider_cost.updated",
+      detail: `Inserted provider cost '${name}' for provider '${provider}' plan '${planTier}/${billingCycle}' effective ${inserted.effectiveFrom.toISOString()}.`,
+      identityHeaders: getTraceIdentityHeaders(req),
+    });
 
     res.json(inserted);
   } catch (err: any) {
