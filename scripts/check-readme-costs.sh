@@ -12,10 +12,13 @@ errors=0
 
 # --- Extract costs from seed.ts ---
 # Produces lines like: apollo-search-credit 0.0000000000
-# Extract name lines and cost lines separately, then pair them
-seed_names_arr=$(grep 'name:' "$SEED" | sed -n 's/.*name: "\([^"]*\)".*/\1/p')
-seed_vals_arr=$(grep 'costPerUnitInUsdCents:' "$SEED" | sed -n 's/.*costPerUnitInUsdCents: "\([^"]*\)".*/\1/p')
-seed_costs=$(paste <(echo "$seed_names_arr") <(echo "$seed_vals_arr") | awk '{print $1, $2}' | sort)
+seed_costs=$(cd "$ROOT" && npm exec -- tsx -e '
+import { SEED_PROVIDERS_COSTS } from "./src/db/seed.ts";
+
+for (const cost of SEED_PROVIDERS_COSTS) {
+  console.log(`${cost.name} ${cost.costPerUnitInUsdCents}`);
+}
+' | sort)
 
 if [ -z "$seed_costs" ]; then
   echo "ERROR: Could not extract any costs from $SEED"
