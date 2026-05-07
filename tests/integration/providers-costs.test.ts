@@ -37,6 +37,8 @@ describe("Providers Costs CRUD", () => {
           provider: "test-provider",
           planTier: "basic",
           billingCycle: "monthly",
+          type: "Input tokens",
+          unit: "1M tokens",
         });
 
       expect(res.status).toBe(200);
@@ -45,6 +47,84 @@ describe("Providers Costs CRUD", () => {
       expect(res.body.planTier).toBe("basic");
       expect(res.body.billingCycle).toBe("monthly");
       expect(res.body.costPerUnitInUsdCents).toBe("0.0003000000");
+      expect(res.body.type).toBe("Input tokens");
+      expect(res.body.unit).toBe("1M tokens");
+      expect(res.body.providerDomain).toBeNull();
+    });
+
+    it("persists providerDomain when provided", async () => {
+      await insertTestProviderCost({
+        name: "test_cost_domain",
+        provider: "test-provider",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.0001000000",
+        effectiveFrom: new Date("2024-01-01"),
+      });
+
+      const res = await request(app)
+        .put("/v1/providers-costs/test_cost_domain")
+        .set(authHeaders)
+        .send({
+          costPerUnitInUsdCents: "0.0003000000",
+          provider: "test-provider",
+          planTier: "basic",
+          billingCycle: "monthly",
+          type: "Email send",
+          unit: "email",
+          providerDomain: "example.com",
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.providerDomain).toBe("example.com");
+      expect(res.body.type).toBe("Email send");
+      expect(res.body.unit).toBe("email");
+    });
+
+    it("rejects without type", async () => {
+      await insertTestProviderCost({
+        name: "test_cost",
+        provider: "test-provider",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.01",
+      });
+
+      const res = await request(app)
+        .put("/v1/providers-costs/test_cost")
+        .set(authHeaders)
+        .send({
+          costPerUnitInUsdCents: "0.01",
+          provider: "test",
+          planTier: "basic",
+          billingCycle: "monthly",
+          unit: "email",
+        });
+
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects without unit", async () => {
+      await insertTestProviderCost({
+        name: "test_cost",
+        provider: "test-provider",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.01",
+      });
+
+      const res = await request(app)
+        .put("/v1/providers-costs/test_cost")
+        .set(authHeaders)
+        .send({
+          costPerUnitInUsdCents: "0.01",
+          provider: "test",
+          planTier: "basic",
+          billingCycle: "monthly",
+          type: "Email send",
+        });
+
+      expect(res.status).toBe(400);
     });
 
     it("returns 404 for unknown cost name not in catalog", async () => {
@@ -56,6 +136,8 @@ describe("Providers Costs CRUD", () => {
           provider: "fake-provider",
           planTier: "basic",
           billingCycle: "monthly",
+          type: "Test type",
+          unit: "test-unit",
         });
 
       expect(res.status).toBe(404);
@@ -164,6 +246,8 @@ describe("Providers Costs CRUD", () => {
           provider: "test-provider",
           planTier: "basic",
           billingCycle: "monthly",
+          type: "Test type",
+          unit: "test-unit",
           effectiveFrom: "2025-01-01T00:00:00Z",
         });
       expect(res1.status).toBe(200);
@@ -176,6 +260,8 @@ describe("Providers Costs CRUD", () => {
           provider: "test-provider",
           planTier: "basic",
           billingCycle: "monthly",
+          type: "Test type",
+          unit: "test-unit",
           effectiveFrom: "2025-06-01T00:00:00Z",
         });
       expect(res2.status).toBe(200);
@@ -204,6 +290,8 @@ describe("Providers Costs CRUD", () => {
           provider: "test-provider",
           planTier: "basic",
           billingCycle: "monthly",
+          type: "Test type",
+          unit: "test-unit",
           effectiveFrom: "2025-01-01T00:00:00Z",
         });
       expect(res1.status).toBe(200);
@@ -216,12 +304,111 @@ describe("Providers Costs CRUD", () => {
           provider: "test-provider",
           planTier: "business",
           billingCycle: "monthly",
+          type: "Test type",
+          unit: "test-unit",
           effectiveFrom: "2025-01-01T00:00:00Z",
         });
       expect(res2.status).toBe(200);
 
       const history = await request(app).get("/v1/providers-costs/test_cost/history").set(identityHeaders);
       expect(history.body).toHaveLength(3);
+    });
+  });
+
+  describe("New metadata fields exposed by GET endpoints", () => {
+    it("GET /v1/providers-costs/:name returns provider, providerDomain, type, unit", async () => {
+      await insertTestProviderCost({
+        name: "meta_cost",
+        provider: "meta-provider",
+        providerDomain: "meta.example",
+        type: "Search query",
+        unit: "query",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.10",
+        effectiveFrom: new Date("2025-01-01"),
+      });
+      await insertPlatformCost({
+        provider: "meta-provider",
+        planTier: "basic",
+        billingCycle: "monthly",
+        effectiveFrom: new Date("2025-01-01"),
+      });
+
+      const res = await request(app).get("/v1/providers-costs/meta_cost").set(identityHeaders);
+      expect(res.status).toBe(200);
+      expect(res.body.provider).toBe("meta-provider");
+      expect(res.body.providerDomain).toBe("meta.example");
+      expect(res.body.type).toBe("Search query");
+      expect(res.body.unit).toBe("query");
+    });
+
+    it("GET /v1/providers-costs (list) returns new fields per row", async () => {
+      await insertPlatformCost({
+        provider: "p1",
+        planTier: "basic",
+        billingCycle: "monthly",
+        effectiveFrom: new Date("2025-01-01"),
+      });
+      await insertTestProviderCost({
+        name: "list_cost",
+        provider: "p1",
+        providerDomain: "p1.example",
+        type: "Output tokens",
+        unit: "1M tokens",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.01",
+        effectiveFrom: new Date("2025-01-01"),
+      });
+
+      const res = await request(app).get("/v1/providers-costs").set(identityHeaders);
+      expect(res.status).toBe(200);
+      const row = res.body.find((c: any) => c.name === "list_cost");
+      expect(row.provider).toBe("p1");
+      expect(row.providerDomain).toBe("p1.example");
+      expect(row.type).toBe("Output tokens");
+      expect(row.unit).toBe("1M tokens");
+    });
+
+    it("GET /v1/providers-costs/:name/history returns new fields per row", async () => {
+      await insertTestProviderCost({
+        name: "hist_meta",
+        provider: "p2",
+        providerDomain: "p2.example",
+        type: "Credit",
+        unit: "credit",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.01",
+        effectiveFrom: new Date("2025-01-01"),
+      });
+
+      const res = await request(app).get("/v1/providers-costs/hist_meta/history").set(identityHeaders);
+      expect(res.status).toBe(200);
+      expect(res.body[0].providerDomain).toBe("p2.example");
+      expect(res.body[0].type).toBe("Credit");
+      expect(res.body[0].unit).toBe("credit");
+    });
+
+    it("GET /v1/providers-costs/:name/plans returns new fields per row", async () => {
+      await insertTestProviderCost({
+        name: "plans_meta",
+        provider: "p3",
+        providerDomain: "p3.example",
+        type: "SMS message",
+        unit: "segment",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.01",
+        effectiveFrom: new Date("2025-01-01"),
+      });
+
+      const res = await request(app).get("/v1/providers-costs/plans_meta/plans").set(identityHeaders);
+      expect(res.status).toBe(200);
+      expect(res.body[0].providerDomain).toBe("p3.example");
+      expect(res.body[0].type).toBe("SMS message");
+      expect(res.body[0].unit).toBe("segment");
     });
   });
 

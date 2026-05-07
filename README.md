@@ -8,47 +8,49 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 
 All provider seed costs apply `COST_RISK_MULTIPLIER = 2` to cover cost risk.
 
-| Name | Cost (USD cents/unit) | Unit | Provider | Plan | Billing |
-|---|---|---|---|---|---|
-| `apollo-credit` | 4.72 | 1 Apollo credit | Apollo | basic | monthly |
-| `anthropic-opus-4.5-tokens-input` | 0.001 | 1 token | Anthropic | pay-as-you-go | monthly |
-| `anthropic-opus-4.5-tokens-output` | 0.005 | 1 token | Anthropic | pay-as-you-go | monthly |
-| `anthropic-sonnet-4.5-tokens-input` | 0.0006 | 1 token | Anthropic | pay-as-you-go | monthly |
-| `anthropic-sonnet-4.5-tokens-output` | 0.003 | 1 token | Anthropic | pay-as-you-go | monthly |
-| `anthropic-sonnet-4.6-tokens-input` | 0.0006 | 1 token | Anthropic | pay-as-you-go | monthly |
-| `anthropic-sonnet-4.6-tokens-output` | 0.003 | 1 token | Anthropic | pay-as-you-go | monthly |
-| `anthropic-opus-4.6-tokens-input` | 0.001 | 1 token | Anthropic | pay-as-you-go | monthly |
-| `anthropic-opus-4.6-tokens-output` | 0.005 | 1 token | Anthropic | pay-as-you-go | monthly |
-| `anthropic-haiku-4.5-tokens-input` | 0.0002 | 1 token | Anthropic | pay-as-you-go | monthly |
-| `anthropic-haiku-4.5-tokens-output` | 0.001 | 1 token | Anthropic | pay-as-you-go | monthly |
-| `postmark-email-send` | 0.3 | 1 email | Postmark | basic-10k | monthly |
-| `postmark-email-send` | 0.33 | 1 email | Postmark | pro-10k | monthly |
-| `postmark-email-send` | 0.36 | 1 email | Postmark | platform-10k | monthly |
-| `firecrawl-scrape-credit` | 1.2666666666 | 1 scrape credit | Firecrawl | hobby | monthly |
-| `firecrawl-map-credit` | 1.2666666666 | 1 map credit | Firecrawl | hobby | monthly |
-| `firecrawl-extract-token` | 0.0844444444 | 1 extract token | Firecrawl | hobby | monthly |
-| `google-flash-3-tokens-input` | 0.0001 | 1 token | Google | pay-as-you-go | monthly |
-| `google-flash-3-tokens-output` | 0.0006 | 1 token | Google | pay-as-you-go | monthly |
-| `google-flash-2.5-tokens-input` | 0.00006 | 1 token | Google | pay-as-you-go | monthly |
-| `google-flash-2.5-tokens-output` | 0.0005 | 1 token | Google | pay-as-you-go | monthly |
-| `google-flash-lite-2.5-tokens-input` | 0.00002 | 1 token | Google | pay-as-you-go | monthly |
-| `google-flash-lite-2.5-tokens-output` | 0.00008 | 1 token | Google | pay-as-you-go | monthly |
-| `google-flash-lite-3.1-tokens-input` | 0.00005 | 1 token | Google | pay-as-you-go | monthly |
-| `google-flash-lite-3.1-tokens-output` | 0.0003 | 1 token | Google | pay-as-you-go | monthly |
-| `google-pro-2.5-tokens-input` | 0.00025 | 1 token | Google | pay-as-you-go | monthly |
-| `google-pro-2.5-tokens-output` | 0.002 | 1 token | Google | pay-as-you-go | monthly |
-| `google-pro-3.1-tokens-input` | 0.0004 | 1 token | Google | pay-as-you-go | monthly |
-| `google-pro-3.1-tokens-output` | 0.0024 | 1 token | Google | pay-as-you-go | monthly |
-| `google-search-query` | 2.8 | 1 search query | Google | pay-as-you-go | monthly |
-| `instantly-contact-uploaded` | 9.4 | 1 contact | Instantly | growth | monthly |
-| `instantly-account-email-sent` | 3.3334 | 1 email | Instantly | growth | monthly |
-| `instantly-domain-email-sent` | 0.3968 | 1 email | Instantly | growth | yearly |
-| `instantly-contact-uploaded` | 0.776 | 1 contact | Instantly | hypergrowth | monthly |
-| `instantly-account-email-sent` | 3.3334 | 1 email | Instantly | hypergrowth | monthly |
-| `instantly-domain-email-sent` | 0.3968 | 1 email | Instantly | hypergrowth | monthly |
-| `scrape-do-credit` | 0.0232 | 1 API credit (quantity from `scrape.do-request-cost` header) | Scrape.do | hobby | monthly |
-| `serper-dev-query` | 0.2 | 1 query | Serper.dev | pay-as-you-go | monthly |
-| `twilio-sms-segment` | 2.66 | 1 SMS segment | Twilio | pay-as-you-go | monthly |
+| Name | Cost (USD cents/unit) | Unit | Type | Provider | Domain | Plan | Billing |
+|---|---|---|---|---|---|---|---|
+| `apollo-credit` | 4.72 | credit | Credit | apollo | apollo.io | basic | monthly |
+| `anthropic-opus-4.5-tokens-input` | 0.001 | 1M tokens | Input tokens (Opus 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
+| `anthropic-opus-4.5-tokens-output` | 0.005 | 1M tokens | Output tokens (Opus 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
+| `anthropic-sonnet-4.5-tokens-input` | 0.0006 | 1M tokens | Input tokens (Sonnet 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
+| `anthropic-sonnet-4.5-tokens-output` | 0.003 | 1M tokens | Output tokens (Sonnet 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
+| `anthropic-sonnet-4.6-tokens-input` | 0.0006 | 1M tokens | Input tokens (Sonnet 4.6) | anthropic | anthropic.com | pay-as-you-go | monthly |
+| `anthropic-sonnet-4.6-tokens-output` | 0.003 | 1M tokens | Output tokens (Sonnet 4.6) | anthropic | anthropic.com | pay-as-you-go | monthly |
+| `anthropic-opus-4.6-tokens-input` | 0.001 | 1M tokens | Input tokens (Opus 4.6) | anthropic | anthropic.com | pay-as-you-go | monthly |
+| `anthropic-opus-4.6-tokens-output` | 0.005 | 1M tokens | Output tokens (Opus 4.6) | anthropic | anthropic.com | pay-as-you-go | monthly |
+| `anthropic-haiku-4.5-tokens-input` | 0.0002 | 1M tokens | Input tokens (Haiku 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
+| `anthropic-haiku-4.5-tokens-output` | 0.001 | 1M tokens | Output tokens (Haiku 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
+| `postmark-email-send` | 0.3 | email | Email send | postmark | postmarkapp.com | basic-10k | monthly |
+| `postmark-email-send` | 0.33 | email | Email send | postmark | postmarkapp.com | pro-10k | monthly |
+| `postmark-email-send` | 0.36 | email | Email send | postmark | postmarkapp.com | platform-10k | monthly |
+| `firecrawl-scrape-credit` | 1.2666666666 | credit | Scrape credit | firecrawl | firecrawl.dev | hobby | monthly |
+| `firecrawl-map-credit` | 1.2666666666 | credit | Map credit | firecrawl | firecrawl.dev | hobby | monthly |
+| `firecrawl-extract-token` | 0.0844444444 | token | Extract token | firecrawl | firecrawl.dev | hobby | monthly |
+| `google-flash-3-tokens-input` | 0.0001 | 1M tokens | Input tokens (Gemini 3 Flash) | google | google.com | pay-as-you-go | monthly |
+| `google-flash-3-tokens-output` | 0.0006 | 1M tokens | Output tokens (Gemini 3 Flash) | google | google.com | pay-as-you-go | monthly |
+| `google-flash-2.5-tokens-input` | 0.00006 | 1M tokens | Input tokens (Gemini 2.5 Flash) | google | google.com | pay-as-you-go | monthly |
+| `google-flash-2.5-tokens-output` | 0.0005 | 1M tokens | Output tokens (Gemini 2.5 Flash) | google | google.com | pay-as-you-go | monthly |
+| `google-flash-lite-2.5-tokens-input` | 0.00002 | 1M tokens | Input tokens (Gemini 2.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly |
+| `google-flash-lite-2.5-tokens-output` | 0.00008 | 1M tokens | Output tokens (Gemini 2.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly |
+| `google-flash-lite-3.1-tokens-input` | 0.00005 | 1M tokens | Input tokens (Gemini 3.1 Flash Lite) | google | google.com | pay-as-you-go | monthly |
+| `google-flash-lite-3.1-tokens-output` | 0.0003 | 1M tokens | Output tokens (Gemini 3.1 Flash Lite) | google | google.com | pay-as-you-go | monthly |
+| `google-pro-2.5-tokens-input` | 0.00025 | 1M tokens | Input tokens (Gemini 2.5 Pro) | google | google.com | pay-as-you-go | monthly |
+| `google-pro-2.5-tokens-output` | 0.002 | 1M tokens | Output tokens (Gemini 2.5 Pro) | google | google.com | pay-as-you-go | monthly |
+| `google-pro-3.1-tokens-input` | 0.0004 | 1M tokens | Input tokens (Gemini 3.1 Pro) | google | google.com | pay-as-you-go | monthly |
+| `google-pro-3.1-tokens-output` | 0.0024 | 1M tokens | Output tokens (Gemini 3.1 Pro) | google | google.com | pay-as-you-go | monthly |
+| `google-search-query` | 2.8 | query | Search query (grounding) | google | google.com | pay-as-you-go | monthly |
+| `instantly-contact-uploaded` | 9.4 | contact | Contact upload | instantly | instantly.ai | growth | monthly |
+| `instantly-account-email-sent` | 3.3334 | email | Email send (per account) | instantly | instantly.ai | growth | monthly |
+| `instantly-domain-email-sent` | 0.3968 | email | Email send (per domain) | instantly | instantly.ai | growth | yearly |
+| `instantly-contact-uploaded` | 0.776 | contact | Contact upload | instantly | instantly.ai | hypergrowth | monthly |
+| `instantly-account-email-sent` | 3.3334 | email | Email send (per account) | instantly | instantly.ai | hypergrowth | monthly |
+| `instantly-domain-email-sent` | 0.3968 | email | Email send (per domain) | instantly | instantly.ai | hypergrowth | monthly |
+| `scrape-do-credit` | 0.0232 | credit | Scrape credit | scrape-do | scrape.do | hobby | monthly |
+| `serper-dev-query` | 0.2 | query | Search query | serper-dev | serper.dev | pay-as-you-go | monthly |
+| `twilio-sms-segment` | 2.66 | segment | SMS message | twilio | twilio.com | pay-as-you-go | monthly |
+
+`Domain` powers the public pricing page logo (logo.dev). `Type` is the human-readable cost-type label used for grouping. `Unit` is what one billed unit represents. A Twilio SMS over 160 characters splits into multiple segments — pricing is per segment.
 
 ### Naming convention
 
@@ -104,13 +106,16 @@ Admin endpoints for managing provider cost data. Write endpoints require `x-api-
 {
   "costPerUnitInUsdCents": 0.0005,
   "provider": "anthropic",
+  "providerDomain": "anthropic.com",
+  "type": "Input tokens (Sonnet 4.6)",
+  "unit": "1M tokens",
   "planTier": "pay-as-you-go",
   "billingCycle": "monthly",
   "effectiveFrom": "2025-06-01T00:00:00Z"
 }
 ```
 
-`effectiveFrom` defaults to now if omitted. All other fields are required.
+Required: `costPerUnitInUsdCents`, `provider`, `type`, `unit`, `planTier`, `billingCycle`. Optional: `providerDomain` (used for logo.dev on the public pricing page), `effectiveFrom` (defaults to now).
 
 ### Platform costs
 

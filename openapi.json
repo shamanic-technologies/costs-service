@@ -95,6 +95,16 @@
           "provider": {
             "type": "string"
           },
+          "providerDomain": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
           "planTier": {
             "type": "string"
           },
@@ -121,6 +131,9 @@
           "id",
           "name",
           "provider",
+          "providerDomain",
+          "type",
+          "unit",
           "planTier",
           "billingCycle",
           "costPerUnitInUsdCents",
@@ -191,6 +204,16 @@
           "provider": {
             "type": "string"
           },
+          "providerDomain": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
           "planTier": {
             "type": "string"
           },
@@ -205,6 +228,8 @@
         "required": [
           "costPerUnitInUsdCents",
           "provider",
+          "type",
+          "unit",
           "planTier",
           "billingCycle"
         ]
@@ -232,6 +257,16 @@
           "provider": {
             "type": "string"
           },
+          "providerDomain": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
           "effectiveFrom": {
             "type": "string",
             "format": "date-time"
@@ -241,6 +276,9 @@
           "name",
           "pricePerUnitInUsdCents",
           "provider",
+          "providerDomain",
+          "type",
+          "unit",
           "effectiveFrom"
         ]
       },

@@ -215,13 +215,16 @@ router.put("/v1/providers-costs/:name", requireApiKey, async (req, res) => {
       return;
     }
 
-    const { costPerUnitInUsdCents, provider, planTier, billingCycle, effectiveFrom } = parsed.data;
+    const { costPerUnitInUsdCents, provider, providerDomain, type, unit, planTier, billingCycle, effectiveFrom } = parsed.data;
 
     const [inserted] = await db
       .insert(providersCosts)
       .values({
         name,
         provider,
+        providerDomain: providerDomain ?? null,
+        type,
+        unit,
         planTier,
         billingCycle,
         costPerUnitInUsdCents: String(costPerUnitInUsdCents),

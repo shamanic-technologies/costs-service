@@ -59,6 +59,9 @@ router.get("/v1/platform-prices", async (req, res) => {
         name: row.name,
         pricePerUnitInUsdCents: row.costPerUnitInUsdCents,
         provider: row.provider,
+        providerDomain: row.providerDomain,
+        type: row.type,
+        unit: row.unit,
         effectiveFrom: row.effectiveFrom,
       }));
 
@@ -127,6 +130,9 @@ router.get("/v1/platform-prices/:name", async (req, res) => {
       name: result.name,
       pricePerUnitInUsdCents: result.costPerUnitInUsdCents,
       provider: result.provider,
+      providerDomain: result.providerDomain,
+      type: result.type,
+      unit: result.unit,
       effectiveFrom: result.effectiveFrom,
     });
   } catch (err) {
