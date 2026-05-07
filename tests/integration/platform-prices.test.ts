@@ -21,6 +21,9 @@ describe("Platform Prices (consumer-facing)", () => {
       await insertTestProviderCost({
         name: "test-token-input",
         provider: "test-provider",
+        providerDomain: "test.example",
+        type: "Input tokens",
+        unit: "1M tokens",
         planTier: "basic",
         billingCycle: "monthly",
         costPerUnitInUsdCents: "0.0003",
@@ -39,6 +42,9 @@ describe("Platform Prices (consumer-facing)", () => {
       expect(res.body.name).toBe("test-token-input");
       expect(res.body.pricePerUnitInUsdCents).toBe("0.0003000000");
       expect(res.body.provider).toBe("test-provider");
+      expect(res.body.providerDomain).toBe("test.example");
+      expect(res.body.type).toBe("Input tokens");
+      expect(res.body.unit).toBe("1M tokens");
       expect(res.body.effectiveFrom).toBeDefined();
       // Should NOT expose plan details
       expect(res.body.planTier).toBeUndefined();
@@ -107,6 +113,9 @@ describe("Platform Prices (consumer-facing)", () => {
       await insertTestProviderCost({
         name: "alpha",
         provider: "provider-a",
+        providerDomain: "a.example",
+        type: "Lead enrichment",
+        unit: "lead",
         planTier: "basic",
         billingCycle: "monthly",
         costPerUnitInUsdCents: "0.01",
@@ -115,6 +124,9 @@ describe("Platform Prices (consumer-facing)", () => {
       await insertTestProviderCost({
         name: "beta",
         provider: "provider-b",
+        providerDomain: "b.example",
+        type: "Email send",
+        unit: "email",
         planTier: "growth",
         billingCycle: "monthly",
         costPerUnitInUsdCents: "1.00",
@@ -128,7 +140,13 @@ describe("Platform Prices (consumer-facing)", () => {
       const alpha = res.body.find((p: any) => p.name === "alpha");
       const beta = res.body.find((p: any) => p.name === "beta");
       expect(alpha.pricePerUnitInUsdCents).toBe("0.0100000000");
+      expect(alpha.providerDomain).toBe("a.example");
+      expect(alpha.type).toBe("Lead enrichment");
+      expect(alpha.unit).toBe("lead");
       expect(beta.pricePerUnitInUsdCents).toBe("1.0000000000");
+      expect(beta.providerDomain).toBe("b.example");
+      expect(beta.type).toBe("Email send");
+      expect(beta.unit).toBe("email");
       // Should NOT expose plan details
       expect(alpha.planTier).toBeUndefined();
       expect(alpha.billingCycle).toBeUndefined();

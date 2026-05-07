@@ -20,6 +20,19 @@ export function applyCostRiskMultiplier(costPerUnitInUsdCents: string): string {
   return `${whole}.${fractional}`;
 }
 
+// Domain mapping per provider (used by logo.dev on the public pricing page).
+export const PROVIDER_DOMAINS: Record<string, string> = {
+  apollo: "apollo.io",
+  anthropic: "anthropic.com",
+  firecrawl: "firecrawl.dev",
+  google: "google.com",
+  instantly: "instantly.ai",
+  postmark: "postmarkapp.com",
+  "scrape-do": "scrape.do",
+  "serper-dev": "serper.dev",
+  twilio: "twilio.com",
+};
+
 export const SEED_PROVIDERS_COSTS = [
   // Apollo — unified credit: Basic plan $59/mo ÷ 2,500 credits = 2.36¢/credit
   // Covers enrichment + person match. Quantity comes from Apollo webhook (credits_consumed).
@@ -27,6 +40,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "apollo-credit",
     provider: "apollo",
+    providerDomain: PROVIDER_DOMAINS.apollo,
+    type: "Credit",
+    unit: "credit",
     planTier: "basic",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("2.3600000000"),
@@ -37,6 +53,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "anthropic-opus-4.5-tokens-input",
     provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Input tokens (Opus 4.5)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
@@ -45,6 +64,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "anthropic-opus-4.5-tokens-output",
     provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Output tokens (Opus 4.5)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0025000000"),
@@ -54,6 +76,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "anthropic-sonnet-4.5-tokens-input",
     provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Input tokens (Sonnet 4.5)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0003000000"),
@@ -62,6 +87,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "anthropic-sonnet-4.5-tokens-output",
     provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Output tokens (Sonnet 4.5)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0015000000"),
@@ -72,6 +100,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "anthropic-sonnet-4.6-tokens-input",
     provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Input tokens (Sonnet 4.6)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0003000000"),
@@ -80,6 +111,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "anthropic-sonnet-4.6-tokens-output",
     provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Output tokens (Sonnet 4.6)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0015000000"),
@@ -90,6 +124,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "anthropic-opus-4.6-tokens-input",
     provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Input tokens (Opus 4.6)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
@@ -98,6 +135,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "anthropic-opus-4.6-tokens-output",
     provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Output tokens (Opus 4.6)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0025000000"),
@@ -107,6 +147,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "anthropic-haiku-4.5-tokens-input",
     provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Input tokens (Haiku 4.5)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001000000"),
@@ -115,6 +158,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "anthropic-haiku-4.5-tokens-output",
     provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Output tokens (Haiku 4.5)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
@@ -126,6 +172,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "postmark-email-send",
     provider: "postmark",
+    providerDomain: PROVIDER_DOMAINS.postmark,
+    type: "Email send",
+    unit: "email",
     planTier: "basic-10k",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.1500000000"),
@@ -135,6 +184,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "postmark-email-send",
     provider: "postmark",
+    providerDomain: PROVIDER_DOMAINS.postmark,
+    type: "Email send",
+    unit: "email",
     planTier: "pro-10k",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.1650000000"),
@@ -144,6 +196,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "postmark-email-send",
     provider: "postmark",
+    providerDomain: PROVIDER_DOMAINS.postmark,
+    type: "Email send",
+    unit: "email",
     planTier: "platform-10k",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.1800000000"),
@@ -155,6 +210,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "firecrawl-scrape-credit",
     provider: "firecrawl",
+    providerDomain: PROVIDER_DOMAINS.firecrawl,
+    type: "Scrape credit",
+    unit: "credit",
     planTier: "hobby",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.6333333333"),
@@ -164,6 +222,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "firecrawl-map-credit",
     provider: "firecrawl",
+    providerDomain: PROVIDER_DOMAINS.firecrawl,
+    type: "Map credit",
+    unit: "credit",
     planTier: "hobby",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.6333333333"),
@@ -175,6 +236,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "firecrawl-extract-token",
     provider: "firecrawl",
+    providerDomain: PROVIDER_DOMAINS.firecrawl,
+    type: "Extract token",
+    unit: "token",
     planTier: "hobby",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0422222222"),
@@ -185,6 +249,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "google-flash-3-tokens-input",
     provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Input tokens (Gemini 3 Flash)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000500000"),
@@ -193,6 +260,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "google-flash-3-tokens-output",
     provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Output tokens (Gemini 3 Flash)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0003000000"),
@@ -203,6 +273,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "google-flash-lite-3.1-tokens-input",
     provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Input tokens (Gemini 3.1 Flash Lite)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000250000"),
@@ -211,6 +284,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "google-flash-lite-3.1-tokens-output",
     provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Output tokens (Gemini 3.1 Flash Lite)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001500000"),
@@ -222,6 +298,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "google-pro-3.1-tokens-input",
     provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Input tokens (Gemini 3.1 Pro)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0002000000"),
@@ -230,6 +309,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "google-pro-3.1-tokens-output",
     provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Output tokens (Gemini 3.1 Pro)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0012000000"),
@@ -240,6 +322,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "google-pro-2.5-tokens-input",
     provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Input tokens (Gemini 2.5 Pro)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001250000"),
@@ -248,6 +333,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "google-pro-2.5-tokens-output",
     provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Output tokens (Gemini 2.5 Pro)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0010000000"),
@@ -258,6 +346,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "google-flash-2.5-tokens-input",
     provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Input tokens (Gemini 2.5 Flash)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000300000"),
@@ -266,6 +357,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "google-flash-2.5-tokens-output",
     provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Output tokens (Gemini 2.5 Flash)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0002500000"),
@@ -276,6 +370,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "google-flash-lite-2.5-tokens-input",
     provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Input tokens (Gemini 2.5 Flash-Lite)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000100000"),
@@ -284,6 +381,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "google-flash-lite-2.5-tokens-output",
     provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Output tokens (Gemini 2.5 Flash-Lite)",
+    unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000400000"),
@@ -295,6 +395,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "google-search-query",
     provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Search query (grounding)",
+    unit: "query",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.4000000000"),
@@ -305,6 +408,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "instantly-contact-uploaded",
     provider: "instantly",
+    providerDomain: PROVIDER_DOMAINS.instantly,
+    type: "Contact upload",
+    unit: "contact",
     planTier: "growth",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("4.7000000000"),
@@ -315,6 +421,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "instantly-account-email-sent",
     provider: "instantly",
+    providerDomain: PROVIDER_DOMAINS.instantly,
+    type: "Email send (per account)",
+    unit: "email",
     planTier: "growth",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.6667000000"),
@@ -325,6 +434,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "instantly-domain-email-sent",
     provider: "instantly",
+    providerDomain: PROVIDER_DOMAINS.instantly,
+    type: "Email send (per domain)",
+    unit: "email",
     planTier: "growth",
     billingCycle: "yearly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.1984000000"),
@@ -335,6 +447,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "instantly-contact-uploaded",
     provider: "instantly",
+    providerDomain: PROVIDER_DOMAINS.instantly,
+    type: "Contact upload",
+    unit: "contact",
     planTier: "hypergrowth",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.3880000000"),
@@ -345,6 +460,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "instantly-account-email-sent",
     provider: "instantly",
+    providerDomain: PROVIDER_DOMAINS.instantly,
+    type: "Email send (per account)",
+    unit: "email",
     planTier: "hypergrowth",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.6667000000"),
@@ -355,6 +473,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "instantly-domain-email-sent",
     provider: "instantly",
+    providerDomain: PROVIDER_DOMAINS.instantly,
+    type: "Email send (per domain)",
+    unit: "email",
     planTier: "hypergrowth",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.1984000000"),
@@ -367,6 +488,9 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "serper-dev-query",
     provider: "serper-dev",
+    providerDomain: PROVIDER_DOMAINS["serper-dev"],
+    type: "Search query",
+    unit: "query",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.1000000000"),
@@ -379,16 +503,23 @@ export const SEED_PROVIDERS_COSTS = [
   {
     name: "scrape-do-credit",
     provider: "scrape-do",
+    providerDomain: PROVIDER_DOMAINS["scrape-do"],
+    type: "Scrape credit",
+    unit: "credit",
     planTier: "hobby",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0116000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Twilio — SMS: 1.33¢ per message segment (pay-as-you-go)
+  // A "segment" is a 160-char (GSM-7) or 70-char (Unicode) chunk; one SMS may span multiple segments.
   // https://www.twilio.com/en-us/sms/pricing/us
   {
     name: "twilio-sms-segment",
     provider: "twilio",
+    providerDomain: PROVIDER_DOMAINS.twilio,
+    type: "SMS message",
+    unit: "segment",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.3300000000"),
@@ -453,21 +584,33 @@ export const SEED_PLATFORM_COSTS = [
   },
 ];
 
+function escapeSqlLiteral(value: string): string {
+  return value.replace(/'/g, "''");
+}
+
+function nullableSqlLiteral(value: string | null | undefined): string {
+  return value == null ? "NULL" : `'${escapeSqlLiteral(value)}'`;
+}
+
 export async function seedProvidersCosts() {
   // Uses direct (non-pooler) connection to bypass pgbouncer write issues.
   // UPSERT only — no DELETE. Orphan rows are harmless (API filters by platform plan).
   const { directSql } = await import("./index.js");
 
   const valuesClause = SEED_PROVIDERS_COSTS.map(
-    (c) => `('${c.name}', '${c.provider}', '${c.planTier}', '${c.billingCycle}', ${c.costPerUnitInUsdCents}, '${c.effectiveFrom.toISOString()}'::timestamptz)`
+    (c) =>
+      `('${escapeSqlLiteral(c.name)}', '${escapeSqlLiteral(c.provider)}', ${nullableSqlLiteral(c.providerDomain)}, '${escapeSqlLiteral(c.type)}', '${escapeSqlLiteral(c.unit)}', '${escapeSqlLiteral(c.planTier)}', '${escapeSqlLiteral(c.billingCycle)}', ${c.costPerUnitInUsdCents}, '${c.effectiveFrom.toISOString()}'::timestamptz)`
   ).join(", ");
 
   await directSql.unsafe(`
-    INSERT INTO providers_costs (name, provider, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, effective_from)
+    INSERT INTO providers_costs (name, provider, provider_domain, type, unit, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, effective_from)
     VALUES ${valuesClause}
     ON CONFLICT (name, plan_tier, billing_cycle, effective_from)
     DO UPDATE SET
       provider = EXCLUDED.provider,
+      provider_domain = EXCLUDED.provider_domain,
+      type = EXCLUDED.type,
+      unit = EXCLUDED.unit,
       cost_per_unit_in_usd_cents = EXCLUDED.cost_per_unit_in_usd_cents,
       updated_at = now()
   `);

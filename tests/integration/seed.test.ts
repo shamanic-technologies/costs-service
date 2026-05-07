@@ -130,6 +130,29 @@ describe("Seed upsert", { timeout: 30_000 }, () => {
     expect(rows.length).toBeGreaterThanOrEqual(SEED_PLATFORM_COSTS.length);
   });
 
+  it("every SEED_PROVIDERS_COSTS row defines provider, type, unit", () => {
+    for (const c of SEED_PROVIDERS_COSTS) {
+      expect(c.provider, `seed row ${c.name} missing provider`).toBeTruthy();
+      expect((c as any).type, `seed row ${c.name} missing type`).toBeTruthy();
+      expect((c as any).unit, `seed row ${c.name} missing unit`).toBeTruthy();
+    }
+  });
+
+  it("seed populates type, unit, providerDomain in DB rows", async () => {
+    await seedProvidersCosts();
+
+    const rows = await db.select().from(providersCosts);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) {
+      expect(r.type, `row ${r.name} has null type`).toBeTruthy();
+      expect(r.unit, `row ${r.name} has null unit`).toBeTruthy();
+    }
+
+    // Spot check: at least one row has providerDomain set
+    const withDomain = rows.filter((r) => r.providerDomain != null);
+    expect(withDomain.length).toBeGreaterThan(0);
+  });
+
   it("should verify all seed names are present after seeding", async () => {
     await seedProvidersCosts();
 
