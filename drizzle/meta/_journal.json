@@ -29,6 +29,13 @@
       "when": 1772416400000,
       "tag": "0003_rename_to_platform_costs",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778142433786,
+      "tag": "0004_add_provider_metadata",
+      "breakpoints": true
     }
   ]
 }

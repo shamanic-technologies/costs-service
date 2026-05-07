@@ -12,6 +12,9 @@ export async function insertTestProviderCost(data: {
   planTier: string;
   billingCycle: string;
   costPerUnitInUsdCents: string;
+  type?: string;
+  unit?: string;
+  providerDomain?: string | null;
   effectiveFrom?: Date;
 }) {
   const [cost] = await db
@@ -22,6 +25,9 @@ export async function insertTestProviderCost(data: {
       planTier: data.planTier,
       billingCycle: data.billingCycle,
       costPerUnitInUsdCents: data.costPerUnitInUsdCents,
+      type: data.type ?? "Test type",
+      unit: data.unit ?? "test-unit",
+      providerDomain: data.providerDomain ?? null,
       effectiveFrom: data.effectiveFrom || new Date(),
     })
     .returning();

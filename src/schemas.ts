@@ -31,6 +31,9 @@ export const ProviderCostSchema = z
     id: z.string().uuid(),
     name: z.string(),
     provider: z.string(),
+    providerDomain: z.string().nullable(),
+    type: z.string(),
+    unit: z.string(),
     planTier: z.string(),
     billingCycle: z.string(),
     costPerUnitInUsdCents: z.string(),
@@ -45,6 +48,9 @@ export const PriceSchema = z
     name: z.string(),
     pricePerUnitInUsdCents: z.string(),
     provider: z.string(),
+    providerDomain: z.string().nullable(),
+    type: z.string(),
+    unit: z.string(),
     effectiveFrom: z.string().datetime(),
   })
   .openapi("Price");
@@ -67,6 +73,9 @@ export const PutProviderCostBodySchema = z
   .object({
     costPerUnitInUsdCents: z.union([z.string(), z.number()]),
     provider: z.string(),
+    providerDomain: z.string().nullable().optional(),
+    type: z.string(),
+    unit: z.string(),
     planTier: z.string(),
     billingCycle: z.string(),
     effectiveFrom: z.string().datetime().optional(),
