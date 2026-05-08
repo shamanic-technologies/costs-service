@@ -60,6 +60,13 @@ UPDATE "providers_costs" SET "type" = 'Scrape credit', "unit" = 'credit' WHERE "
 
 UPDATE "providers_costs" SET "type" = 'SMS message', "unit" = 'segment' WHERE "name" = 'twilio-sms-segment' AND "type" IS NULL;--> statement-breakpoint
 
+-- Drop stale orphan rows that pre-date prior renames (apollo split, scrape-do split,
+-- instantly split, gemini→google rename, anthropic-opus naming). These names are no
+-- longer in the seed catalog and have no FK references; cost_events store name as a
+-- plain string, so deletion is non-destructive for historical traces. This unblocks
+-- the NOT NULL lock below.
+DELETE FROM "providers_costs" WHERE "type" IS NULL OR "unit" IS NULL;--> statement-breakpoint
+
 -- Fail loud if any row was missed: the migration will not lock NOT NULL with stale data.
 DO $migration_check$
 DECLARE

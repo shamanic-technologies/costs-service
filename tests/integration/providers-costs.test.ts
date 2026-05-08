@@ -3,7 +3,12 @@ import request from "supertest";
 import { createTestApp, getAuthHeaders, getIdentityHeaders } from "../helpers/test-app.js";
 import { cleanTestData, insertTestProviderCost, insertPlatformCost, closeDb } from "../helpers/test-db.js";
 
-describe("Providers Costs CRUD", () => {
+// Bump suite-wide timeout to 30s. Default 5s test / 10s hook trips on Neon
+// pooler latency in CI (observed in v0.16.1 hotfix sync — beforeEach
+// cleanTestData() and PUT-new-price tests timed out on the test DB while the
+// parallel CI run on the same commit succeeded). Same approach as
+// tests/integration/seed.test.ts:10.
+describe("Providers Costs CRUD", { timeout: 30_000 }, () => {
   const app = createTestApp();
   const authHeaders = getAuthHeaders();
   const identityHeaders = getIdentityHeaders();
