@@ -183,12 +183,27 @@ describe("Platform Prices (consumer-facing)", () => {
       expect(res.body[0].name).toBe("alpha");
     });
 
-    it("requires identity headers (x-org-id, x-user-id, x-run-id)", async () => {
+    it("is publicly accessible without identity headers (consumer-facing)", async () => {
+      await insertPlatformCost({
+        provider: "provider-a",
+        planTier: "basic",
+        billingCycle: "monthly",
+        effectiveFrom: new Date("2025-01-01"),
+      });
+      await insertTestProviderCost({
+        name: "alpha",
+        provider: "provider-a",
+        planTier: "basic",
+        billingCycle: "monthly",
+        costPerUnitInUsdCents: "0.01",
+        effectiveFrom: new Date("2025-01-01"),
+      });
+
       const res = await request(app).get("/v1/platform-prices");
-      expect(res.status).toBe(400);
-      expect(res.body.error).toContain("x-org-id");
-      expect(res.body.error).toContain("x-user-id");
-      expect(res.body.error).toContain("x-run-id");
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0].name).toBe("alpha");
     });
   });
 });

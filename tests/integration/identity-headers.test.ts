@@ -14,8 +14,6 @@ describe("Identity headers (x-org-id, x-user-id, x-run-id) requirement", () => {
     { method: "get" as const, path: "/v1/platform-costs" },
     { method: "get" as const, path: "/v1/platform-costs/some-provider" },
     { method: "get" as const, path: "/v1/platform-costs/some-provider/history" },
-    { method: "get" as const, path: "/v1/platform-prices" },
-    { method: "get" as const, path: "/v1/platform-prices/some-name" },
   ];
 
   for (const { method, path } of protectedRoutes) {
@@ -25,6 +23,18 @@ describe("Identity headers (x-org-id, x-user-id, x-run-id) requirement", () => {
       expect(res.body.error).toContain("x-org-id");
       expect(res.body.error).toContain("x-user-id");
       expect(res.body.error).toContain("x-run-id");
+    });
+  }
+
+  const publicRoutes = [
+    { method: "get" as const, path: "/v1/platform-prices" },
+    { method: "get" as const, path: "/v1/platform-prices/some-name" },
+  ];
+
+  for (const { method, path } of publicRoutes) {
+    it(`allows ${method.toUpperCase()} ${path} without identity headers`, async () => {
+      const res = await request(app)[method](path);
+      expect(res.status).not.toBe(400);
     });
   }
 

@@ -9,10 +9,14 @@ export function requireApiKey(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-const IDENTITY_EXEMPT_PATHS = new Set(["/health", "/openapi.json"]);
+const IDENTITY_EXEMPT_PREFIXES = ["/health", "/openapi.json", "/v1/platform-prices"];
+
+function isIdentityExempt(path: string): boolean {
+  return IDENTITY_EXEMPT_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
 
 export function requireIdentityHeaders(req: Request, res: Response, next: NextFunction) {
-  if (IDENTITY_EXEMPT_PATHS.has(req.path)) {
+  if (isIdentityExempt(req.path)) {
     next();
     return;
   }
