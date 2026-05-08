@@ -594,7 +594,10 @@ function nullableSqlLiteral(value: string | null | undefined): string {
 
 export async function seedProvidersCosts() {
   // Uses direct (non-pooler) connection to bypass pgbouncer write issues.
-  // UPSERT only — no DELETE. Orphan rows are harmless (API filters by platform plan).
+  // UPSERT only — no DELETE. Orphan rows from removed/renamed seed entries persist
+  // forever; the API filters by platform plan so they are inert at read time, but
+  // any migration adding a NOT NULL/CHECK constraint must explicitly handle them
+  // (see CLAUDE.md "Migration safety" and migration 0004).
   const { directSql } = await import("./index.js");
 
   const valuesClause = SEED_PROVIDERS_COSTS.map(

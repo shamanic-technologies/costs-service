@@ -29,3 +29,15 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 - `tests/unit/` — Unit tests
 - `tests/integration/` — Integration tests
 - `openapi.json` — Auto-generated from Zod schemas, do NOT edit manually
+
+## Migration safety
+
+The seed runs `INSERT ... ON CONFLICT DO UPDATE` only — it never DELETEs. As a result, **rows whose name is removed from the seed catalog persist forever as orphans** (apollo split, scrape-do split, instantly split, gemini→google rename, anthropic-opus naming all left orphans).
+
+When writing a migration that adds a NOT NULL constraint, a CHECK constraint, or any other invariant to an existing column, you MUST account for orphan rows that pre-date the rename. Either:
+
+1. Backfill the orphan rows explicitly, OR
+2. Delete them in the migration before locking the constraint, e.g.
+   `DELETE FROM providers_costs WHERE <column> IS NULL;`
+
+A regression for this exact failure mode shipped in v0.16.1 (PR #99) — see `tests/integration/migration_0004_orphans.test.ts`.
