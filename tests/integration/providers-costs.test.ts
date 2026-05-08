@@ -3,11 +3,13 @@ import request from "supertest";
 import { createTestApp, getAuthHeaders, getIdentityHeaders } from "../helpers/test-app.js";
 import { cleanTestData, insertTestProviderCost, insertPlatformCost, closeDb } from "../helpers/test-db.js";
 
-// Bump suite-wide timeout to 30s. Default 5s test / 10s hook trips on Neon
-// pooler latency in CI (observed in v0.16.1 hotfix sync — beforeEach
-// cleanTestData() and PUT-new-price tests timed out on the test DB while the
-// parallel CI run on the same commit succeeded). Same approach as
-// tests/integration/seed.test.ts:10.
+// Bump suite-wide timeout to 30s. Default 5s test trips on Neon pooler
+// latency in CI (observed in v0.16.1 hotfix sync — PUT-new-price tests
+// timed out on the test DB while the parallel CI run on the same commit
+// succeeded). Same approach as tests/integration/seed.test.ts:10.
+// Hook timeout is bumped globally via `hookTimeout` in vitest.config.ts —
+// describe-level `{ timeout }` does NOT cover hook timeout (root cause of
+// staging promote failure in run 25552926621).
 describe("Providers Costs CRUD", { timeout: 30_000 }, () => {
   const app = createTestApp();
   const authHeaders = getAuthHeaders();
