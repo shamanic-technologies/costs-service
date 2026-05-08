@@ -883,30 +883,7 @@
     "/v1/platform-prices": {
       "get": {
         "operationId": "listPlatformPrices",
-        "summary": "List current platform prices for all cost names",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/OrgId"
-          },
-          {
-            "$ref": "#/components/parameters/UserId"
-          },
-          {
-            "$ref": "#/components/parameters/RunId"
-          },
-          {
-            "$ref": "#/components/parameters/CampaignId"
-          },
-          {
-            "$ref": "#/components/parameters/BrandId"
-          },
-          {
-            "$ref": "#/components/parameters/WorkflowSlug"
-          },
-          {
-            "$ref": "#/components/parameters/FeatureSlug"
-          }
-        ],
+        "summary": "List current platform prices for all cost names (public, no identity headers required)",
         "responses": {
           "200": {
             "description": "Current prices resolved via platform plan",
@@ -937,31 +914,10 @@
     "/v1/platform-prices/{name}": {
       "get": {
         "operationId": "getPlatformPrice",
-        "summary": "Get current platform price for a cost name",
+        "summary": "Get current platform price for a cost name (public, no identity headers required)",
         "parameters": [
           {
             "$ref": "#/components/parameters/CostName"
-          },
-          {
-            "$ref": "#/components/parameters/OrgId"
-          },
-          {
-            "$ref": "#/components/parameters/UserId"
-          },
-          {
-            "$ref": "#/components/parameters/RunId"
-          },
-          {
-            "$ref": "#/components/parameters/CampaignId"
-          },
-          {
-            "$ref": "#/components/parameters/BrandId"
-          },
-          {
-            "$ref": "#/components/parameters/WorkflowSlug"
-          },
-          {
-            "$ref": "#/components/parameters/FeatureSlug"
           }
         ],
         "responses": {

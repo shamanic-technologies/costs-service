@@ -382,8 +382,7 @@ registry.registerPath({
   method: "get",
   path: "/v1/platform-prices",
   operationId: "listPlatformPrices",
-  summary: "List current platform prices for all cost names",
-  request: { headers: identityHeaders },
+  summary: "List current platform prices for all cost names (public, no identity headers required)",
   responses: {
     200: {
       description: "Current prices resolved via platform plan",
@@ -400,8 +399,8 @@ registry.registerPath({
   method: "get",
   path: "/v1/platform-prices/{name}",
   operationId: "getPlatformPrice",
-  summary: "Get current platform price for a cost name",
-  request: { params: z.object({ name: CostNameParam }), headers: identityHeaders },
+  summary: "Get current platform price for a cost name (public, no identity headers required)",
+  request: { params: z.object({ name: CostNameParam }) },
   responses: {
     200: {
       description: "Current price",
