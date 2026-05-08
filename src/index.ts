@@ -3,13 +3,13 @@ import cors from "cors";
 import { readFile } from "fs/promises";
 import { fileURLToPath } from "url";
 import path from "path";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
 import healthRoutes from "./routes/health.js";
 import providersCostsRoutes from "./routes/providers-costs.js";
 import platformCostsRoutes from "./routes/platform-costs.js";
 import platformPricesRoutes from "./routes/platform-prices.js";
 import { requireIdentityHeaders } from "./middleware/auth.js";
-import { db } from "./db/index.js";
+import { db, sql } from "./db/index.js";
+import { runMigrationsIfNeeded } from "./db/migrate.js";
 import { seedProvidersCosts, seedPlatformCosts } from "./db/seed.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -43,7 +43,7 @@ app.use((_req, res) => {
 
 // Only start server if not in test environment
 if (process.env.NODE_ENV !== "test") {
-  migrate(db, { migrationsFolder: "./drizzle" })
+  runMigrationsIfNeeded(db, sql)
     .then(() => {
       console.log("[Costs Service] Migrations complete");
       return seedProvidersCosts();
