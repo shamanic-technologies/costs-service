@@ -598,57 +598,84 @@ export async function seedProvidersCosts() {
   // forever; the API filters by platform plan so they are inert at read time, but
   // any migration adding a NOT NULL/CHECK constraint must explicitly handle them
   // (see CLAUDE.md "Migration safety" and migration 0004).
-  const { directSql } = await import("./index.js");
+  //
+  // The direct client is opened and closed inside the function so the Neon
+  // compute slot is released after seeding completes. A module-level direct
+  // client leaked one slot per Cloud Run instance and exhausted Neon's
+  // permit cap under autoscale (see PR for `fix: release direct seed conn`).
+  const { default: postgres } = await import("postgres");
+  const { directConnectionString } = await import("./index.js");
+  const directSql = postgres(directConnectionString, {
+    prepare: false,
+    max: 1,
+    idle_timeout: 5,
+    connect_timeout: 10,
+  });
 
-  const valuesClause = SEED_PROVIDERS_COSTS.map(
-    (c) =>
-      `('${escapeSqlLiteral(c.name)}', '${escapeSqlLiteral(c.provider)}', ${nullableSqlLiteral(c.providerDomain)}, '${escapeSqlLiteral(c.type)}', '${escapeSqlLiteral(c.unit)}', '${escapeSqlLiteral(c.planTier)}', '${escapeSqlLiteral(c.billingCycle)}', ${c.costPerUnitInUsdCents}, '${c.effectiveFrom.toISOString()}'::timestamptz)`
-  ).join(", ");
+  try {
+    const valuesClause = SEED_PROVIDERS_COSTS.map(
+      (c) =>
+        `('${escapeSqlLiteral(c.name)}', '${escapeSqlLiteral(c.provider)}', ${nullableSqlLiteral(c.providerDomain)}, '${escapeSqlLiteral(c.type)}', '${escapeSqlLiteral(c.unit)}', '${escapeSqlLiteral(c.planTier)}', '${escapeSqlLiteral(c.billingCycle)}', ${c.costPerUnitInUsdCents}, '${c.effectiveFrom.toISOString()}'::timestamptz)`
+    ).join(", ");
 
-  await directSql.unsafe(`
-    INSERT INTO providers_costs (name, provider, provider_domain, type, unit, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, effective_from)
-    VALUES ${valuesClause}
-    ON CONFLICT (name, plan_tier, billing_cycle, effective_from)
-    DO UPDATE SET
-      provider = EXCLUDED.provider,
-      provider_domain = EXCLUDED.provider_domain,
-      type = EXCLUDED.type,
-      unit = EXCLUDED.unit,
-      cost_per_unit_in_usd_cents = EXCLUDED.cost_per_unit_in_usd_cents,
-      updated_at = now()
-  `);
+    await directSql.unsafe(`
+      INSERT INTO providers_costs (name, provider, provider_domain, type, unit, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, effective_from)
+      VALUES ${valuesClause}
+      ON CONFLICT (name, plan_tier, billing_cycle, effective_from)
+      DO UPDATE SET
+        provider = EXCLUDED.provider,
+        provider_domain = EXCLUDED.provider_domain,
+        type = EXCLUDED.type,
+        unit = EXCLUDED.unit,
+        cost_per_unit_in_usd_cents = EXCLUDED.cost_per_unit_in_usd_cents,
+        updated_at = now()
+    `);
 
-  const [{ count }] = await directSql.unsafe(`SELECT count(*)::int as count FROM providers_costs`);
-  if (count < SEED_PROVIDERS_COSTS.length) {
-    throw new Error(
-      `[Costs Service] Seed upsert failed: expected at least ${SEED_PROVIDERS_COSTS.length} rows, found ${count}. Aborting startup.`
-    );
+    const [{ count }] = await directSql.unsafe(`SELECT count(*)::int as count FROM providers_costs`);
+    if (count < SEED_PROVIDERS_COSTS.length) {
+      throw new Error(
+        `[Costs Service] Seed upsert failed: expected at least ${SEED_PROVIDERS_COSTS.length} rows, found ${count}. Aborting startup.`
+      );
+    }
+    console.log(`[Costs Service] Seed complete (${count} provider cost(s))`);
+  } finally {
+    await directSql.end({ timeout: 5 });
   }
-  console.log(`[Costs Service] Seed complete (${count} provider cost(s))`);
 }
 
 export async function seedPlatformCosts() {
-  const { directSql } = await import("./index.js");
+  const { default: postgres } = await import("postgres");
+  const { directConnectionString } = await import("./index.js");
+  const directSql = postgres(directConnectionString, {
+    prepare: false,
+    max: 1,
+    idle_timeout: 5,
+    connect_timeout: 10,
+  });
 
-  const valuesClause = SEED_PLATFORM_COSTS.map(
-    (c) => `('${c.provider}', '${c.planTier}', '${c.billingCycle}', '${c.effectiveFrom.toISOString()}'::timestamptz)`
-  ).join(", ");
+  try {
+    const valuesClause = SEED_PLATFORM_COSTS.map(
+      (c) => `('${c.provider}', '${c.planTier}', '${c.billingCycle}', '${c.effectiveFrom.toISOString()}'::timestamptz)`
+    ).join(", ");
 
-  await directSql.unsafe(`
-    INSERT INTO platform_costs (provider, plan_tier, billing_cycle, effective_from)
-    VALUES ${valuesClause}
-    ON CONFLICT (provider, effective_from)
-    DO UPDATE SET
-      plan_tier = EXCLUDED.plan_tier,
-      billing_cycle = EXCLUDED.billing_cycle,
-      updated_at = now()
-  `);
+    await directSql.unsafe(`
+      INSERT INTO platform_costs (provider, plan_tier, billing_cycle, effective_from)
+      VALUES ${valuesClause}
+      ON CONFLICT (provider, effective_from)
+      DO UPDATE SET
+        plan_tier = EXCLUDED.plan_tier,
+        billing_cycle = EXCLUDED.billing_cycle,
+        updated_at = now()
+    `);
 
-  const [{ count }] = await directSql.unsafe(`SELECT count(*)::int as count FROM platform_costs`);
-  if (count < SEED_PLATFORM_COSTS.length) {
-    throw new Error(
-      `[Costs Service] Platform seed upsert failed: expected at least ${SEED_PLATFORM_COSTS.length} rows, found ${count}. Aborting startup.`
-    );
+    const [{ count }] = await directSql.unsafe(`SELECT count(*)::int as count FROM platform_costs`);
+    if (count < SEED_PLATFORM_COSTS.length) {
+      throw new Error(
+        `[Costs Service] Platform seed upsert failed: expected at least ${SEED_PLATFORM_COSTS.length} rows, found ${count}. Aborting startup.`
+      );
+    }
+    console.log(`[Costs Service] Platform seed complete (${count} platform cost(s))`);
+  } finally {
+    await directSql.end({ timeout: 5 });
   }
-  console.log(`[Costs Service] Platform seed complete (${count} platform cost(s))`);
 }
