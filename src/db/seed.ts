@@ -167,19 +167,9 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Featured.com Premium account — fixed subscription, API calls tracked for analytics.
-  // Placeholder unit cost stays 0 until a human assigns an amortized per-call rate.
-  {
-    name: "featured-api-opportunity-fetch",
-    provider: "featured",
-    providerDomain: PROVIDER_DOMAINS.featured,
-    type: "API call (opportunity fetch)",
-    unit: "call",
-    planTier: "premium",
-    billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000000000"),
-    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
-  },
+  // Featured.com Premium account: $99/mo ÷ 100 pitch submissions = 99¢/submit.
+  // Seed value is half because COST_RISK_MULTIPLIER doubles it for the resolved price.
+  // Opportunity fetches are free/unlimited and are not tracked as billable costs.
   {
     name: "featured-api-pitch-submit",
     provider: "featured",
@@ -188,7 +178,7 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "call",
     planTier: "premium",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000000000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("49.5000000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Postmark — unit cost = plan price ÷ 10,000 emails (10k volume tier)
