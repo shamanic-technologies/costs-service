@@ -1,0 +1,1 @@
+ALTER TABLE "providers_costs" ALTER COLUMN "cost_per_unit_in_usd_cents" SET DATA TYPE numeric(18, 10);

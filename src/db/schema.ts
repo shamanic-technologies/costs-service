@@ -11,7 +11,7 @@ export const providersCosts = pgTable(
     unit: text("unit").notNull(),
     planTier: text("plan_tier").notNull(),
     billingCycle: text("billing_cycle").notNull(),
-    costPerUnitInUsdCents: numeric("cost_per_unit_in_usd_cents", { precision: 12, scale: 10 }).notNull(),
+    costPerUnitInUsdCents: numeric("cost_per_unit_in_usd_cents", { precision: 18, scale: 10 }).notNull(),
     effectiveFrom: timestamp("effective_from", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
