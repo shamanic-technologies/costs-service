@@ -70,6 +70,30 @@ describe("Twilio seed costs", () => {
   });
 });
 
+describe("Featured seed costs", () => {
+  it("should only bill pitch submissions at 99 cents on premium/monthly", () => {
+    const pitchSubmit = SEED_PROVIDERS_COSTS.find((c) => c.name === "featured-api-pitch-submit");
+    const opportunityFetch = SEED_PROVIDERS_COSTS.find((c) => c.name === "featured-api-opportunity-fetch");
+
+    expect(opportunityFetch, "opportunity fetches are free/unlimited and should not be seeded").toBeUndefined();
+    expect(pitchSubmit).toBeDefined();
+    expect(pitchSubmit!.costPerUnitInUsdCents).toBe("99.0000000000");
+    expect(pitchSubmit!.provider).toBe("featured");
+    expect(pitchSubmit!.providerDomain).toBe("featured.com");
+    expect(pitchSubmit!.type).toBe("API call (pitch submit)");
+    expect(pitchSubmit!.unit).toBe("call");
+    expect(pitchSubmit!.planTier).toBe("premium");
+    expect(pitchSubmit!.billingCycle).toBe("monthly");
+  });
+
+  it("platform cost for featured should be premium/monthly", () => {
+    const pc = SEED_PLATFORM_COSTS.find((p) => p.provider === "featured");
+    expect(pc).toBeDefined();
+    expect(pc!.planTier).toBe("premium");
+    expect(pc!.billingCycle).toBe("monthly");
+  });
+});
+
 describe("Anthropic Sonnet 4.6 seed costs", () => {
   it("should include anthropic-sonnet-4.6-tokens-input at 0.0006 cents", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-sonnet-4.6-tokens-input");

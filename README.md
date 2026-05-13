@@ -21,8 +21,7 @@ All provider seed costs apply `COST_RISK_MULTIPLIER = 2` to cover cost risk.
 | `anthropic-opus-4.6-tokens-output` | 0.005 | 1M tokens | Output tokens (Opus 4.6) | anthropic | anthropic.com | pay-as-you-go | monthly |
 | `anthropic-haiku-4.5-tokens-input` | 0.0002 | 1M tokens | Input tokens (Haiku 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
 | `anthropic-haiku-4.5-tokens-output` | 0.001 | 1M tokens | Output tokens (Haiku 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
-| `featured-api-opportunity-fetch` | 0 | call | API call (opportunity fetch) | featured | featured.com | premium | monthly |
-| `featured-api-pitch-submit` | 0 | call | API call (pitch submit) | featured | featured.com | premium | monthly |
+| `featured-api-pitch-submit` | 99 | call | API call (pitch submit) | featured | featured.com | premium | monthly |
 | `postmark-email-send` | 0.3 | email | Email send | postmark | postmarkapp.com | basic-10k | monthly |
 | `postmark-email-send` | 0.33 | email | Email send | postmark | postmarkapp.com | pro-10k | monthly |
 | `postmark-email-send` | 0.36 | email | Email send | postmark | postmarkapp.com | platform-10k | monthly |
