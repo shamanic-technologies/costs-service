@@ -24,6 +24,7 @@ export function applyCostRiskMultiplier(costPerUnitInUsdCents: string): string {
 export const PROVIDER_DOMAINS: Record<string, string> = {
   apollo: "apollo.io",
   anthropic: "anthropic.com",
+  featured: "featured.com",
   firecrawl: "firecrawl.dev",
   google: "google.com",
   instantly: "instantly.ai",
@@ -164,6 +165,30 @@ export const SEED_PROVIDERS_COSTS = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Featured.com Premium account — fixed subscription, API calls tracked for analytics.
+  // Placeholder unit cost stays 0 until a human assigns an amortized per-call rate.
+  {
+    name: "featured-api-opportunity-fetch",
+    provider: "featured",
+    providerDomain: PROVIDER_DOMAINS.featured,
+    type: "API call (opportunity fetch)",
+    unit: "call",
+    planTier: "premium",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000000000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "featured-api-pitch-submit",
+    provider: "featured",
+    providerDomain: PROVIDER_DOMAINS.featured,
+    type: "API call (pitch submit)",
+    unit: "call",
+    planTier: "premium",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Postmark — unit cost = plan price ÷ 10,000 emails (10k volume tier)
@@ -537,6 +562,12 @@ export const SEED_PLATFORM_COSTS = [
   {
     provider: "anthropic",
     planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    provider: "featured",
+    planTier: "premium",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
