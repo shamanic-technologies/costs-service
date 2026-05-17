@@ -49,6 +49,10 @@ All provider seed costs apply `COST_RISK_MULTIPLIER = 2` to cover cost risk.
 | `instantly-domain-email-sent` | 0.3968 | email | Email send (per domain) | instantly | instantly.ai | hypergrowth | monthly |
 | `scrape-do-credit` | 0.0232 | credit | Scrape credit | scrape-do | scrape.do | hobby | monthly |
 | `serper-dev-query` | 0.2 | query | Search query | serper-dev | serper.dev | pay-as-you-go | monthly |
+| `stripe-processing-fee` | 2 | USD cent | Charge processing fee | stripe | stripe.com | pay-as-you-go | monthly |
+| `stripe-refund-fee` | 2 | USD cent | Refund fee | stripe | stripe.com | pay-as-you-go | monthly |
+| `stripe-dispute-fee` | 2 | USD cent | Dispute fee | stripe | stripe.com | pay-as-you-go | monthly |
+| `stripe-payout-failure-fee` | 2 | USD cent | Payout failure fee | stripe | stripe.com | pay-as-you-go | monthly |
 | `twilio-sms-segment` | 2.66 | segment | SMS message | twilio | twilio.com | pay-as-you-go | monthly |
 
 `Domain` powers the public pricing page logo (logo.dev). `Type` is the human-readable cost-type label used for grouping. `Unit` is what one billed unit represents. A Twilio SMS over 160 characters splits into multiple segments — pricing is per segment.
@@ -76,6 +80,7 @@ Each provider has an active platform cost config that determines which cost tier
 | postmark | pro-10k | monthly |
 | scrape-do | hobby | monthly |
 | serper-dev | pay-as-you-go | monthly |
+| stripe | pay-as-you-go | monthly |
 | twilio | pay-as-you-go | monthly |
 
 ## API
