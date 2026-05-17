@@ -24,6 +24,7 @@ export function applyCostRiskMultiplier(costPerUnitInUsdCents: string): string {
 export const PROVIDER_DOMAINS: Record<string, string> = {
   apollo: "apollo.io",
   anthropic: "anthropic.com",
+  cloudflare: "cloudflare.com",
   featured: "featured.com",
   firecrawl: "firecrawl.dev",
   google: "google.com",
@@ -539,6 +540,34 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.3300000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Cloudflare R2 — Class A operations (PUT, POST, COPY, LIST): $4.50 per million ops
+  // Covers POST /upload in cloudflare-service (1 PUT per call).
+  // https://developers.cloudflare.com/r2/pricing/
+  {
+    name: "cloudflare-r2-class-a-operation",
+    provider: "cloudflare",
+    providerDomain: PROVIDER_DOMAINS.cloudflare,
+    type: "R2 Class A operation",
+    unit: "operation",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0004500000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Cloudflare R2 — Class B operations (GET, HEAD): $0.36 per million ops
+  // Covers GET /images/* in cloudflare-service (1 GET per call). Egress is free.
+  // https://developers.cloudflare.com/r2/pricing/
+  {
+    name: "cloudflare-r2-class-b-operation",
+    provider: "cloudflare",
+    providerDomain: PROVIDER_DOMAINS.cloudflare,
+    type: "R2 Class B operation",
+    unit: "operation",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000360000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
 ];
 
 export const SEED_PLATFORM_COSTS = [
@@ -550,6 +579,12 @@ export const SEED_PLATFORM_COSTS = [
   },
   {
     provider: "anthropic",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    provider: "cloudflare",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
