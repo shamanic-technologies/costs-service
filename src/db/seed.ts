@@ -31,6 +31,7 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   postmark: "postmarkapp.com",
   "scrape-do": "scrape.do",
   "serper-dev": "serper.dev",
+  stripe: "stripe.com",
   twilio: "twilio.com",
 };
 
@@ -525,6 +526,56 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0116000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Stripe — pass-through processing fees (charge, refund, dispute, payout failure).
+  // stripe-service emits one cost write per Stripe-incurred fee event, with quantity
+  // set to the fee in cents (from balance_transaction.fee). Unit price is 1 cent base,
+  // doubled to 2¢ by applyCostRiskMultiplier — org is charged 2× the actual Stripe fee,
+  // matching the platform-wide cost-risk markup convention.
+  // https://stripe.com/pricing
+  {
+    name: "stripe-processing-fee",
+    provider: "stripe",
+    providerDomain: PROVIDER_DOMAINS.stripe,
+    type: "Charge processing fee",
+    unit: "USD cent",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.0000000000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "stripe-refund-fee",
+    provider: "stripe",
+    providerDomain: PROVIDER_DOMAINS.stripe,
+    type: "Refund fee",
+    unit: "USD cent",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.0000000000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "stripe-dispute-fee",
+    provider: "stripe",
+    providerDomain: PROVIDER_DOMAINS.stripe,
+    type: "Dispute fee",
+    unit: "USD cent",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.0000000000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "stripe-payout-failure-fee",
+    provider: "stripe",
+    providerDomain: PROVIDER_DOMAINS.stripe,
+    type: "Payout failure fee",
+    unit: "USD cent",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.0000000000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Twilio — SMS: 1.33¢ per message segment (pay-as-you-go)
   // A "segment" is a 160-char (GSM-7) or 70-char (Unicode) chunk; one SMS may span multiple segments.
   // https://www.twilio.com/en-us/sms/pricing/us
@@ -592,6 +643,12 @@ export const SEED_PLATFORM_COSTS = [
   },
   {
     provider: "serper-dev",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    provider: "stripe",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
