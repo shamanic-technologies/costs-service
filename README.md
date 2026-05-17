@@ -54,6 +54,8 @@ All provider seed costs apply `COST_RISK_MULTIPLIER = 2` to cover cost risk.
 | `stripe-dispute-fee` | 2 | USD cent | Dispute fee | stripe | stripe.com | pay-as-you-go | monthly |
 | `stripe-payout-failure-fee` | 2 | USD cent | Payout failure fee | stripe | stripe.com | pay-as-you-go | monthly |
 | `twilio-sms-segment` | 2.66 | segment | SMS message | twilio | twilio.com | pay-as-you-go | monthly |
+| `cloudflare-r2-class-a-operation` | 0.0009 | operation | R2 Class A operation | cloudflare | cloudflare.com | pay-as-you-go | monthly |
+| `cloudflare-r2-class-b-operation` | 0.000072 | operation | R2 Class B operation | cloudflare | cloudflare.com | pay-as-you-go | monthly |
 
 `Domain` powers the public pricing page logo (logo.dev). `Type` is the human-readable cost-type label used for grouping. `Unit` is what one billed unit represents. A Twilio SMS over 160 characters splits into multiple segments — pricing is per segment.
 
@@ -73,6 +75,7 @@ Each provider has an active platform cost config that determines which cost tier
 |---|---|---|
 | apollo | basic | monthly |
 | anthropic | pay-as-you-go | monthly |
+| cloudflare | pay-as-you-go | monthly |
 | featured | premium | monthly |
 | firecrawl | hobby | monthly |
 | google | pay-as-you-go | monthly |
