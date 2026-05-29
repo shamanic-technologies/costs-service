@@ -40,6 +40,7 @@ All provider seed costs apply `COST_RISK_MULTIPLIER = 2` to cover cost risk.
 | `google-pro-2.5-tokens-output` | 0.002 | 1M tokens | Output tokens (Gemini 2.5 Pro) | google | google.com | pay-as-you-go | monthly |
 | `google-pro-3.1-tokens-input` | 0.0004 | 1M tokens | Input tokens (Gemini 3.1 Pro) | google | google.com | pay-as-you-go | monthly |
 | `google-pro-3.1-tokens-output` | 0.0024 | 1M tokens | Output tokens (Gemini 3.1 Pro) | google | google.com | pay-as-you-go | monthly |
+| `google-embedding-001-tokens-input` | 0.00003 | 1M tokens | Input tokens (Gemini Embedding 001) | google | google.com | pay-as-you-go | monthly |
 | `google-search-query` | 2.8 | query | Search query (grounding) | google | google.com | pay-as-you-go | monthly |
 | `instantly-contact-uploaded` | 9.4 | contact | Contact upload | instantly | instantly.ai | growth | monthly |
 | `instantly-account-email-sent` | 3.3334 | email | Email send (per account) | instantly | instantly.ai | growth | monthly |

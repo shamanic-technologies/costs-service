@@ -405,6 +405,21 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000400000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Google Gemini Embedding 001: $0.15/MTok input (standard tier).
+  // Synchronous batchEmbedContents bills at standard tier, NOT the $0.075 Batch API
+  // (async 24h jobs). Embeddings bill input only — the vector output is not token-billed.
+  // https://ai.google.dev/gemini-api/docs/pricing
+  {
+    name: "google-embedding-001-tokens-input",
+    provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Input tokens (Gemini Embedding 001)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000150000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Google — Google Search grounding: $14/1,000 queries = 1.4¢/query
   // Gemini 3+ bills per search query (not per prompt); one prompt can trigger multiple queries
   // https://ai.google.dev/gemini-api/docs/pricing
