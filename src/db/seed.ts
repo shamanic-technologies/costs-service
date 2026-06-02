@@ -169,6 +169,20 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Anthropic — server-side web search tool: $10/1,000 searches = 1.0¢/search
+  // Billed per usage.server_tool_use.web_search_requests; one /complete call can trigger multiple searches
+  // https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool
+  {
+    name: "anthropic-web-search",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Web search",
+    unit: "search",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.0000000000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Featured.com Premium account: $99/mo ÷ 100 pitch submissions = 99¢/submit.
   // Opportunity fetches are free/unlimited and are not tracked as billable costs.
   {
