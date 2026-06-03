@@ -30,6 +30,15 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 - `tests/integration/` — Integration tests
 - `openapi.json` — Auto-generated from Zod schemas, do NOT edit manually
 
+## Seeding a cost for a NEW provider
+
+`GET /v1/platform-prices/:name` resolves a price by joining `providers_costs` to the **active `platform_costs` row for that provider**, matching on `(planTier, billingCycle)` — no fallback (`src/routes/platform-prices.ts`). A cost row alone is NOT enough:
+
+- If the provider has **no** `SEED_PLATFORM_COSTS` entry → the endpoint returns **500** `No platform cost configured for provider '<x>'`.
+- If the platform-cost tier ≠ the provider-cost tier → **404** `No price found ... on plan '<tier>'`.
+
+So when a seed addition introduces a provider not already in `SEED_PLATFORM_COSTS`, you MUST add **both**: the `SEED_PROVIDERS_COSTS` row AND a `SEED_PLATFORM_COSTS` row with byte-equal `planTier` + `billingCycle`. Mirror the per-cost unit test in `tests/unit/<provider>-*.test.ts` — assert the provider row's `(planTier, billingCycle)` equals the active platform cost's (the guard that fails red when the platform row is missing; see `apify-ahrefs-costs.test.ts`, `google-embedding-costs.test.ts`). Also add the provider to the README "Platform costs" table.
+
 ## Migration safety
 
 The seed runs `INSERT ... ON CONFLICT DO UPDATE` only — it never DELETEs. As a result, **rows whose name is removed from the seed catalog persist forever as orphans** (apollo split, scrape-do split, instantly split, gemini→google rename, anthropic-opus naming all left orphans).

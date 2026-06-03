@@ -23,6 +23,7 @@ export function applyCostRiskMultiplier(costPerUnitInUsdCents: string): string {
 // Domain mapping per provider (used by logo.dev on the public pricing page).
 export const PROVIDER_DOMAINS: Record<string, string> = {
   apollo: "apollo.io",
+  apify: "apify.com",
   anthropic: "anthropic.com",
   cloudflare: "cloudflare.com",
   featured: "featured.com",
@@ -50,6 +51,21 @@ export const SEED_PROVIDERS_COSTS = [
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("2.3600000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Apify — pro100chok/ahrefs-seo-tools (actor pC8gsptNv2RwJm0QE)
+  // PAY_PER_EVENT: $0.005/result (BRONZE, plan STARTER). 1 result = 1 searchType × 1 domaine.
+  // Prix uniforme DR / traffic / AI-citation → un seul "result".
+  // https://apify.com/pro100chok/ahrefs-seo-tools
+  {
+    name: "apify-ahrefs-result",
+    provider: "apify",
+    providerDomain: PROVIDER_DOMAINS.apify,
+    type: "Ahrefs scrape result",
+    unit: "result",
+    planTier: "starter",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.5000000000"), // $0.005 = 0.5¢
+    effectiveFrom: new Date("2026-06-03T00:00:00Z"),
   },
   // Anthropic Opus 4.5: $5/MTok input, $25/MTok output
   // https://platform.claude.com/docs/en/about-claude/pricing
@@ -654,6 +670,13 @@ export const SEED_PLATFORM_COSTS = [
   {
     provider: "apollo",
     planTier: "basic",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Apify — STARTER plan (Bronze tier). Resolves apify-ahrefs-result price.
+  {
+    provider: "apify",
+    planTier: "starter",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
