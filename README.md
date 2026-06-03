@@ -11,6 +11,7 @@ All provider seed costs apply `COST_RISK_MULTIPLIER = 2` to cover cost risk.
 | Name | Cost (USD cents/unit) | Unit | Type | Provider | Domain | Plan | Billing |
 |---|---|---|---|---|---|---|---|
 | `apollo-credit` | 4.72 | credit | Credit | apollo | apollo.io | basic | monthly |
+| `apify-ahrefs-result` | 1 | result | Ahrefs scrape result | apify | apify.com | starter | monthly |
 | `anthropic-opus-4.5-tokens-input` | 0.001 | 1M tokens | Input tokens (Opus 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
 | `anthropic-opus-4.5-tokens-output` | 0.005 | 1M tokens | Output tokens (Opus 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
 | `anthropic-sonnet-4.5-tokens-input` | 0.0006 | 1M tokens | Input tokens (Sonnet 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
@@ -76,6 +77,7 @@ Each provider has an active platform cost config that determines which cost tier
 | Provider | Current Plan | Billing |
 |---|---|---|
 | apollo | basic | monthly |
+| apify | starter | monthly |
 | anthropic | pay-as-you-go | monthly |
 | cloudflare | pay-as-you-go | monthly |
 | featured | premium | monthly |
