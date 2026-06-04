@@ -32,6 +32,8 @@ All provider seed costs apply `COST_RISK_MULTIPLIER = 2` to cover cost risk.
 | `firecrawl-extract-token` | 0.0844444444 | token | Extract token | firecrawl | firecrawl.dev | hobby | monthly |
 | `google-flash-3-tokens-input` | 0.0001 | 1M tokens | Input tokens (Gemini 3 Flash) | google | google.com | pay-as-you-go | monthly |
 | `google-flash-3-tokens-output` | 0.0006 | 1M tokens | Output tokens (Gemini 3 Flash) | google | google.com | pay-as-you-go | monthly |
+| `google-flash-3.5-tokens-input` | 0.0003 | 1M tokens | Input tokens (Gemini 3.5 Flash) | google | google.com | pay-as-you-go | monthly |
+| `google-flash-3.5-tokens-output` | 0.0018 | 1M tokens | Output tokens (Gemini 3.5 Flash) | google | google.com | pay-as-you-go | monthly |
 | `google-flash-2.5-tokens-input` | 0.00006 | 1M tokens | Input tokens (Gemini 2.5 Flash) | google | google.com | pay-as-you-go | monthly |
 | `google-flash-2.5-tokens-output` | 0.0005 | 1M tokens | Output tokens (Gemini 2.5 Flash) | google | google.com | pay-as-you-go | monthly |
 | `google-flash-lite-2.5-tokens-input` | 0.00002 | 1M tokens | Input tokens (Gemini 2.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly |
