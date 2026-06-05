@@ -2,6 +2,15 @@
 
 Microservice for managing unit costs. Tracks per-unit pricing for external APIs and services with time-based versioning.
 
+## Release flow (NO `release.sh` here — staging-first, then promote)
+
+This repo does **not** use the `release.sh` hotfix flow. Every code/seed change ships through staging:
+
+1. Branch from `origin/staging`, open PR with **base `staging`**, merge via `gh pr merge --auto --squash`.
+2. Promotion to `main`/prod is a **separate** PR titled `chore: promote staging to vX.Y.Z` (base `main`).
+
+Do NOT open seed/cost PRs directly against `main` — every recent seed PR (#127/#129/#131) targeted `staging`; the matching `main` merges (#128/#130/#132) are promote PRs only. A **price change to an existing cost is a billing change (not zero-blast-radius)** → always staging-first, never prod-direct, regardless of how small the diff looks.
+
 ## Commands
 
 - `npm test` — run all tests (Vitest)
