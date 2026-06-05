@@ -71,25 +71,26 @@ describe("Twilio seed costs", () => {
 });
 
 describe("Featured seed costs", () => {
-  it("should only bill pitch submissions at 198 cents on premium/monthly", () => {
+  it("should only bill pitch submissions at 1398 cents on pay-as-you-go/monthly", () => {
     const pitchSubmit = SEED_PROVIDERS_COSTS.find((c) => c.name === "featured-api-pitch-submit");
     const opportunityFetch = SEED_PROVIDERS_COSTS.find((c) => c.name === "featured-api-opportunity-fetch");
 
     expect(opportunityFetch, "opportunity fetches are free/unlimited and should not be seeded").toBeUndefined();
     expect(pitchSubmit).toBeDefined();
-    expect(pitchSubmit!.costPerUnitInUsdCents).toBe("198.0000000000");
+    // $6.99/credit (highest PAYG unit, 1-credit pack) × 2 cost-risk markup = 1398¢.
+    expect(pitchSubmit!.costPerUnitInUsdCents).toBe("1398.0000000000");
     expect(pitchSubmit!.provider).toBe("featured");
     expect(pitchSubmit!.providerDomain).toBe("featured.com");
     expect(pitchSubmit!.type).toBe("API call (pitch submit)");
     expect(pitchSubmit!.unit).toBe("call");
-    expect(pitchSubmit!.planTier).toBe("premium");
+    expect(pitchSubmit!.planTier).toBe("pay-as-you-go");
     expect(pitchSubmit!.billingCycle).toBe("monthly");
   });
 
-  it("platform cost for featured should be premium/monthly", () => {
+  it("platform cost for featured should be pay-as-you-go/monthly", () => {
     const pc = SEED_PLATFORM_COSTS.find((p) => p.provider === "featured");
     expect(pc).toBeDefined();
-    expect(pc!.planTier).toBe("premium");
+    expect(pc!.planTier).toBe("pay-as-you-go");
     expect(pc!.billingCycle).toBe("monthly");
   });
 });

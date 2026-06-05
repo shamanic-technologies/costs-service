@@ -23,7 +23,7 @@ All provider seed costs apply `COST_RISK_MULTIPLIER = 2` to cover cost risk.
 | `anthropic-haiku-4.5-tokens-input` | 0.0002 | 1M tokens | Input tokens (Haiku 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
 | `anthropic-haiku-4.5-tokens-output` | 0.001 | 1M tokens | Output tokens (Haiku 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
 | `anthropic-web-search` | 2 | search | Web search | anthropic | anthropic.com | pay-as-you-go | monthly |
-| `featured-api-pitch-submit` | 198 | call | API call (pitch submit) | featured | featured.com | premium | monthly |
+| `featured-api-pitch-submit` | 1398 | call | API call (pitch submit) | featured | featured.com | pay-as-you-go | monthly |
 | `postmark-email-send` | 0.3 | email | Email send | postmark | postmarkapp.com | basic-10k | monthly |
 | `postmark-email-send` | 0.33 | email | Email send | postmark | postmarkapp.com | pro-10k | monthly |
 | `postmark-email-send` | 0.36 | email | Email send | postmark | postmarkapp.com | platform-10k | monthly |
@@ -82,7 +82,7 @@ Each provider has an active platform cost config that determines which cost tier
 | apify | starter | monthly |
 | anthropic | pay-as-you-go | monthly |
 | cloudflare | pay-as-you-go | monthly |
-| featured | premium | monthly |
+| featured | pay-as-you-go | monthly |
 | firecrawl | hobby | monthly |
 | google | pay-as-you-go | monthly |
 | instantly | hypergrowth | monthly |
