@@ -199,17 +199,20 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.0000000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Featured.com Premium account: $99/mo ÷ 100 pitch submissions = 99¢/submit.
-  // Opportunity fetches are free/unlimited and are not tracked as billable costs.
+  // Featured.com — billed at the highest Pay-as-you-go unit price: $6.99/credit
+  // (the 1-credit pack; 5-credit = $5.99, 25-credit = $4.99). One pitch submit = 1 credit.
+  // We hold the $99/mo Pro/Business sub (unlimited) in practice, but rebill the client at
+  // the PAYG unit rate so the reference is plan-independent. Opportunity fetches are
+  // free/unlimited and are not tracked as billable costs.
   {
     name: "featured-api-pitch-submit",
     provider: "featured",
     providerDomain: PROVIDER_DOMAINS.featured,
     type: "API call (pitch submit)",
     unit: "call",
-    planTier: "premium",
+    planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("99.0000000000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("699.0000000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Postmark — unit cost = plan price ÷ 10,000 emails (10k volume tier)
@@ -719,7 +722,7 @@ export const SEED_PLATFORM_COSTS = [
   },
   {
     provider: "featured",
-    planTier: "premium",
+    planTier: "pay-as-you-go",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
