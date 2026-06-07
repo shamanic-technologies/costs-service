@@ -3,19 +3,47 @@
 
 const USD_CENTS_DECIMAL_SCALE = 10;
 
+/**
+ * DEFAULT cost-risk markup. The multiplier is NOT global anymore — it is per-cost:
+ * each seed row may pass its own multiplier to `applyCostRiskMultiplier` and falls
+ * back to this default (2×) when omitted. E.g. apollo-credit + gemini-3.1-pro tokens
+ * use 1.2× instead of 2×.
+ */
 export const COST_RISK_MULTIPLIER = 2;
 
-export function applyCostRiskMultiplier(costPerUnitInUsdCents: string): string {
+// The multiplier is scaled to this many decimals so non-integer markups (e.g. 1.2)
+// are computed with exact BigInt math instead of lossy float multiplication.
+const MULTIPLIER_DECIMAL_SCALE = 4;
+
+/**
+ * Apply a per-cost risk markup to a raw unit cost.
+ * @param costPerUnitInUsdCents raw cost as a fixed 10-decimal string (e.g. "2.3600000000")
+ * @param multiplier markup factor; defaults to COST_RISK_MULTIPLIER (2). Per-cost overrides
+ *   allowed (e.g. 1.2). Result is rounded half-up to 10 decimals.
+ */
+export function applyCostRiskMultiplier(
+  costPerUnitInUsdCents: string,
+  multiplier: number = COST_RISK_MULTIPLIER,
+): string {
   if (!/^\d+\.\d{10}$/.test(costPerUnitInUsdCents)) {
     throw new Error(`Invalid seed cost format: ${costPerUnitInUsdCents}`);
   }
+  if (!Number.isFinite(multiplier) || multiplier < 0) {
+    throw new Error(`Invalid cost-risk multiplier: ${multiplier}`);
+  }
 
   const [wholePart, fractionalPart] = costPerUnitInUsdCents.split(".");
-  const scaledCost = BigInt(`${wholePart}${fractionalPart}`);
-  const scaledMultiplier = scaledCost * BigInt(COST_RISK_MULTIPLIER);
+  const scaledCost = BigInt(`${wholePart}${fractionalPart}`); // cost × 10^10
+
+  // Multiplier as an integer scaled by 10^MULTIPLIER_DECIMAL_SCALE, then divided back
+  // out with round-half-up so 1.2 stays exact to 10 decimals (default 2 is unchanged).
+  const multScaled = BigInt(Math.round(multiplier * 10 ** MULTIPLIER_DECIMAL_SCALE));
+  const multDivisor = 10n ** BigInt(MULTIPLIER_DECIMAL_SCALE);
+  const marked = (scaledCost * multScaled + multDivisor / 2n) / multDivisor; // cost × multiplier × 10^10
+
   const divisor = 10n ** BigInt(USD_CENTS_DECIMAL_SCALE);
-  const whole = scaledMultiplier / divisor;
-  const fractional = (scaledMultiplier % divisor).toString().padStart(USD_CENTS_DECIMAL_SCALE, "0");
+  const whole = marked / divisor;
+  const fractional = (marked % divisor).toString().padStart(USD_CENTS_DECIMAL_SCALE, "0");
 
   return `${whole}.${fractional}`;
 }
@@ -41,6 +69,7 @@ export const SEED_PROVIDERS_COSTS = [
   // Apollo — unified credit: Basic plan $59/mo ÷ 2,500 credits = 2.36¢/credit
   // Covers enrichment + person match. Quantity comes from Apollo webhook (credits_consumed).
   // Search is free (0 credits) and not tracked.
+  // Risk markup 1.2× (not the default 2×) — per-cost override.
   {
     name: "apollo-credit",
     provider: "apollo",
@@ -49,7 +78,7 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "credit",
     planTier: "basic",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("2.3600000000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("2.3600000000", 1.2),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Apify — pro100chok/ahrefs-seo-tools (actor pC8gsptNv2RwJm0QE)
@@ -377,7 +406,8 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0002000000"),
+    // Risk markup 1.2× (not the default 2×) — per-cost override.
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0002000000", 1.2),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -388,7 +418,8 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0012000000"),
+    // Risk markup 1.2× (not the default 2×) — per-cost override.
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0012000000", 1.2),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 2.5 Pro: $1.25/MTok input, $10.00/MTok output (≤200k context)
