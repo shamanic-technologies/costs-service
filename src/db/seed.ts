@@ -505,7 +505,10 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("4.7000000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly — email sent per account: $10/mo ÷ 600 emails = 1.6667¢/email
+  // Instantly — email sent per account: domain $20/yr buys 5 accounts, each sending
+  // 20 emails/business-day × 252 business days = 5,040 emails/yr.
+  // $20/yr ÷ 5 accounts ÷ 5,040 emails = $0.000793650794 = 0.0793650794¢/email.
+  // Plan-independent: cost comes from the domain (Instantly email accounts are unlimited/free).
   // https://instantly.ai/pricing
   {
     name: "instantly-account-email-sent",
@@ -515,10 +518,12 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "email",
     planTier: "growth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("1.6667000000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0793650794"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly — email sent per domain: $15/year ÷ (30 × 252) emails = 0.1984¢/email
+  // Instantly — email sent per domain: folded into instantly-account-email-sent (the
+  // $20/yr domain cost is allocated per account-email there). Kept at 0 to avoid
+  // double-counting; not removed so any consumer still declaring it resolves to 0.
   // https://instantly.ai/pricing
   {
     name: "instantly-domain-email-sent",
@@ -528,7 +533,7 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "email",
     planTier: "growth",
     billingCycle: "yearly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.1984000000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly Hypergrowth — contact uploaded: $97/mo ÷ 25,000 contacts = 0.388¢/contact
@@ -544,7 +549,9 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.3880000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly Hypergrowth — email sent per account: $10/mo ÷ 600 emails = 1.6667¢/email (same as Growth)
+  // Instantly Hypergrowth — email sent per account: same plan-independent domain model as Growth.
+  // domain $20/yr ÷ 5 accounts ÷ (20 emails/business-day × 252 days = 5,040/yr) = 0.0793650794¢/email.
+  // This is the SERVED row (instantly platform cost = hypergrowth/monthly).
   // https://instantly.ai/pricing
   {
     name: "instantly-account-email-sent",
@@ -554,10 +561,11 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "email",
     planTier: "hypergrowth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("1.6667000000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0793650794"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly Hypergrowth — email sent per domain: $15/year ÷ (30 × 252) emails = 0.1984¢/email (same as Growth)
+  // Instantly Hypergrowth — email sent per domain: folded into instantly-account-email-sent.
+  // Kept at 0 to avoid double-counting the domain cost.
   // https://instantly.ai/pricing
   {
     name: "instantly-domain-email-sent",
@@ -567,7 +575,7 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "email",
     planTier: "hypergrowth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.1984000000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Serper.dev — search query (web, news, batch): $0.001/query = 0.1¢/query
@@ -785,16 +793,26 @@ function nullableSqlLiteral(value: string | null | undefined): string {
 }
 
 export async function seedProvidersCosts() {
-  // Uses direct (non-pooler) connection to bypass pgbouncer write issues.
-  // UPSERT only — no DELETE. Orphan rows from removed/renamed seed entries persist
-  // forever; the API filters by platform plan so they are inert at read time, but
-  // any migration adding a NOT NULL/CHECK constraint must explicitly handle them
-  // (see CLAUDE.md "Migration safety" and migration 0004).
+  // APPEND-ONLY price history — NEVER overwrite a cost. For each seed row we compare its
+  // cost to the LATEST existing row for (name, plan_tier, billing_cycle):
+  //   - no row yet           → INSERT with the declared effective_from (first version)
+  //   - cost differs         → INSERT a NEW row dated now() (the prior row stays as history)
+  //   - cost equal           → no-op (idempotent across every boot)
+  // A price is thus queryable through time: the read path resolves the newest row whose
+  // effective_from <= now(). Do NOT reintroduce `ON CONFLICT ... DO UPDATE cost_per_unit`
+  // — that silently destroys history (see CLAUDE.md "Seed = append-only on price change").
   //
-  // The direct client is opened and closed inside the function so the Neon
-  // compute slot is released after seeding completes. A module-level direct
-  // client leaked one slot per Cloud Run instance and exhausted Neon's
-  // permit cap under autoscale (see PR for `fix: release direct seed conn`).
+  // No DELETE: orphan rows from removed/renamed seed entries persist forever; the API
+  // filters by platform plan so they are inert at read time, but any migration adding a
+  // NOT NULL/CHECK constraint must handle them (see CLAUDE.md "Migration safety" + 0004).
+  //
+  // pg_advisory_xact_lock serializes concurrent boots (multi-replica) so two instances
+  // that both observe the same price change cannot each append a near-duplicate dated row.
+  //
+  // The direct (non-pooler) client bypasses pgbouncer transaction mode (which can silently
+  // drop multi-statement writes) and is opened/closed inside the function so the Neon
+  // compute slot is released after seeding (a module-level direct client leaked one slot
+  // per Cloud Run instance and exhausted Neon's permit cap under autoscale).
   const { default: postgres } = await import("postgres");
   const { directConnectionString } = await import("./index.js");
   const directSql = postgres(directConnectionString, {
@@ -810,26 +828,31 @@ export async function seedProvidersCosts() {
         `('${escapeSqlLiteral(c.name)}', '${escapeSqlLiteral(c.provider)}', ${nullableSqlLiteral(c.providerDomain)}, '${escapeSqlLiteral(c.type)}', '${escapeSqlLiteral(c.unit)}', '${escapeSqlLiteral(c.planTier)}', '${escapeSqlLiteral(c.billingCycle)}', ${c.costPerUnitInUsdCents}, '${c.effectiveFrom.toISOString()}'::timestamptz)`
     ).join(", ");
 
-    await directSql.unsafe(`
-      INSERT INTO providers_costs (name, provider, provider_domain, type, unit, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, effective_from)
-      VALUES ${valuesClause}
-      ON CONFLICT (name, plan_tier, billing_cycle, effective_from)
-      DO UPDATE SET
-        provider = EXCLUDED.provider,
-        provider_domain = EXCLUDED.provider_domain,
-        type = EXCLUDED.type,
-        unit = EXCLUDED.unit,
-        cost_per_unit_in_usd_cents = EXCLUDED.cost_per_unit_in_usd_cents,
-        updated_at = now()
-    `);
+    await directSql.begin(async (tx) => {
+      await tx.unsafe(`SELECT pg_advisory_xact_lock(911001)`);
+      await tx.unsafe(`
+        INSERT INTO providers_costs (name, provider, provider_domain, type, unit, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, effective_from)
+        SELECT v.name, v.provider, v.provider_domain, v.type, v.unit, v.plan_tier, v.billing_cycle, v.cost,
+               CASE WHEN latest.effective_from IS NULL THEN v.declared_eff ELSE now() END
+        FROM (VALUES ${valuesClause}) AS v (name, provider, provider_domain, type, unit, plan_tier, billing_cycle, cost, declared_eff)
+        LEFT JOIN LATERAL (
+          SELECT pc.cost_per_unit_in_usd_cents AS cost, pc.effective_from
+          FROM providers_costs pc
+          WHERE pc.name = v.name AND pc.plan_tier = v.plan_tier AND pc.billing_cycle = v.billing_cycle
+          ORDER BY pc.effective_from DESC
+          LIMIT 1
+        ) latest ON TRUE
+        WHERE latest.cost IS DISTINCT FROM v.cost
+      `);
+    });
 
     const [{ count }] = await directSql.unsafe(`SELECT count(*)::int as count FROM providers_costs`);
     if (count < SEED_PROVIDERS_COSTS.length) {
       throw new Error(
-        `[Costs Service] Seed upsert failed: expected at least ${SEED_PROVIDERS_COSTS.length} rows, found ${count}. Aborting startup.`
+        `[Costs Service] Seed verify failed: expected at least ${SEED_PROVIDERS_COSTS.length} rows, found ${count}. Aborting startup.`
       );
     }
-    console.log(`[Costs Service] Seed complete (${count} provider cost(s))`);
+    console.log(`[Costs Service] Seed complete (${count} provider cost row(s); append-only history)`);
   } finally {
     await directSql.end({ timeout: 5 });
   }
@@ -847,26 +870,38 @@ export async function seedPlatformCosts() {
 
   try {
     const valuesClause = SEED_PLATFORM_COSTS.map(
-      (c) => `('${c.provider}', '${c.planTier}', '${c.billingCycle}', '${c.effectiveFrom.toISOString()}'::timestamptz)`
+      (c) => `('${escapeSqlLiteral(c.provider)}', '${escapeSqlLiteral(c.planTier)}', '${escapeSqlLiteral(c.billingCycle)}', '${c.effectiveFrom.toISOString()}'::timestamptz)`
     ).join(", ");
 
-    await directSql.unsafe(`
-      INSERT INTO platform_costs (provider, plan_tier, billing_cycle, effective_from)
-      VALUES ${valuesClause}
-      ON CONFLICT (provider, effective_from)
-      DO UPDATE SET
-        plan_tier = EXCLUDED.plan_tier,
-        billing_cycle = EXCLUDED.billing_cycle,
-        updated_at = now()
-    `);
+    // APPEND-ONLY history (same contract as seedProvidersCosts): compare (plan_tier,
+    // billing_cycle) to the LATEST platform row for the provider; INSERT a new dated row
+    // when it differs, no-op when equal. Never overwrite — a tier switch must be queryable
+    // through time. getCurrentPlatformCost resolves the newest row whose effective_from <= now().
+    await directSql.begin(async (tx) => {
+      await tx.unsafe(`SELECT pg_advisory_xact_lock(911002)`);
+      await tx.unsafe(`
+        INSERT INTO platform_costs (provider, plan_tier, billing_cycle, effective_from)
+        SELECT v.provider, v.plan_tier, v.billing_cycle,
+               CASE WHEN latest.effective_from IS NULL THEN v.declared_eff ELSE now() END
+        FROM (VALUES ${valuesClause}) AS v (provider, plan_tier, billing_cycle, declared_eff)
+        LEFT JOIN LATERAL (
+          SELECT pc.plan_tier, pc.billing_cycle, pc.effective_from
+          FROM platform_costs pc
+          WHERE pc.provider = v.provider
+          ORDER BY pc.effective_from DESC
+          LIMIT 1
+        ) latest ON TRUE
+        WHERE (latest.plan_tier, latest.billing_cycle) IS DISTINCT FROM (v.plan_tier, v.billing_cycle)
+      `);
+    });
 
     const [{ count }] = await directSql.unsafe(`SELECT count(*)::int as count FROM platform_costs`);
     if (count < SEED_PLATFORM_COSTS.length) {
       throw new Error(
-        `[Costs Service] Platform seed upsert failed: expected at least ${SEED_PLATFORM_COSTS.length} rows, found ${count}. Aborting startup.`
+        `[Costs Service] Platform seed verify failed: expected at least ${SEED_PLATFORM_COSTS.length} rows, found ${count}. Aborting startup.`
       );
     }
-    console.log(`[Costs Service] Platform seed complete (${count} platform cost(s))`);
+    console.log(`[Costs Service] Platform seed complete (${count} platform cost row(s); append-only history)`);
   } finally {
     await directSql.end({ timeout: 5 });
   }

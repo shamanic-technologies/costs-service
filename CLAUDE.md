@@ -48,9 +48,22 @@ Do NOT open seed/cost PRs directly against `main` — every recent seed PR (#127
 
 So when a seed addition introduces a provider not already in `SEED_PLATFORM_COSTS`, you MUST add **both**: the `SEED_PROVIDERS_COSTS` row AND a `SEED_PLATFORM_COSTS` row with byte-equal `planTier` + `billingCycle`. Mirror the per-cost unit test in `tests/unit/<provider>-*.test.ts` — assert the provider row's `(planTier, billingCycle)` equals the active platform cost's (the guard that fails red when the platform row is missing; see `apify-ahrefs-costs.test.ts`, `google-embedding-costs.test.ts`). Also add the provider to the README "Platform costs" table.
 
+## Changing a price = append-only history (NEVER overwrite)
+
+The cost catalog is **time-versioned**: `providers_costs` keys on `(name, plan_tier, billing_cycle, effective_from)` and the read path resolves the newest row whose `effective_from <= now()` (`platform-prices.ts`, `getCurrentPlatformCost`). So full price history is queryable — "the price before date X" = the row with `max(effective_from) <= X`.
+
+**To change a price, just edit the value in `src/db/seed.ts` — do NOT touch `effectiveFrom`.** `seedProvidersCosts` / `seedPlatformCosts` compare each seed row's value to the **latest** existing row for its key and:
+- no row yet → INSERT with the declared `effectiveFrom` (first version)
+- value differs → INSERT a **new row dated `now()`** (the prior row stays as history)
+- value equal → no-op (idempotent across every boot)
+
+The boundary between the old and new price is the **deploy timestamp** (`now()`), not a hand-set date.
+
+**NEVER reintroduce `ON CONFLICT (...) DO UPDATE SET cost_per_unit_in_usd_cents` (or `plan_tier`).** Reusing an `effective_from` + DO UPDATE silently OVERWRITES the row and destroys history — that was the bug. Past reprices (featured pitch #134, google rename, etc.) already lost their history this way; the fix only protects future changes. A `pg_advisory_xact_lock` serializes concurrent boots so multi-replica deploys can't double-append. Regression: `tests/integration/seed-append-history.test.ts` (fails red under DO UPDATE — one row, old value gone).
+
 ## Migration safety
 
-The seed runs `INSERT ... ON CONFLICT DO UPDATE` only — it never DELETEs. As a result, **rows whose name is removed from the seed catalog persist forever as orphans** (apollo split, scrape-do split, instantly split, gemini→google rename, anthropic-opus naming all left orphans).
+The seed runs append-only `INSERT ... SELECT` (compare-to-latest, no `ON CONFLICT DO UPDATE`) — it never DELETEs. As a result, **rows whose name is removed from the seed catalog persist forever as orphans** (apollo split, scrape-do split, instantly split, gemini→google rename, anthropic-opus naming all left orphans).
 
 When writing a migration that adds a NOT NULL constraint, a CHECK constraint, or any other invariant to an existing column, you MUST account for orphan rows that pre-date the rename. Either:
 
