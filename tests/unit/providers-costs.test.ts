@@ -23,18 +23,18 @@ describe("Instantly seed costs", () => {
     expect(cost!.billingCycle).toBe("monthly");
   });
 
-  it("should include instantly-account-email-sent at 3.3334 cents on growth/monthly", () => {
+  it("should include instantly-account-email-sent at 0.1587301588 cents on growth/monthly (domain model)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "instantly-account-email-sent" && c.planTier === "growth");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("3.3334000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.1587301588");
     expect(cost!.provider).toBe("instantly");
     expect(cost!.billingCycle).toBe("monthly");
   });
 
-  it("should include instantly-domain-email-sent at 0.3968 cents on growth/yearly", () => {
+  it("should zero instantly-domain-email-sent on growth/yearly (folded into account-email-sent)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "instantly-domain-email-sent" && c.planTier === "growth");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.3968000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0000000000");
     expect(cost!.provider).toBe("instantly");
     expect(cost!.billingCycle).toBe("yearly");
   });
