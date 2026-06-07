@@ -3,7 +3,7 @@ import request from "supertest";
 import { createTestApp, getIdentityHeaders } from "../helpers/test-app.js";
 import { cleanTestData, insertTestProviderCost, insertPlatformCost, closeDb } from "../helpers/test-db.js";
 import { seedProvidersCosts, seedPlatformCosts, SEED_PROVIDERS_COSTS, SEED_PLATFORM_COSTS } from "../../src/db/seed.js";
-import { eq } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import { db } from "../../src/db/index.js";
 import { providersCosts, platformCosts } from "../../src/db/schema.js";
 
@@ -20,13 +20,14 @@ describe("Seed upsert", { timeout: 30_000 }, () => {
     await closeDb();
   });
 
-  it("should update stale plan_tier via upsert when effective_from matches", async () => {
-    // Insert a platform cost with wrong plan_tier but same unique key (provider, effective_from)
+  it("should resolve the seed plan_tier after seeding appends the corrected platform row", async () => {
+    // Insert a platform cost with a stale plan_tier; seeding appends the corrected one,
+    // and the read path resolves the newest (effective_from <= now()) platform row.
     await insertPlatformCost({
       provider: "firecrawl",
       planTier: "default",
       billingCycle: "monthly",
-      effectiveFrom: new Date("2025-01-01T00:00:00Z"), // same as seed
+      effectiveFrom: new Date("2025-01-01T00:00:00Z"),
     });
 
     await insertTestProviderCost({
@@ -57,8 +58,8 @@ describe("Seed upsert", { timeout: 30_000 }, () => {
     expect(afterRes.body.planTier).toBe("hobby");
   });
 
-  it("should update platform_costs plan_tier when seed value differs from existing row", async () => {
-    // Insert a platform cost with stale plan_tier for same unique key (provider, effective_from)
+  it("should APPEND a new dated platform_costs row when seed plan_tier differs from latest", async () => {
+    // Insert a platform cost with a stale plan_tier for postmark.
     await insertPlatformCost({
       provider: "postmark",
       planTier: "pay-as-you-go",
@@ -68,14 +69,16 @@ describe("Seed upsert", { timeout: 30_000 }, () => {
 
     await seedPlatformCosts();
 
-    // Upsert should have updated the plan_tier to "pro-10k"
     const rows = await db
       .select()
       .from(platformCosts)
-      .where(eq(platformCosts.provider, "postmark"));
+      .where(eq(platformCosts.provider, "postmark"))
+      .orderBy(desc(platformCosts.effectiveFrom));
 
-    expect(rows.length).toBeGreaterThanOrEqual(1);
-    expect(rows.some((r) => r.planTier === "pro-10k")).toBe(true);
+    // Append-only: stale "pay-as-you-go" preserved, new "pro-10k" appended on top.
+    expect(rows.length).toBe(2);
+    expect(rows[0].planTier).toBe("pro-10k");
+    expect(rows.some((r) => r.planTier === "pay-as-you-go")).toBe(true);
   });
 
   it("should keep all plan tiers for a cost name with multiple plans", async () => {
@@ -91,14 +94,15 @@ describe("Seed upsert", { timeout: 30_000 }, () => {
     expect(tiers).toEqual(["basic-10k", "platform-10k", "pro-10k"]);
   });
 
-  it("should update providers_costs cost value when seed value differs from existing row", async () => {
+  it("should APPEND a new dated row (never overwrite) when seed cost differs from latest", async () => {
     const seedCost = SEED_PROVIDERS_COSTS.find((c) => c.name === "postmark-email-send")!;
+    const staleValue = "0.9900000000";
     await insertTestProviderCost({
       name: seedCost.name,
       provider: seedCost.provider,
       planTier: seedCost.planTier,
       billingCycle: seedCost.billingCycle,
-      costPerUnitInUsdCents: "0.9900000000", // wrong value
+      costPerUnitInUsdCents: staleValue, // differs from the seed value
       effectiveFrom: seedCost.effectiveFrom,
     });
 
@@ -107,13 +111,19 @@ describe("Seed upsert", { timeout: 30_000 }, () => {
     const rows = await db
       .select()
       .from(providersCosts)
-      .where(eq(providersCosts.name, "postmark-email-send"));
+      .where(
+        and(
+          eq(providersCosts.name, seedCost.name),
+          eq(providersCosts.planTier, seedCost.planTier),
+          eq(providersCosts.billingCycle, seedCost.billingCycle)
+        )
+      )
+      .orderBy(desc(providersCosts.effectiveFrom));
 
-    const matchingRow = rows.find(
-      (r) => r.planTier === seedCost.planTier && r.billingCycle === seedCost.billingCycle
-    );
-    expect(matchingRow).toBeDefined();
-    expect(matchingRow!.costPerUnitInUsdCents).toBe(seedCost.costPerUnitInUsdCents);
+    // Append-only: the stale row is preserved and a new dated row carries the seed value.
+    expect(rows.length).toBe(2);
+    expect(rows[0].costPerUnitInUsdCents).toBe(seedCost.costPerUnitInUsdCents);
+    expect(rows.some((r) => r.costPerUnitInUsdCents === staleValue)).toBe(true);
   });
 
   it("should verify provider costs row count after seeding (seed verification)", async () => {
