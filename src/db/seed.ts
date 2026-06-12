@@ -96,6 +96,41 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.5000000000"), // $0.005 = 0.5¢
     effectiveFrom: new Date("2026-06-03T00:00:00Z"),
   },
+  // Apify — verified B2B email lead actors (apify-service, per-actor cost).
+  // PAY_PER_RESULT, plan STARTER (Bronze tier). 1 result = 1 verified lead.
+  {
+    name: "apify-pipelinelabs-lead",
+    provider: "apify",
+    providerDomain: PROVIDER_DOMAINS.apify,
+    type: "PipelineLabs lead",
+    unit: "lead",
+    planTier: "starter",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.1000000000"), // $0.001 = 0.1¢
+    effectiveFrom: new Date("2026-06-12T00:00:00Z"),
+  },
+  {
+    name: "apify-microworlds-lead",
+    provider: "apify",
+    providerDomain: PROVIDER_DOMAINS.apify,
+    type: "MicroWorlds lead",
+    unit: "lead",
+    planTier: "starter",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.1600000000"), // $0.0016 = 0.16¢
+    effectiveFrom: new Date("2026-06-12T00:00:00Z"),
+  },
+  {
+    name: "apify-clearpath-lead",
+    provider: "apify",
+    providerDomain: PROVIDER_DOMAINS.apify,
+    type: "ClearPath lead",
+    unit: "lead",
+    planTier: "starter",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.5000000000"), // $0.015 = 1.5¢
+    effectiveFrom: new Date("2026-06-12T00:00:00Z"),
+  },
   // Anthropic Opus 4.5: $5/MTok input, $25/MTok output
   // https://platform.claude.com/docs/en/about-claude/pricing
   {
