@@ -131,6 +131,19 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.5000000000"), // $0.015 = 1.5¢
     effectiveFrom: new Date("2026-06-12T00:00:00Z"),
   },
+  // PAY_PER_EVENT actor-start fee, billed once per pipelinelabs actor run (separate from
+  // the per-lead event above). apify-service declares both per run.
+  {
+    name: "apify-pipelinelabs-actor-start",
+    provider: "apify",
+    providerDomain: PROVIDER_DOMAINS.apify,
+    type: "PipelineLabs actor start",
+    unit: "run",
+    planTier: "starter",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0010000000"), // $0.00001 = 0.001¢ → 0.002¢
+    effectiveFrom: new Date("2026-06-12T00:00:00Z"),
+  },
   // Anthropic Opus 4.5: $5/MTok input, $25/MTok output
   // https://platform.claude.com/docs/en/about-claude/pricing
   {
