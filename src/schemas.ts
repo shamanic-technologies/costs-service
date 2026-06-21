@@ -196,6 +196,15 @@ const FeatureSlugHeader = registry.registerParameter(
   })
 );
 
+const AudienceIdHeader = registry.registerParameter(
+  "AudienceId",
+  z.string().optional().openapi({
+    param: { name: "x-audience-id", in: "header" },
+    description: "Priority audience identifier chosen by campaign-service for cost attribution, injected by workflow-service (optional)",
+    example: "aud_abc123",
+  })
+);
+
 const identityHeaders = z.object({
   "x-org-id": OrgIdHeader,
   "x-user-id": UserIdHeader,
@@ -204,6 +213,7 @@ const identityHeaders = z.object({
   "x-brand-id": BrandIdHeader,
   "x-workflow-slug": WorkflowSlugHeader,
   "x-feature-slug": FeatureSlugHeader,
+  "x-audience-id": AudienceIdHeader,
 });
 
 // --- Register paths ---

@@ -1,5 +1,6 @@
+import type { Request } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { traceEvent } from "../../src/lib/trace-event.js";
+import { getTraceIdentityHeaders, traceEvent } from "../../src/lib/trace-event.js";
 
 describe("traceEvent", () => {
   const originalRunsServiceUrl = process.env.RUNS_SERVICE_URL;
@@ -40,6 +41,7 @@ describe("traceEvent", () => {
         "x-campaign-id": "campaign-123",
         "x-workflow-slug": "workflow",
         "x-feature-slug": "feature",
+        "x-audience-id": "audience-123",
       },
     });
 
@@ -54,12 +56,51 @@ describe("traceEvent", () => {
         "x-campaign-id": "campaign-123",
         "x-workflow-slug": "workflow",
         "x-feature-slug": "feature",
+        "x-audience-id": "audience-123",
       },
       body: JSON.stringify({
         event: "provider_cost.updated",
         detail: "Inserted provider cost for anthropic input tokens",
       }),
     });
+  });
+
+  it("propagates inbound x-audience-id from request to runs-service egress (audience cost attribution)", () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 202, statusText: "Accepted" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const req = {
+      headers: {
+        "x-org-id": "org-123",
+        "x-user-id": "user-123",
+        "x-audience-id": "audience-456",
+      },
+    } as unknown as Request;
+
+    const identityHeaders = getTraceIdentityHeaders(req);
+    expect(identityHeaders["x-audience-id"]).toBe("audience-456");
+
+    traceEvent({ runId: "run-123", event: "provider_cost.updated", detail: "x", identityHeaders });
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect((init.headers as Record<string, string>)["x-audience-id"]).toBe("audience-456");
+  });
+
+  it("omits x-audience-id on egress when absent inbound (optional, never throws)", () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 202, statusText: "Accepted" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const req = { headers: { "x-org-id": "org-123", "x-user-id": "user-123" } } as unknown as Request;
+
+    traceEvent({
+      runId: "run-123",
+      event: "provider_cost.updated",
+      detail: "x",
+      identityHeaders: getTraceIdentityHeaders(req),
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect((init.headers as Record<string, string>)["x-audience-id"]).toBeUndefined();
   });
 
   it("does not call runs-service when config or runId is missing", () => {

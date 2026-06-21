@@ -67,6 +67,11 @@
         "description": "Feature slug for tracking which feature triggered the request (optional)",
         "example": "press-outreach"
       },
+      "AudienceId": {
+        "type": "string",
+        "description": "Priority audience identifier chosen by campaign-service for cost attribution, injected by workflow-service (optional)",
+        "example": "aud_abc123"
+      },
       "HealthResponse": {
         "type": "object",
         "properties": {
@@ -422,6 +427,15 @@
         "description": "Feature slug for tracking which feature triggered the request (optional)",
         "name": "x-feature-slug",
         "in": "header"
+      },
+      "AudienceId": {
+        "schema": {
+          "$ref": "#/components/schemas/AudienceId"
+        },
+        "required": false,
+        "description": "Priority audience identifier chosen by campaign-service for cost attribution, injected by workflow-service (optional)",
+        "name": "x-audience-id",
+        "in": "header"
       }
     }
   },
@@ -469,6 +483,9 @@
           },
           {
             "$ref": "#/components/parameters/FeatureSlug"
+          },
+          {
+            "$ref": "#/components/parameters/AudienceId"
           }
         ],
         "responses": {
@@ -526,6 +543,9 @@
           },
           {
             "$ref": "#/components/parameters/FeatureSlug"
+          },
+          {
+            "$ref": "#/components/parameters/AudienceId"
           }
         ],
         "responses": {
@@ -593,6 +613,9 @@
           },
           {
             "$ref": "#/components/parameters/FeatureSlug"
+          },
+          {
+            "$ref": "#/components/parameters/AudienceId"
           }
         ],
         "requestBody": {
@@ -700,6 +723,9 @@
           },
           {
             "$ref": "#/components/parameters/FeatureSlug"
+          },
+          {
+            "$ref": "#/components/parameters/AudienceId"
           }
         ],
         "responses": {
@@ -774,6 +800,9 @@
           },
           {
             "$ref": "#/components/parameters/FeatureSlug"
+          },
+          {
+            "$ref": "#/components/parameters/AudienceId"
           }
         ],
         "responses": {
@@ -841,6 +870,9 @@
           },
           {
             "$ref": "#/components/parameters/FeatureSlug"
+          },
+          {
+            "$ref": "#/components/parameters/AudienceId"
           }
         ],
         "responses": {
@@ -979,6 +1011,9 @@
           },
           {
             "$ref": "#/components/parameters/FeatureSlug"
+          },
+          {
+            "$ref": "#/components/parameters/AudienceId"
           }
         ],
         "responses": {
@@ -1036,6 +1071,9 @@
           },
           {
             "$ref": "#/components/parameters/FeatureSlug"
+          },
+          {
+            "$ref": "#/components/parameters/AudienceId"
           }
         ],
         "responses": {
@@ -1103,6 +1141,9 @@
           },
           {
             "$ref": "#/components/parameters/FeatureSlug"
+          },
+          {
+            "$ref": "#/components/parameters/AudienceId"
           }
         ],
         "requestBody": {
@@ -1197,6 +1238,9 @@
           },
           {
             "$ref": "#/components/parameters/FeatureSlug"
+          },
+          {
+            "$ref": "#/components/parameters/AudienceId"
           }
         ],
         "responses": {

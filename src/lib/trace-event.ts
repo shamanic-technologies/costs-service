@@ -7,6 +7,7 @@ const IDENTITY_HEADER_NAMES = [
   "x-campaign-id",
   "x-workflow-slug",
   "x-feature-slug",
+  "x-audience-id",
 ] as const;
 
 type IdentityHeaderName = (typeof IDENTITY_HEADER_NAMES)[number];
