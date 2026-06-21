@@ -9,6 +9,8 @@ This repo does **not** use the `release.sh` hotfix flow. Every code/seed change 
 1. Branch from `origin/staging`, open PR with **base `staging`**, merge via `gh pr merge --auto --squash`.
 2. Promotion to `main`/prod is a **separate** PR titled `chore: promote staging to vX.Y.Z` (base `main`).
 
+**Verify the working branch's base BEFORE committing — a Conductor workspace may pre-create the branch off `main`, not `staging`.** `main` carries promote merges absent from `staging`, so a branch sitting on `main` opens a PR whose diff includes unrelated promote commits. Check `git log origin/staging..HEAD --oneline` (must be empty before your work); if it shows main-only commits, repoint: `git stash && git checkout -B <branch> origin/staging && git stash pop`. (`git reset --hard` is hook-blocked here — use `checkout -B`.)
+
 Do NOT open seed/cost PRs directly against `main` — every recent seed PR (#127/#129/#131) targeted `staging`; the matching `main` merges (#128/#130/#132) are promote PRs only. A **price change to an existing cost is a billing change (not zero-blast-radius)** → always staging-first, never prod-direct, regardless of how small the diff looks.
 
 ## Commands
