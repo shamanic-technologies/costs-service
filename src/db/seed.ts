@@ -146,28 +146,18 @@ export const SEED_PROVIDERS_COSTS = [
   },
   // Apify — email VERIFICATION actor (apify-service POST /verify). Verifies an
   // existing address (input = emails[]), distinct from the lead-finder actors above.
-  // PAY_PER_EVENT: per-email verified + a per-run actor-start. apify-service declares both.
-  // https://apify.com/ryanclinton/bulk-email-verifier
+  // bounceverify does real SMTP + catch-all on its own backend; single PAY_PER_EVENT
+  // per-email fee (no actor-start), charges only decisive results.
+  // https://apify.com/bounceverify/bounceverify-email-verifier
   {
-    name: "apify-bulk-email-verifier-email",
+    name: "apify-bounceverify-email",
     provider: "apify",
     providerDomain: PROVIDER_DOMAINS.apify,
-    type: "Bulk Email Verifier email",
+    type: "BounceVerify email",
     unit: "email",
     planTier: "starter",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.5000000000"), // $0.005 = 0.5¢ → 1¢
-    effectiveFrom: new Date("2026-06-23T00:00:00Z"),
-  },
-  {
-    name: "apify-bulk-email-verifier-actor-start",
-    provider: "apify",
-    providerDomain: PROVIDER_DOMAINS.apify,
-    type: "Bulk Email Verifier actor start",
-    unit: "run",
-    planTier: "starter",
-    billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0050000000"), // $0.00005 = 0.005¢ → 0.01¢
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0890000000"), // $0.00089 = 0.089¢ → 0.178¢
     effectiveFrom: new Date("2026-06-23T00:00:00Z"),
   },
   // Anthropic Opus 4.5: $5/MTok input, $25/MTok output
