@@ -16,6 +16,8 @@ All provider seed costs apply `COST_RISK_MULTIPLIER = 2` to cover cost risk.
 | `apify-microworlds-lead` | 0.32 | lead | MicroWorlds lead | apify | apify.com | starter | monthly |
 | `apify-clearpath-lead` | 3 | lead | ClearPath lead | apify | apify.com | starter | monthly |
 | `apify-pipelinelabs-actor-start` | 0.002 | run | PipelineLabs actor start | apify | apify.com | starter | monthly |
+| `apify-bulk-email-verifier-email` | 1 | email | Bulk Email Verifier email | apify | apify.com | starter | monthly |
+| `apify-bulk-email-verifier-actor-start` | 0.01 | run | Bulk Email Verifier actor start | apify | apify.com | starter | monthly |
 | `anthropic-opus-4.5-tokens-input` | 0.001 | 1M tokens | Input tokens (Opus 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
 | `anthropic-opus-4.5-tokens-output` | 0.005 | 1M tokens | Output tokens (Opus 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |
 | `anthropic-sonnet-4.5-tokens-input` | 0.0006 | 1M tokens | Input tokens (Sonnet 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly |

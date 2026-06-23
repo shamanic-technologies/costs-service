@@ -144,6 +144,32 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0010000000"), // $0.00001 = 0.001¢ → 0.002¢
     effectiveFrom: new Date("2026-06-12T00:00:00Z"),
   },
+  // Apify — email VERIFICATION actor (apify-service POST /verify). Verifies an
+  // existing address (input = emails[]), distinct from the lead-finder actors above.
+  // PAY_PER_EVENT: per-email verified + a per-run actor-start. apify-service declares both.
+  // https://apify.com/ryanclinton/bulk-email-verifier
+  {
+    name: "apify-bulk-email-verifier-email",
+    provider: "apify",
+    providerDomain: PROVIDER_DOMAINS.apify,
+    type: "Bulk Email Verifier email",
+    unit: "email",
+    planTier: "starter",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.5000000000"), // $0.005 = 0.5¢ → 1¢
+    effectiveFrom: new Date("2026-06-23T00:00:00Z"),
+  },
+  {
+    name: "apify-bulk-email-verifier-actor-start",
+    provider: "apify",
+    providerDomain: PROVIDER_DOMAINS.apify,
+    type: "Bulk Email Verifier actor start",
+    unit: "run",
+    planTier: "starter",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0050000000"), // $0.00005 = 0.005¢ → 0.01¢
+    effectiveFrom: new Date("2026-06-23T00:00:00Z"),
+  },
   // Anthropic Opus 4.5: $5/MTok input, $25/MTok output
   // https://platform.claude.com/docs/en/about-claude/pricing
   {
