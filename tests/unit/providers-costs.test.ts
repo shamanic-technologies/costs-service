@@ -144,10 +144,10 @@ describe("Anthropic Opus 4.6 seed costs", () => {
 });
 
 describe("Apollo seed costs", () => {
-  it("should include unified apollo-credit at 2.832 cents (Basic $59/mo ÷ 2,500 credits × 1.2 risk)", () => {
+  it("should include unified apollo-credit at 4.72 cents (Basic $59/mo ÷ 2,500 credits × 2 risk)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "apollo-credit");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("2.8320000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("4.7200000000");
     expect(cost!.provider).toBe("apollo");
     expect(cost!.planTier).toBe("basic");
     expect(cost!.billingCycle).toBe("monthly");
@@ -182,19 +182,19 @@ describe("Google Flash Lite 3.1 seed costs", () => {
 });
 
 describe("Google Pro 3.1 seed costs", () => {
-  it("should include google-pro-3.1-tokens-input at 0.00024 cents ($2.00/MTok, <=200k context × 1.2 risk)", () => {
+  it("should include google-pro-3.1-tokens-input at 0.0004 cents ($2.00/MTok, <=200k context × 2 risk)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-pro-3.1-tokens-input");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0002400000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0004000000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
   });
 
-  it("should include google-pro-3.1-tokens-output at 0.00144 cents ($12.00/MTok, <=200k context × 1.2 risk)", () => {
+  it("should include google-pro-3.1-tokens-output at 0.0024 cents ($12.00/MTok, <=200k context × 2 risk)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-pro-3.1-tokens-output");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0014400000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0024000000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");

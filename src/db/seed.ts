@@ -4,10 +4,9 @@
 const USD_CENTS_DECIMAL_SCALE = 10;
 
 /**
- * DEFAULT cost-risk markup. The multiplier is NOT global anymore — it is per-cost:
- * each seed row may pass its own multiplier to `applyCostRiskMultiplier` and falls
- * back to this default (2×) when omitted. E.g. apollo-credit + gemini-3.1-pro tokens
- * use 1.2× instead of 2×.
+ * DEFAULT cost-risk markup, applied to EVERY seed cost (2× everywhere). The helper
+ * still accepts a per-cost override, but no cost currently uses one — all rows fall
+ * back to this default.
  */
 export const COST_RISK_MULTIPLIER = 2;
 
@@ -69,7 +68,6 @@ export const SEED_PROVIDERS_COSTS = [
   // Apollo — unified credit: Basic plan $59/mo ÷ 2,500 credits = 2.36¢/credit
   // Covers enrichment + person match. Quantity comes from Apollo webhook (credits_consumed).
   // Search is free (0 credits) and not tracked.
-  // Risk markup 1.2× (not the default 2×) — per-cost override.
   {
     name: "apollo-credit",
     provider: "apollo",
@@ -78,7 +76,7 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "credit",
     planTier: "basic",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("2.3600000000", 1.2),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("2.3600000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Apify — pro100chok/ahrefs-seo-tools (actor pC8gsptNv2RwJm0QE)
@@ -494,8 +492,7 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    // Risk markup 1.2× (not the default 2×) — per-cost override.
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0002000000", 1.2),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0002000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -506,8 +503,7 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    // Risk markup 1.2× (not the default 2×) — per-cost override.
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0012000000", 1.2),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0012000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 2.5 Pro: $1.25/MTok input, $10.00/MTok output (≤200k context)
