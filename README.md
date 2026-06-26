@@ -54,11 +54,11 @@ All provider seed costs apply `COST_RISK_MULTIPLIER = 2` to cover cost risk.
 | `google-embedding-001-tokens-input` | 0.00003 | 1M tokens | Input tokens (Gemini Embedding 001) | google | google.com | pay-as-you-go | monthly |
 | `google-search-query` | 2.8 | query | Search query (grounding) | google | google.com | pay-as-you-go | monthly |
 | `instantly-contact-uploaded` | 9.4 | contact | Contact upload | instantly | instantly.ai | growth | monthly |
-| `instantly-account-email-sent` | 0.1587301588 | email | Email send (per account) | instantly | instantly.ai | growth | monthly |
-| `instantly-domain-email-sent` | 0 | email | Email send (per domain) | instantly | instantly.ai | growth | yearly |
+| `instantly-account-email-sent` | 1.4285714286 | email | Email send (per account) | instantly | instantly.ai | growth | monthly |
+| `instantly-domain-email-sent` | 0.5158730158 | email | Email send (per domain) | instantly | instantly.ai | growth | yearly |
 | `instantly-contact-uploaded` | 0.776 | contact | Contact upload | instantly | instantly.ai | hypergrowth | monthly |
-| `instantly-account-email-sent` | 0.1587301588 | email | Email send (per account) | instantly | instantly.ai | hypergrowth | monthly |
-| `instantly-domain-email-sent` | 0 | email | Email send (per domain) | instantly | instantly.ai | hypergrowth | monthly |
+| `instantly-account-email-sent` | 1.4285714286 | email | Email send (per account) | instantly | instantly.ai | hypergrowth | monthly |
+| `instantly-domain-email-sent` | 0.5158730158 | email | Email send (per domain) | instantly | instantly.ai | hypergrowth | monthly |
 | `scrape-do-credit` | 0.0232 | credit | Scrape credit | scrape-do | scrape.do | hobby | monthly |
 | `serper-dev-query` | 0.2 | query | Search query | serper-dev | serper.dev | pay-as-you-go | monthly |
 | `stripe-processing-fee` | 2 | USD cent | Charge processing fee | stripe | stripe.com | pay-as-you-go | monthly |

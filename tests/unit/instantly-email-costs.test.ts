@@ -5,14 +5,14 @@ import {
   applyCostRiskMultiplier,
 } from "../../src/db/seed.js";
 
-// Instantly email-send is priced on a domain-based model (warmed-mailbox model dropped):
-// buy a domain ($20/yr), upload it to Instantly with 5 accounts; each account sends
-// 20 emails/business-day × 252 days = 5,040 emails/yr. The per-email cost comes entirely
-// from the domain, so it is plan-independent (Instantly email accounts are unlimited/free):
-//   $20/yr ÷ 5 accounts ÷ 5,040 emails = $0.000793650794 = 0.0793650794¢/email.
-// The domain line (instantly-domain-email-sent) is folded into the account line and kept
-// at 0 to avoid double-counting.
-describe("Instantly email-send unit costs (domain-based model)", () => {
+// Instantly email-send is priced on the Mailforge-provisioned infra model:
+// a domain costs $26/yr shared by 2 accounts, each account costs $3/mo = $36/yr.
+// Each account sends 20 emails/business-day × 252 days = 5,040 emails/yr. The cost is
+// SPLIT across the two rows (they sum to the real per-email cost, no folding/zeroing):
+//   account = $36/yr ÷ 5,040 emails              = 0.7142857143¢/email
+//   domain  = $26/yr ÷ (5,040 emails × 2 accts)  = 0.2579365079¢/email
+//   total                                        = 0.9722222222¢/email (×2 markup at store).
+describe("Instantly email-send unit costs (Mailforge infra model)", () => {
   const platform = SEED_PLATFORM_COSTS.find((c) => c.provider === "instantly");
 
   it("has an active instantly platform cost (hypergrowth/monthly)", () => {
@@ -21,23 +21,42 @@ describe("Instantly email-send unit costs (domain-based model)", () => {
     expect(platform!.billingCycle).toBe("monthly");
   });
 
-  it("prices instantly-account-email-sent at 0.0793650794¢ base (×2 markup) on both tiers", () => {
+  it("prices instantly-account-email-sent at 0.7142857143¢ base (×2 markup) on both tiers", () => {
     const rows = SEED_PROVIDERS_COSTS.filter((c) => c.name === "instantly-account-email-sent");
     expect(rows.length).toBe(2);
     for (const row of rows) {
-      expect(row.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0793650794"));
+      expect(row.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.7142857143"));
       expect(row.provider).toBe("instantly");
       expect(row.unit).toBe("email");
     }
     expect(rows.map((r) => r.planTier).sort()).toEqual(["growth", "hypergrowth"]);
   });
 
-  it("zeroes instantly-domain-email-sent (folded into account-email-sent) on both tiers", () => {
+  it("prices instantly-domain-email-sent at 0.2579365079¢ base (×2 markup) on both tiers", () => {
     const rows = SEED_PROVIDERS_COSTS.filter((c) => c.name === "instantly-domain-email-sent");
     expect(rows.length).toBe(2);
     for (const row of rows) {
-      expect(row.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000000000"));
+      expect(row.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.2579365079"));
+      expect(row.provider).toBe("instantly");
+      expect(row.unit).toBe("email");
     }
+    expect(rows.map((r) => r.planTier).sort()).toEqual(["growth", "hypergrowth"]);
+  });
+
+  // account + domain on the same tier must sum to the full per-email cost (no folding):
+  //   0.7142857143 + 0.2579365079 = 0.9722222222¢ base.
+  it("account + domain rows sum to the full per-email cost on the served tier", () => {
+    const account = SEED_PROVIDERS_COSTS.find(
+      (c) => c.name === "instantly-account-email-sent" && c.planTier === platform!.planTier
+    );
+    const domain = SEED_PROVIDERS_COSTS.find(
+      (c) => c.name === "instantly-domain-email-sent" && c.planTier === platform!.planTier
+    );
+    expect(account).toBeDefined();
+    expect(domain).toBeDefined();
+    const sum =
+      Number(account!.costPerUnitInUsdCents) + Number(domain!.costPerUnitInUsdCents);
+    expect(sum).toBeCloseTo(Number(applyCostRiskMultiplier("0.9722222222")), 9);
   });
 
   // Guard: the served row must match the active platform cost on (planTier, billingCycle),
