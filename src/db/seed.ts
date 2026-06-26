@@ -624,11 +624,12 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("4.7000000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly — email sent per account: domain $20/yr buys 5 accounts, each sending
-  // 20 emails/business-day × 252 business days = 5,040 emails/yr.
-  // $20/yr ÷ 5 accounts ÷ 5,040 emails = $0.000793650794 = 0.0793650794¢/email.
-  // Plan-independent: cost comes from the domain (Instantly email accounts are unlimited/free).
-  // https://instantly.ai/pricing
+  // Instantly — email sent per account (Mailforge-provisioned infra).
+  // Accounts now come from Mailforge: domain $26/yr shared by 2 accounts, account $3/mo = $36/yr.
+  // Each account sends 20 emails/business-day × 252 days = 5,040 emails/yr.
+  // Account fee is amortised over that account's own sends:
+  //   $36/yr ÷ 5,040 emails = $0.0071428571 = 0.7142857143¢/email.
+  // (Domain fee lives on instantly-domain-email-sent below — the two rows sum to the total.)
   {
     name: "instantly-account-email-sent",
     provider: "instantly",
@@ -637,13 +638,13 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "email",
     planTier: "growth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0793650794"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.7142857143"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly — email sent per domain: folded into instantly-account-email-sent (the
-  // $20/yr domain cost is allocated per account-email there). Kept at 0 to avoid
-  // double-counting; not removed so any consumer still declaring it resolves to 0.
-  // https://instantly.ai/pricing
+  // Instantly — email sent per domain (Mailforge-provisioned infra).
+  // Domain $26/yr is shared by 2 accounts, so amortised over both accounts' combined sends:
+  //   $26/yr ÷ (5,040 emails × 2 accounts) = $0.0025793651 = 0.2579365079¢/email.
+  // account + domain = 0.9722222222¢/email total (×2 risk markup applied at store time).
   {
     name: "instantly-domain-email-sent",
     provider: "instantly",
@@ -652,7 +653,7 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "email",
     planTier: "growth",
     billingCycle: "yearly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000000000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.2579365079"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly Hypergrowth — contact uploaded: $97/mo ÷ 25,000 contacts = 0.388¢/contact
@@ -668,10 +669,9 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.3880000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly Hypergrowth — email sent per account: same plan-independent domain model as Growth.
-  // domain $20/yr ÷ 5 accounts ÷ (20 emails/business-day × 252 days = 5,040/yr) = 0.0793650794¢/email.
+  // Instantly Hypergrowth — email sent per account: same Mailforge model as Growth.
+  // $36/yr account fee ÷ (20 emails/business-day × 252 days = 5,040/yr) = 0.7142857143¢/email.
   // This is the SERVED row (instantly platform cost = hypergrowth/monthly).
-  // https://instantly.ai/pricing
   {
     name: "instantly-account-email-sent",
     provider: "instantly",
@@ -680,12 +680,11 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "email",
     planTier: "hypergrowth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0793650794"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.7142857143"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly Hypergrowth — email sent per domain: folded into instantly-account-email-sent.
-  // Kept at 0 to avoid double-counting the domain cost.
-  // https://instantly.ai/pricing
+  // Instantly Hypergrowth — email sent per domain: same Mailforge model as Growth.
+  // $26/yr domain fee ÷ (5,040 emails × 2 accounts) = 0.2579365079¢/email.
   {
     name: "instantly-domain-email-sent",
     provider: "instantly",
@@ -694,7 +693,7 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "email",
     planTier: "hypergrowth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000000000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.2579365079"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Serper.dev — search query (web, news, batch): $0.001/query = 0.1¢/query
