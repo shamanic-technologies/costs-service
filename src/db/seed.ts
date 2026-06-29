@@ -292,7 +292,7 @@ export const SEED_PROVIDERS_COSTS = [
   },
   // Featured.com — one pitch submit = 1 credit.
   // We hold the $99/mo Pro/Business sub (unlimited) in practice, but rebill the client at
-  // a $1 base unit rate. Opportunity fetches are free/unlimited and are not tracked as
+  // a $1/2000 ($0.0005) base unit rate. Opportunity fetches are free/unlimited and are not tracked as
   // billable costs.
   {
     name: "featured-api-pitch-submit",
@@ -302,7 +302,7 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "call",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("100.0000000000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0500000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Postmark — unit cost = plan price ÷ 10,000 emails (10k volume tier)
