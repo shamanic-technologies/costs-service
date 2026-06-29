@@ -84,14 +84,14 @@ describe("Twilio seed costs", () => {
 });
 
 describe("Featured seed costs", () => {
-  it("should only bill pitch submissions at 200 cents on pay-as-you-go/monthly", () => {
+  it("should only bill pitch submissions at 0.1 cents on pay-as-you-go/monthly", () => {
     const pitchSubmit = SEED_PROVIDERS_COSTS.find((c) => c.name === "featured-api-pitch-submit");
     const opportunityFetch = SEED_PROVIDERS_COSTS.find((c) => c.name === "featured-api-opportunity-fetch");
 
     expect(opportunityFetch, "opportunity fetches are free/unlimited and should not be seeded").toBeUndefined();
     expect(pitchSubmit).toBeDefined();
-    // $1 base unit × 2 cost-risk markup = 200¢.
-    expect(pitchSubmit!.costPerUnitInUsdCents).toBe("200.0000000000");
+    // $1/2000 ($0.0005 = 0.05¢) base unit × 2 cost-risk markup = 0.1¢.
+    expect(pitchSubmit!.costPerUnitInUsdCents).toBe("0.1000000000");
     expect(pitchSubmit!.provider).toBe("featured");
     expect(pitchSubmit!.providerDomain).toBe("featured.com");
     expect(pitchSubmit!.type).toBe("API call (pitch submit)");

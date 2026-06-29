@@ -6,7 +6,7 @@ import {
 } from "../../src/db/seed.js";
 
 describe("Featured.com pitch submit unit cost", () => {
-  it("prices featured-api-pitch-submit at a $1 base unit cost (pay-as-you-go)", () => {
+  it("prices featured-api-pitch-submit at a $1/2000 base unit cost (pay-as-you-go)", () => {
     const row = SEED_PROVIDERS_COSTS.find((c) => c.name === "featured-api-pitch-submit");
     expect(row).toBeDefined();
     expect(row!.provider).toBe("featured");
@@ -15,9 +15,9 @@ describe("Featured.com pitch submit unit cost", () => {
     expect(row!.unit).toBe("call");
     expect(row!.planTier).toBe("pay-as-you-go");
     expect(row!.billingCycle).toBe("monthly");
-    // $1 = 100¢ pre-multiplier; stored value is 2× (cost-risk markup) => 200¢.
-    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("100.0000000000"));
-    expect(row!.costPerUnitInUsdCents).toBe("200.0000000000");
+    // $1/2000 = $0.0005 = 0.05¢ pre-multiplier; stored value is 2× (cost-risk markup) => 0.1¢.
+    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0500000000"));
+    expect(row!.costPerUnitInUsdCents).toBe("0.1000000000");
   });
 
   it("resolves against the active featured platform cost (plan_tier + billing_cycle match)", () => {
