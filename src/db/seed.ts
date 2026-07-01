@@ -620,12 +620,19 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("4.7000000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly — email sent per account (Mailforge-provisioned infra).
-  // Accounts now come from Mailforge: domain $26/yr shared by 2 accounts, account $3/mo = $36/yr.
-  // Each account sends 20 emails/business-day × 252 days = 5,040 emails/yr.
-  // Account fee is amortised over that account's own sends:
-  //   $36/yr ÷ 5,040 emails = $0.0071428571 = 0.7142857143¢/email.
-  // (Domain fee lives on instantly-domain-email-sent below — the two rows sum to the total.)
+  // Instantly — email sent per account (pre-warmed prewarmed-inbox infra).
+  // Infra model (2026-07, replaces Mailforge): a domain is bought $15/yr and hosts 5
+  // pre-warmed accounts at $10/mo EACH; each account sends 30 emails/business-day max.
+  //   sends/account/yr = 30 × 252 business days = 7,560
+  // The "per account" row carries the per-account hosting fee PLUS the folded-in
+  // deliverability-testing cost (option B — no separate cost name, so instantly-service
+  // needs no new declaration; see instantly-domain-email-sent for the domain-purchase share):
+  //   hosting       = $10/mo = $120/yr ÷ 7,560 sends        = 1.5873015873¢/email
+  //   deliverability= $47/mo global tool = $564/yr, amortised over the whole fleet
+  //                   (30 domains × 5 = 150 accounts × 7,560 = 1,134,000 sends/yr)
+  //                   $564/yr ÷ 1,134,000                    = 0.0497354497¢/email
+  //   account row   = 1.5873015873 + 0.0497354497           = 1.6370370370¢/email
+  // (Infra is plan-agnostic, so growth + hypergrowth carry the same value; ×2 markup at store.)
   {
     name: "instantly-account-email-sent",
     provider: "instantly",
@@ -634,13 +641,13 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "email",
     planTier: "growth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.7142857143"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.6370370370"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly — email sent per domain (Mailforge-provisioned infra).
-  // Domain $26/yr is shared by 2 accounts, so amortised over both accounts' combined sends:
-  //   $26/yr ÷ (5,040 emails × 2 accounts) = $0.0025793651 = 0.2579365079¢/email.
-  // account + domain = 0.9722222222¢/email total (×2 risk markup applied at store time).
+  // Instantly — email sent per domain (pre-warmed prewarmed-inbox infra).
+  // Domain purchase $15/yr, shared by all 5 accounts' combined sends:
+  //   $15/yr ÷ (7,560 sends × 5 accounts = 37,800/yr) = 0.0396825397¢/email.
+  // account + domain = 1.6767195767¢/email total (×2 risk markup applied at store time).
   {
     name: "instantly-domain-email-sent",
     provider: "instantly",
@@ -649,7 +656,7 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "email",
     planTier: "growth",
     billingCycle: "yearly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.2579365079"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0396825397"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly Hypergrowth — contact uploaded: $97/mo ÷ 25,000 contacts = 0.388¢/contact
@@ -665,8 +672,9 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.3880000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly Hypergrowth — email sent per account: same Mailforge model as Growth.
-  // $36/yr account fee ÷ (20 emails/business-day × 252 days = 5,040/yr) = 0.7142857143¢/email.
+  // Instantly Hypergrowth — email sent per account: same prewarmed-inbox model as Growth.
+  // hosting $10/mo = $120/yr ÷ 7,560 sends = 1.5873015873¢ + deliverability (folded, option B)
+  // $564/yr ÷ 1,134,000 fleet sends = 0.0497354497¢ → 1.6370370370¢/email.
   // This is the SERVED row (instantly platform cost = hypergrowth/monthly).
   {
     name: "instantly-account-email-sent",
@@ -676,11 +684,11 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "email",
     planTier: "hypergrowth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.7142857143"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.6370370370"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly Hypergrowth — email sent per domain: same Mailforge model as Growth.
-  // $26/yr domain fee ÷ (5,040 emails × 2 accounts) = 0.2579365079¢/email.
+  // Instantly Hypergrowth — email sent per domain: same prewarmed-inbox model as Growth.
+  // $15/yr domain purchase ÷ (7,560 sends × 5 accounts = 37,800/yr) = 0.0396825397¢/email.
   {
     name: "instantly-domain-email-sent",
     provider: "instantly",
@@ -689,7 +697,7 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "email",
     planTier: "hypergrowth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.2579365079"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0396825397"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Serper.dev — search query (web, news, batch): $0.001/query = 0.1¢/query

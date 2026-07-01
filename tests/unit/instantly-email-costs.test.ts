@@ -5,14 +5,16 @@ import {
   applyCostRiskMultiplier,
 } from "../../src/db/seed.js";
 
-// Instantly email-send is priced on the Mailforge-provisioned infra model:
-// a domain costs $26/yr shared by 2 accounts, each account costs $3/mo = $36/yr.
-// Each account sends 20 emails/business-day × 252 days = 5,040 emails/yr. The cost is
-// SPLIT across the two rows (they sum to the real per-email cost, no folding/zeroing):
-//   account = $36/yr ÷ 5,040 emails              = 0.7142857143¢/email
-//   domain  = $26/yr ÷ (5,040 emails × 2 accts)  = 0.2579365079¢/email
-//   total                                        = 0.9722222222¢/email (×2 markup at store).
-describe("Instantly email-send unit costs (Mailforge infra model)", () => {
+// Instantly email-send is priced on the prewarmed-inbox infra model (2026-07):
+// a domain is bought $15/yr and hosts 5 prewarmed accounts at $10/mo each; each account
+// sends 30 emails/business-day × 252 days = 7,560/yr. A $47/mo global deliverability tool
+// ($564/yr) is amortised over the whole fleet (30 domains × 5 = 150 accounts × 7,560 =
+// 1,134,000 sends/yr) and FOLDED into the account row (option B — no separate cost name):
+//   account = $120/yr hosting ÷ 7,560 + $564/yr deliverability ÷ 1,134,000
+//           = 1.5873015873 + 0.0497354497        = 1.6370370370¢/email
+//   domain  = $15/yr ÷ (7,560 × 5 accounts = 37,800) = 0.0396825397¢/email
+//   total                                        = 1.6767195767¢/email (×2 markup at store).
+describe("Instantly email-send unit costs (prewarmed-inbox infra model)", () => {
   const platform = SEED_PLATFORM_COSTS.find((c) => c.provider === "instantly");
 
   it("has an active instantly platform cost (hypergrowth/monthly)", () => {
@@ -21,30 +23,30 @@ describe("Instantly email-send unit costs (Mailforge infra model)", () => {
     expect(platform!.billingCycle).toBe("monthly");
   });
 
-  it("prices instantly-account-email-sent at 0.7142857143¢ base (×2 markup) on both tiers", () => {
+  it("prices instantly-account-email-sent at 1.6370370370¢ base (×2 markup) on both tiers", () => {
     const rows = SEED_PROVIDERS_COSTS.filter((c) => c.name === "instantly-account-email-sent");
     expect(rows.length).toBe(2);
     for (const row of rows) {
-      expect(row.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.7142857143"));
+      expect(row.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("1.6370370370"));
       expect(row.provider).toBe("instantly");
       expect(row.unit).toBe("email");
     }
     expect(rows.map((r) => r.planTier).sort()).toEqual(["growth", "hypergrowth"]);
   });
 
-  it("prices instantly-domain-email-sent at 0.2579365079¢ base (×2 markup) on both tiers", () => {
+  it("prices instantly-domain-email-sent at 0.0396825397¢ base (×2 markup) on both tiers", () => {
     const rows = SEED_PROVIDERS_COSTS.filter((c) => c.name === "instantly-domain-email-sent");
     expect(rows.length).toBe(2);
     for (const row of rows) {
-      expect(row.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.2579365079"));
+      expect(row.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0396825397"));
       expect(row.provider).toBe("instantly");
       expect(row.unit).toBe("email");
     }
     expect(rows.map((r) => r.planTier).sort()).toEqual(["growth", "hypergrowth"]);
   });
 
-  // account + domain on the same tier must sum to the full per-email cost (no folding):
-  //   0.7142857143 + 0.2579365079 = 0.9722222222¢ base.
+  // account + domain on the same tier must sum to the full per-email cost:
+  //   1.6370370370 + 0.0396825397 = 1.6767195767¢ base (deliverability folded into account).
   it("account + domain rows sum to the full per-email cost on the served tier", () => {
     const account = SEED_PROVIDERS_COSTS.find(
       (c) => c.name === "instantly-account-email-sent" && c.planTier === platform!.planTier
@@ -56,7 +58,7 @@ describe("Instantly email-send unit costs (Mailforge infra model)", () => {
     expect(domain).toBeDefined();
     const sum =
       Number(account!.costPerUnitInUsdCents) + Number(domain!.costPerUnitInUsdCents);
-    expect(sum).toBeCloseTo(Number(applyCostRiskMultiplier("0.9722222222")), 9);
+    expect(sum).toBeCloseTo(Number(applyCostRiskMultiplier("1.6767195767")), 9);
   });
 
   // Guard: the served row must match the active platform cost on (planTier, billingCycle),
