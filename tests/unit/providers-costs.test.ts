@@ -36,18 +36,18 @@ describe("Instantly seed costs", () => {
     expect(cost!.billingCycle).toBe("monthly");
   });
 
-  it("should include instantly-account-email-sent at 1.4285714286 cents on growth/monthly (Mailforge model)", () => {
+  it("should include instantly-account-email-sent at 3.2740740740 cents on growth/monthly (prewarmed model)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "instantly-account-email-sent" && c.planTier === "growth");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("1.4285714286");
+    expect(cost!.costPerUnitInUsdCents).toBe("3.2740740740");
     expect(cost!.provider).toBe("instantly");
     expect(cost!.billingCycle).toBe("monthly");
   });
 
-  it("should include instantly-domain-email-sent at 0.5158730158 cents on growth/yearly (Mailforge model)", () => {
+  it("should include instantly-domain-email-sent at 0.0793650794 cents on growth/yearly (prewarmed model)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "instantly-domain-email-sent" && c.planTier === "growth");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.5158730158");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0793650794");
     expect(cost!.provider).toBe("instantly");
     expect(cost!.billingCycle).toBe("yearly");
   });
