@@ -7,7 +7,9 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 This repo does **not** use the `release.sh` hotfix flow. Every code/seed change ships through staging:
 
 1. Branch from `origin/staging`, open PR with **base `staging`**, merge via `gh pr merge --auto --squash`.
-2. Promotion to `main`/prod is a **separate** PR titled `chore: promote staging to vX.Y.Z` (base `main`).
+2. Promotion to `main`/prod is a **separate** PR titled `chore: promote staging to vX.Y.Z` (base `main`), then tag `vX.Y.Z` + `gh release create` on the merge commit (minor bump from the latest tag).
+
+**The branch-guard hook BLOCKS `gh pr create --base main` — create the promote PR via `gh api` instead** (the guard substring-matches `gh pr ... --base main`, not the REST endpoint, same path `release.sh` uses): `gh api repos/shamanic-technologies/costs-service/pulls -X POST -f title="chore: promote staging to vX.Y.Z" -f head=staging -f base=main -f body="..."`. Then `gh pr merge <N> --auto --squash`. After merge: `gh release create vX.Y.Z --target <full-40char-merge-sha> --title vX.Y.Z --notes "..."` (abbreviated SHA → `Release.target_commitish is invalid`). Verify prod deploy: `gh api "repos/shamanic-technologies/costs-service/deployments?sha=<sha>" -q '.[0].id'` then `.../deployments/<id>/statuses` → `state:success`.
 
 **Verify the working branch's base BEFORE committing — a Conductor workspace may pre-create the branch off `main`, not `staging`.** `main` carries promote merges absent from `staging`, so a branch sitting on `main` opens a PR whose diff includes unrelated promote commits. Check `git log origin/staging..HEAD --oneline` (must be empty before your work); if it shows main-only commits, repoint: `git stash && git checkout -B <branch> origin/staging && git stash pop`. (`git reset --hard` is hook-blocked here — use `checkout -B`.)
 
@@ -62,6 +64,51 @@ The cost catalog is **time-versioned**: `providers_costs` keys on `(name, plan_t
 The boundary between the old and new price is the **deploy timestamp** (`now()`), not a hand-set date.
 
 **NEVER reintroduce `ON CONFLICT (...) DO UPDATE SET cost_per_unit_in_usd_cents` (or `plan_tier`).** Reusing an `effective_from` + DO UPDATE silently OVERWRITES the row and destroys history — that was the bug. Past reprices (featured pitch #134, google rename, etc.) already lost their history this way; the fix only protects future changes. A `pg_advisory_xact_lock` serializes concurrent boots so multi-replica deploys can't double-append. Regression: `tests/integration/seed-append-history.test.ts` (fails red under DO UPDATE — one row, old value gone).
+
+## Instantly cost model (prewarmed-inbox infra, 2026-07)
+
+Instantly cold-email spend is seeded as **3 cost names**, all `provider: "instantly"`. The
+SERVED tier is **`hypergrowth` / `monthly`** (`SEED_PLATFORM_COSTS`); the `growth` rows are
+inert history (never resolved by `platform-prices`) kept only so both tiers stay coherent.
+The email infra is **plan-agnostic**, so `growth` and `hypergrowth` carry identical email values.
+
+**Infra assumptions** (replaced the older Mailforge model — domain $26/yr shared by 2 accounts,
+$3/mo/account, 20 sends/business-day):
+
+| input | value |
+|-------|-------|
+| domain purchase | $15/yr |
+| accounts per domain | 5 (prewarmed) |
+| account hosting | **$10/mo per account** = $120/yr |
+| max sends | 30 emails/business-day/account |
+| business days | 252/yr → **7,560 sends/yr/account**, **37,800/yr/domain** (×5) |
+| contact upload | $97/mo Hypergrowth sub → 25,000 contacts |
+| deliverability tool | $47/mo **global** (one subscription for the whole fleet) = $564/yr |
+| fleet size (deliverability denominator) | 30 domains × 5 = 150 accounts × 7,560 = **1,134,000 sends/yr** |
+
+**Per-cost derivation** (base ¢/email, before the ×2 `applyCostRiskMultiplier` store markup):
+
+- `instantly-account-email-sent` = hosting **+ folded deliverability** (option B — no separate
+  cost name, so instantly-service declares no new cost):
+  - hosting = $120/yr ÷ 7,560 = **1.5873015873¢**
+  - deliverability = $564/yr ÷ 1,134,000 = **0.0497354497¢**
+  - account row = **1.6370370370¢** (stored ×2 = 3.2740740740)
+- `instantly-domain-email-sent` = $15/yr ÷ 37,800 = **0.0396825397¢** (stored ×2 = 0.0793650794)
+- account + domain = **1.6767195767¢/email** total (stored ×2 = 3.3534391534)
+- `instantly-contact-uploaded` = $97/mo ÷ 25,000 = **0.388¢/contact** (unchanged; stored ×2 = 0.776)
+
+**Why deliverability is folded into the account row (option B, not a 4th cost name):** a new
+cost name would be inert until instantly-service declares it per send (extra consumer PR). Folding
+keeps the SUM correct with zero consumer change. The account row is the right home because
+deliverability testing is per-inbox health. If you ever need it broken out for reporting, split it
+into `instantly-deliverability-test-email-sent` AND add the declaration in instantly-service — do
+not leave a dangling cost name.
+
+Regression: `tests/unit/instantly-email-costs.test.ts` asserts each base value, that account+domain
+sum to the full per-email cost, and that the served row matches the active platform cost's
+`(planTier, billingCycle)`. Reprice = edit the value in `src/db/seed.ts` per the append-only rule
+below; update the same literals in `tests/unit/providers-costs.test.ts`,
+`tests/integration/seed-append-history.test.ts`, and the README table.
 
 ## Migration safety
 
