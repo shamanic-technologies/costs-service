@@ -13,7 +13,7 @@ import {
 //   account = $120/yr hosting ÷ 7,560 + $564/yr deliverability ÷ 1,134,000
 //           = 1.5873015873 + 0.0497354497        = 1.6370370370¢/email
 //   domain  = $15/yr ÷ (7,560 × 5 accounts = 37,800) = 0.0396825397¢/email
-//   total                                        = 1.6767195767¢/email (×2 markup at store).
+//   total                                        = 1.6767195767¢/email (×4 markup at store).
 describe("Instantly email-send unit costs (prewarmed-inbox infra model)", () => {
   const platform = SEED_PLATFORM_COSTS.find((c) => c.provider === "instantly");
 
@@ -23,7 +23,7 @@ describe("Instantly email-send unit costs (prewarmed-inbox infra model)", () => 
     expect(platform!.billingCycle).toBe("monthly");
   });
 
-  it("prices instantly-account-email-sent at 1.6370370370¢ base (×2 markup) on both tiers", () => {
+  it("prices instantly-account-email-sent at 1.6370370370¢ base (×4 markup) on both tiers", () => {
     const rows = SEED_PROVIDERS_COSTS.filter((c) => c.name === "instantly-account-email-sent");
     expect(rows.length).toBe(2);
     for (const row of rows) {
@@ -34,7 +34,7 @@ describe("Instantly email-send unit costs (prewarmed-inbox infra model)", () => 
     expect(rows.map((r) => r.planTier).sort()).toEqual(["growth", "hypergrowth"]);
   });
 
-  it("prices instantly-domain-email-sent at 0.0396825397¢ base (×2 markup) on both tiers", () => {
+  it("prices instantly-domain-email-sent at 0.0396825397¢ base (×4 markup) on both tiers", () => {
     const rows = SEED_PROVIDERS_COSTS.filter((c) => c.name === "instantly-domain-email-sent");
     expect(rows.length).toBe(2);
     for (const row of rows) {

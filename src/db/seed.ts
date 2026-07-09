@@ -4,11 +4,22 @@
 const USD_CENTS_DECIMAL_SCALE = 10;
 
 /**
- * DEFAULT cost-risk markup, applied to EVERY seed cost (2× everywhere). The helper
- * still accepts a per-cost override, but no cost currently uses one — all rows fall
- * back to this default.
+ * Cost-risk markup — covers the risk that the raw provider cost is under-estimated.
  */
 export const COST_RISK_MULTIPLIER = 2;
+
+/**
+ * Profit markup — stacks multiplicatively on top of the risk markup.
+ */
+export const COST_PROFIT_MULTIPLIER = 2;
+
+/**
+ * DEFAULT markup applied to EVERY seed cost: risk × profit (2 × 2 = 4× everywhere).
+ * The helper still accepts a per-cost override, but no cost currently uses one — all
+ * rows fall back to this default.
+ */
+export const COST_DEFAULT_MULTIPLIER =
+  COST_RISK_MULTIPLIER * COST_PROFIT_MULTIPLIER;
 
 // The multiplier is scaled to this many decimals so non-integer markups (e.g. 1.2)
 // are computed with exact BigInt math instead of lossy float multiplication.
@@ -17,12 +28,12 @@ const MULTIPLIER_DECIMAL_SCALE = 4;
 /**
  * Apply a per-cost risk markup to a raw unit cost.
  * @param costPerUnitInUsdCents raw cost as a fixed 10-decimal string (e.g. "2.3600000000")
- * @param multiplier markup factor; defaults to COST_RISK_MULTIPLIER (2). Per-cost overrides
- *   allowed (e.g. 1.2). Result is rounded half-up to 10 decimals.
+ * @param multiplier markup factor; defaults to COST_DEFAULT_MULTIPLIER (risk × profit = 4).
+ *   Per-cost overrides allowed (e.g. 1.2). Result is rounded half-up to 10 decimals.
  */
 export function applyCostRiskMultiplier(
   costPerUnitInUsdCents: string,
-  multiplier: number = COST_RISK_MULTIPLIER,
+  multiplier: number = COST_DEFAULT_MULTIPLIER,
 ): string {
   if (!/^\d+\.\d{10}$/.test(costPerUnitInUsdCents)) {
     throw new Error(`Invalid seed cost format: ${costPerUnitInUsdCents}`);
@@ -139,7 +150,7 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "run",
     planTier: "starter",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0010000000"), // $0.00001 = 0.001¢ → 0.002¢
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0010000000"), // $0.00001 = 0.001¢ → 0.004¢
     effectiveFrom: new Date("2026-06-12T00:00:00Z"),
   },
   // Apify — email VERIFICATION actor (bounceverify/bounceverify-email-verifier,
@@ -155,7 +166,7 @@ export const SEED_PROVIDERS_COSTS = [
     unit: "email",
     planTier: "starter",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0890000000"), // $0.00089 = 0.089¢ → 0.178¢
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0890000000"), // $0.00089 = 0.089¢ → 0.356¢
     effectiveFrom: new Date("2026-06-23T00:00:00Z"),
   },
   // Anthropic Opus 4.5: $5/MTok input, $25/MTok output
@@ -632,7 +643,7 @@ export const SEED_PROVIDERS_COSTS = [
   //                   (30 domains × 5 = 150 accounts × 7,560 = 1,134,000 sends/yr)
   //                   $564/yr ÷ 1,134,000                    = 0.0497354497¢/email
   //   account row   = 1.5873015873 + 0.0497354497           = 1.6370370370¢/email
-  // (Infra is plan-agnostic, so growth + hypergrowth carry the same value; ×2 markup at store.)
+  // (Infra is plan-agnostic, so growth + hypergrowth carry the same value; ×4 markup at store.)
   {
     name: "instantly-account-email-sent",
     provider: "instantly",
@@ -733,7 +744,7 @@ export const SEED_PROVIDERS_COSTS = [
   // Stripe — pass-through processing fees (charge, refund, dispute, payout failure).
   // stripe-service emits one cost write per Stripe-incurred fee event, with quantity
   // set to the fee in cents (from balance_transaction.fee). Unit price is 1 cent base,
-  // doubled to 2¢ by applyCostRiskMultiplier — org is charged 2× the actual Stripe fee,
+  // quadrupled to 4¢ by applyCostRiskMultiplier — org is charged 4× the actual Stripe fee,
   // matching the platform-wide cost-risk markup convention.
   // https://stripe.com/pricing
   {
