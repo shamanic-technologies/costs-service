@@ -15,7 +15,7 @@ describe("Apify Ahrefs scrape unit cost", () => {
     expect(row!.unit).toBe("result");
     expect(row!.planTier).toBe("starter");
     expect(row!.billingCycle).toBe("monthly");
-    // $0.005 = 0.5¢ pre-multiplier; stored value is 2× (cost-risk markup).
+    // $0.005 = 0.5¢ pre-multiplier; stored value is 4× (risk × profit markup) = 2¢.
     expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.5000000000"));
   });
 

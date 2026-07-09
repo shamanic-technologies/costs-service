@@ -11,7 +11,7 @@ import {
 // 422-rejects any cost name absent from this catalog, so it must seed + resolve a
 // price under the active apify/starter platform plan.
 const NAME = "apify-bounceverify-email";
-const RAW = "0.0890000000"; // real Apify $0.00089/email = 0.089¢; charged 2× = 0.178¢
+const RAW = "0.0890000000"; // real Apify $0.00089/email = 0.089¢; charged 4× = 0.356¢
 
 describe("Apify bounceverify unit cost", () => {
   it(`registers ${NAME} (email unit, Bronze tier, Starter plan)`, () => {
@@ -23,7 +23,7 @@ describe("Apify bounceverify unit cost", () => {
     expect(row!.unit).toBe("email");
     expect(row!.planTier).toBe("starter");
     expect(row!.billingCycle).toBe("monthly");
-    // Stored value is 2× the raw provider cost (cost-risk markup): 0.089¢ → 0.178¢.
+    // Stored value is 4× the raw provider cost (risk × profit markup): 0.089¢ → 0.356¢.
     expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier(RAW));
   });
 

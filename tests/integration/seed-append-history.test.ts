@@ -43,7 +43,7 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
       effectiveFrom: new Date("2025-01-01T00:00:00Z"),
     });
 
-    await seedProvidersCosts(); // seed now carries 3.2740740740 → must APPEND
+    await seedProvidersCosts(); // seed now carries 6.5481481480 → must APPEND
 
     const rows = await db
       .select()
@@ -58,7 +58,7 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
       .orderBy(desc(providersCosts.effectiveFrom));
 
     expect(rows.length).toBe(2); // history preserved, not overwritten
-    expect(rows[0].costPerUnitInUsdCents).toBe("3.2740740740"); // newest = new price
+    expect(rows[0].costPerUnitInUsdCents).toBe("6.5481481480"); // newest = new price
     expect(rows[1].costPerUnitInUsdCents).toBe("3.3334000000"); // old value still queryable
     expect(rows[1].effectiveFrom.getTime()).toBeLessThan(rows[0].effectiveFrom.getTime());
   });
@@ -100,12 +100,12 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
       .get("/v1/platform-prices/instantly-account-email-sent")
       .set(identityHeaders);
     expect(account.status).toBe(200);
-    expect(account.body.pricePerUnitInUsdCents).toBe("3.2740740740");
+    expect(account.body.pricePerUnitInUsdCents).toBe("6.5481481480");
 
     const domain = await request(app)
       .get("/v1/platform-prices/instantly-domain-email-sent")
       .set(identityHeaders);
     expect(domain.status).toBe(200);
-    expect(domain.body.pricePerUnitInUsdCents).toBe("0.0793650794");
+    expect(domain.body.pricePerUnitInUsdCents).toBe("0.1587301588");
   });
 });
