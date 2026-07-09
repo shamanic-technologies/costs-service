@@ -29,6 +29,8 @@ Do NOT open seed/cost PRs directly against `main` — every recent seed PR (#127
 - `npm run db:studio` — open Drizzle Studio
 - `npm run check:readme` — verify README costs table matches seed data
 
+**Running `test:integration` locally — use a DEDICATED `costs_test` DB, not the shared `test` DB.** `tests/setup.ts` defaults `COSTS_SERVICE_DATABASE_URL` to `postgresql://test:test@localhost/test`. That shared DB is used by sibling services, so its `drizzle.__drizzle_migrations` table already carries their entries with later `when` timestamps — the drizzle migrator then SKIPS costs-service's migrations (content-agnostic ordering), and every integration test fails with `relation "providers_costs" does not exist`. Fix: `createdb costs_test` (owner `test`), then `COSTS_SERVICE_DATABASE_URL="postgresql://test:test@localhost/costs_test" npm run db:migrate` once, then run `COSTS_SERVICE_DATABASE_URL="postgresql://test:test@localhost/costs_test" npm run test:integration`. Unit tests + `build` + `check:readme` need no DB.
+
 ## Architecture
 
 - `src/index.ts` — Express app entry point
@@ -62,6 +64,8 @@ The cost catalog is **time-versioned**: `providers_costs` keys on `(name, plan_t
 - value equal → no-op (idempotent across every boot)
 
 The boundary between the old and new price is the **deploy timestamp** (`now()`), not a hand-set date.
+
+**Store markup = `COST_RISK_MULTIPLIER` × `COST_PROFIT_MULTIPLIER` (two factors, default 2 × 2 = 4×).** Every seed value is `raw × COST_DEFAULT_MULTIPLIER` where `COST_DEFAULT_MULTIPLIER = COST_RISK_MULTIPLIER * COST_PROFIT_MULTIPLIER` (`src/db/seed.ts`). Risk covers cost under-estimation; profit is the store margin. `applyCostRiskMultiplier(raw)` applies the product; an explicit 2nd-arg override REPLACES the whole markup (profit does NOT stack on an override — the override path is test-only today). Changing either factor reprices EVERY cost at once via the append-only path above (new `now()`-dated rows on deploy). When you touch a factor you must also: double/halve the README catalog values (`npm run check:readme`), the seed-derived test literals (`tests/unit/providers-costs.test.ts` + per-provider `*-costs.test.ts` + `tests/integration/{stripe-fees,seed-append-history}.test.ts`), leaving fixture-inserted integration literals (`insertTestProviderCost`) untouched.
 
 **NEVER reintroduce `ON CONFLICT (...) DO UPDATE SET cost_per_unit_in_usd_cents` (or `plan_tier`).** Reusing an `effective_from` + DO UPDATE silently OVERWRITES the row and destroys history — that was the bug. Past reprices (featured pitch #134, google rename, etc.) already lost their history this way; the fix only protects future changes. A `pg_advisory_xact_lock` serializes concurrent boots so multi-replica deploys can't double-append. Regression: `tests/integration/seed-append-history.test.ts` (fails red under DO UPDATE — one row, old value gone).
 

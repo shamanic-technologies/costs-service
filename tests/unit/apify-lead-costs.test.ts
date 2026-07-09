@@ -25,7 +25,7 @@ describe("Apify per-actor lead unit costs", () => {
       expect(row!.unit).toBe("lead");
       expect(row!.planTier).toBe("starter");
       expect(row!.billingCycle).toBe("monthly");
-      // Stored value is 2× the raw provider cost (cost-risk markup).
+      // Stored value is 4× the raw provider cost (risk × profit markup).
       expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier(raw));
     });
 

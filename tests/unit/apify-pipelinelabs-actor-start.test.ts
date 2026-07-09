@@ -10,7 +10,7 @@ import {
 // this catalog, so apify-service cannot declare the run-start cost until it seeds +
 // resolves a price under the active apify/starter platform plan.
 const NAME = "apify-pipelinelabs-actor-start";
-const RAW = "0.0010000000"; // real Apify $0.00001/run = 0.001¢; charged 2× = 0.002¢
+const RAW = "0.0010000000"; // real Apify $0.00001/run = 0.001¢; charged 4× = 0.004¢
 
 describe("Apify pipelinelabs actor-start unit cost", () => {
   it(`registers ${NAME} (run unit, Bronze tier, Starter plan)`, () => {
@@ -22,7 +22,7 @@ describe("Apify pipelinelabs actor-start unit cost", () => {
     expect(row!.unit).toBe("run");
     expect(row!.planTier).toBe("starter");
     expect(row!.billingCycle).toBe("monthly");
-    // Stored value is 2× the raw provider cost (cost-risk markup): 0.001¢ → 0.002¢.
+    // Stored value is 4× the raw provider cost (risk × profit markup): 0.001¢ → 0.004¢.
     expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier(RAW));
   });
 
