@@ -805,6 +805,25 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.3300000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Twilio — WhatsApp: 0.5¢ per outbound message (US, all-in per-message model).
+  // Twilio moved WhatsApp to per-message pricing (Meta deprecated conversation-based
+  // pricing on 2025-07-01). Price = Twilio's flat $0.005/message platform fee + Meta's
+  // per-category rate; for the US Marketing/Service category the Meta rate is $0.00, so
+  // the all-in per-message price is $0.005 = 0.5¢. WhatsApp outreach sends
+  // marketing-category templates, so we price on that category (same single-blended-rate
+  // shape as twilio-sms-segment above).
+  // https://www.twilio.com/en-us/whatsapp/pricing
+  {
+    name: "twilio-whatsapp-message",
+    provider: "twilio",
+    providerDomain: PROVIDER_DOMAINS.twilio,
+    type: "WhatsApp message",
+    unit: "message",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.5000000000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Cloudflare R2 — Class A operations (PUT, POST, COPY, LIST): $4.50 per million ops
   // Covers POST /upload in cloudflare-service (1 PUT per call).
   // https://developers.cloudflare.com/r2/pricing/
