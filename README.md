@@ -66,6 +66,7 @@ All provider seed costs apply a default markup of `COST_RISK_MULTIPLIER = 2` × 
 | `stripe-dispute-fee` | 4 | USD cent | Dispute fee | stripe | stripe.com | pay-as-you-go | monthly |
 | `stripe-payout-failure-fee` | 4 | USD cent | Payout failure fee | stripe | stripe.com | pay-as-you-go | monthly |
 | `twilio-sms-segment` | 5.32 | segment | SMS message | twilio | twilio.com | pay-as-you-go | monthly |
+| `twilio-whatsapp-message` | 2 | message | WhatsApp message | twilio | twilio.com | pay-as-you-go | monthly |
 | `cloudflare-r2-class-a-operation` | 0.0018 | operation | R2 Class A operation | cloudflare | cloudflare.com | pay-as-you-go | monthly |
 | `cloudflare-r2-class-b-operation` | 0.000144 | operation | R2 Class B operation | cloudflare | cloudflare.com | pay-as-you-go | monthly |
 
