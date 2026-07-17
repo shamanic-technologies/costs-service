@@ -85,6 +85,29 @@ describe("Twilio seed costs", () => {
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
   });
+
+  it("should include twilio-whatsapp-message at 2 cents on pay-as-you-go/monthly (WhatsApp channel)", () => {
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "twilio-whatsapp-message");
+    expect(cost).toBeDefined();
+    // raw 0.5¢ (US all-in per-message, Marketing category) × 4 default markup = 2.0¢
+    expect(cost!.costPerUnitInUsdCents).toBe("2.0000000000");
+    expect(cost!.provider).toBe("twilio");
+    expect(cost!.type).toBe("WhatsApp message");
+    expect(cost!.unit).toBe("message");
+    expect(cost!.planTier).toBe("pay-as-you-go");
+    expect(cost!.billingCycle).toBe("monthly");
+  });
+
+  it("twilio-whatsapp-message resolves against the active twilio platform cost (tier/cycle byte-equal)", () => {
+    // Guard: platform-prices joins providers_costs → active platform_costs on
+    // (planTier, billingCycle). If they diverge, a producer declaring the cost 422/404s.
+    const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "twilio-whatsapp-message");
+    const platform = SEED_PLATFORM_COSTS.find((p) => p.provider === "twilio");
+    expect(cost).toBeDefined();
+    expect(platform).toBeDefined();
+    expect(cost!.planTier).toBe(platform!.planTier);
+    expect(cost!.billingCycle).toBe(platform!.billingCycle);
+  });
 });
 
 describe("Featured seed costs", () => {
