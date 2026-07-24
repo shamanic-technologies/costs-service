@@ -443,6 +443,56 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0009000000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Google Gemini 3.6 Flash: $1.50/MTok input, $7.50/MTok output (standard pay-as-you-go tier).
+  // Internal alias "flash-pro" routes here (replaces Gemini 3.5 Flash — same input price, cheaper output).
+  // https://ai.google.dev/gemini-api/docs/pricing
+  {
+    name: "google-flash-3.6-tokens-input",
+    provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Input tokens (Gemini 3.6 Flash)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001500000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "google-flash-3.6-tokens-output",
+    provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Output tokens (Gemini 3.6 Flash)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0007500000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Google Gemini 3.5 Flash-Lite: $0.30/MTok input, $2.50/MTok output (standard pay-as-you-go tier).
+  // Internal alias "flash" routes here (replaces Gemini 3 Flash — cheaper input + output).
+  // https://ai.google.dev/gemini-api/docs/pricing
+  {
+    name: "google-flash-lite-3.5-tokens-input",
+    provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Input tokens (Gemini 3.5 Flash-Lite)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000300000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "google-flash-lite-3.5-tokens-output",
+    provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Output tokens (Gemini 3.5 Flash-Lite)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0002500000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Google Gemini 3.1 Flash Image: $0.50/MTok input, $60.00/MTok image output.
   // brand-service persona avatars provision 747 image output tokens for 512x512 generation.
   // https://ai.google.dev/gemini-api/docs/pricing

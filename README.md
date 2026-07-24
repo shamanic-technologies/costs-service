@@ -39,6 +39,10 @@ All provider seed costs apply a default markup of `COST_RISK_MULTIPLIER = 2` × 
 | `google-flash-3-tokens-output` | 0.0012 | 1M tokens | Output tokens (Gemini 3 Flash) | google | google.com | pay-as-you-go | monthly |
 | `google-flash-3.5-tokens-input` | 0.0006 | 1M tokens | Input tokens (Gemini 3.5 Flash) | google | google.com | pay-as-you-go | monthly |
 | `google-flash-3.5-tokens-output` | 0.0036 | 1M tokens | Output tokens (Gemini 3.5 Flash) | google | google.com | pay-as-you-go | monthly |
+| `google-flash-3.6-tokens-input` | 0.0006 | 1M tokens | Input tokens (Gemini 3.6 Flash) | google | google.com | pay-as-you-go | monthly |
+| `google-flash-3.6-tokens-output` | 0.003 | 1M tokens | Output tokens (Gemini 3.6 Flash) | google | google.com | pay-as-you-go | monthly |
+| `google-flash-lite-3.5-tokens-input` | 0.00012 | 1M tokens | Input tokens (Gemini 3.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly |
+| `google-flash-lite-3.5-tokens-output` | 0.001 | 1M tokens | Output tokens (Gemini 3.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly |
 | `google-flash-image-3.1-tokens-input` | 0.0002 | 1M tokens | Input tokens (Gemini 3.1 Flash Image) | google | google.com | pay-as-you-go | monthly |
 | `google-flash-image-3.1-tokens-output` | 0.024 | 1M tokens | Image output tokens (Gemini 3.1 Flash Image) | google | google.com | pay-as-you-go | monthly |
 | `google-flash-2.5-tokens-input` | 0.00012 | 1M tokens | Input tokens (Gemini 2.5 Flash) | google | google.com | pay-as-you-go | monthly |
