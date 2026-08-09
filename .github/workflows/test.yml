@@ -27,6 +27,31 @@ jobs:
 
   test-integration:
     runs-on: ubuntu-latest
+
+    # A throwaway Postgres, one per run, inside the runner.
+    #
+    # This used to be an isolated Neon branch cut per run. The Neon project no
+    # longer exists — the fleet moved to a single self-hosted Postgres — so the
+    # create-branch step failed with a 404 before a single test ran, and nothing
+    # could merge. A service container gives the exact guarantee the Neon branch
+    # was there for (a database nothing else points at, discarded when the job
+    # ends) with no external service, no API key, and no delete step that can
+    # leave something behind.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: costs_service_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,19 +59,28 @@ jobs:
           node-version: 20
       - run: npm ci
 
-      - name: Create Neon branch for tests
-        id: neon
-        uses: neondatabase/create-branch-action@v6
-        with:
-          project_id: ${{ vars.NEON_PROJECT_ID }}
-          branch_name: ci-${{ github.event_name }}-${{ github.run_id }}
-          api_key: ${{ secrets.NEON_API_KEY }}
-
+      # ALWAYS the throwaway service container. No CI job may hold a DSN for a
+      # database anything else points at.
       - name: Set database URL
-        run: echo "DB_URL=${{ steps.neon.outputs.db_url_pooled }}" >> "$GITHUB_ENV"
+        run: echo "DB_URL=postgresql://postgres:postgres@127.0.0.1:5432/costs_service_test" >> "$GITHUB_ENV"
 
-      - name: Push schema
-        run: npx drizzle-kit push --force
+      # The database starts EMPTY, so the schema is built by replaying the
+      # migration journal — the same path `runMigrationsIfNeeded` takes on boot.
+      # The Neon branch was forked from production and already carried the
+      # schema, so CI used `drizzle-kit push` (schema.ts, journal skipped) and
+      # the migration SQL was never exercised until it hit a real deploy.
+      #
+      # Migrate exits non-zero on a failed statement, but the output is teed and
+      # grepped anyway: a schema that half-built would otherwise hand the suite a
+      # database that fails somewhere unrelated.
+      - name: Apply migrations to the empty database
+        run: |
+          set -o pipefail
+          npm run db:migrate 2>&1 | tee /tmp/drizzle-migrate.log
+          if grep -qiE '^error:' /tmp/drizzle-migrate.log; then
+            echo "::error::drizzle-kit migrate reported an error — the schema is incomplete."
+            exit 1
+          fi
         env:
           COSTS_SERVICE_DATABASE_URL: ${{ env.DB_URL }}
 
@@ -56,10 +90,24 @@ jobs:
           COSTS_SERVICE_DATABASE_URL: ${{ env.DB_URL }}
           COSTS_SERVICE_API_KEY: test-api-key
 
-      - name: Cleanup Neon branch
-        if: always()
-        uses: neondatabase/delete-branch-action@v3
-        with:
-          project_id: ${{ vars.NEON_PROJECT_ID }}
-          branch: ci-${{ github.event_name }}-${{ github.run_id }}
-          api_key: ${{ secrets.NEON_API_KEY }}
+      # Now that the journal has built the database, `schema.ts` must describe
+      # exactly what it built. A push that still wants to change something means
+      # `schema.ts` was edited without generating the matching migration — which
+      # in production is a column the boot migrator never creates. Runs last: the
+      # database is thrown away straight after, so applying the drift here cannot
+      # affect the suite.
+      #
+      # `drizzle-kit push` reports a failed statement and EXITS 0, so its output
+      # is the only signal worth reading.
+      - name: Fail on schema.ts / migration-journal drift
+        run: |
+          set -o pipefail
+          npx drizzle-kit push --force 2>&1 | tee /tmp/drizzle-push.log
+          if ! grep -q 'No changes detected' /tmp/drizzle-push.log; then
+            echo "::error::schema.ts does not match the schema the migrations build. Run 'npm run db:generate' and commit the migration."
+            exit 1
+          fi
+        env:
+          COSTS_SERVICE_DATABASE_URL: ${{ env.DB_URL }}
+
+      # No cleanup step: the service container dies with the job.
