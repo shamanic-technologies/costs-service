@@ -189,3 +189,14 @@ npm test               # all tests
 npm run test:unit
 npm run test:integration
 ```
+
+Integration tests need a database of their own. Locally that is a dedicated
+`costs_test` database (never the shared `test` one — sibling services' migration
+entries make drizzle skip this repo's). In CI it is a `postgres:16` service
+container created for the run and discarded with the job: no external service,
+no credentials, nothing shared between runs.
+
+CI builds that database by replaying the migration journal (`npm run db:migrate`)
+from empty, then fails the job if `drizzle-kit push` still wants to change
+anything — that means `schema.ts` was edited without generating the matching
+migration, which in production is a column the boot migrator never creates.
