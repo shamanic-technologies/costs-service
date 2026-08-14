@@ -75,6 +75,8 @@ All provider seed costs apply a default markup of `COST_RISK_MULTIPLIER = 2` × 
 | `twilio-whatsapp-message` | 2 | message | WhatsApp message | twilio | twilio.com | pay-as-you-go | monthly |
 | `cloudflare-r2-class-a-operation` | 0.0018 | operation | R2 Class A operation | cloudflare | cloudflare.com | pay-as-you-go | monthly |
 | `cloudflare-r2-class-b-operation` | 0.000144 | operation | R2 Class B operation | cloudflare | cloudflare.com | pay-as-you-go | monthly |
+| `deepseek-v4-flash-tokens-input` | 0.000176 | 1M tokens | Input tokens (DeepSeek V4 Flash via Vercel AI Gateway) | vercel | vercel.com | pay-as-you-go | monthly |
+| `deepseek-v4-flash-tokens-output` | 0.000528 | 1M tokens | Output tokens (DeepSeek V4 Flash via Vercel AI Gateway) | vercel | vercel.com | pay-as-you-go | monthly |
 
 `Domain` powers the public pricing page logo (logo.dev). `Type` is the human-readable cost-type label used for grouping. `Unit` is what one billed unit represents. A Twilio SMS over 160 characters splits into multiple segments — pricing is per segment.
 
@@ -105,6 +107,7 @@ Each provider has an active platform cost config that determines which cost tier
 | serper-dev | pay-as-you-go | monthly |
 | stripe | pay-as-you-go | monthly |
 | twilio | pay-as-you-go | monthly |
+| vercel | pay-as-you-go | monthly |
 
 ## API
 

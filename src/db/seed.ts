@@ -73,6 +73,7 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   "serper-dev": "serper.dev",
   stripe: "stripe.com",
   twilio: "twilio.com",
+  vercel: "vercel.com",
 };
 
 export const SEED_PROVIDERS_COSTS = [
@@ -929,6 +930,38 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000360000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Vercel AI Gateway — DeepSeek V4 Flash: $0.44/MTok input, $1.32/MTok output.
+  // The provider is `vercel` because Vercel bills us (the AI Gateway resells the model at
+  // the underlying list price, zero gateway markup on tokens); DeepSeek V4 Flash is only
+  // the model behind it.
+  // We seed DeepSeek's PEAK-hour list rate on purpose. DeepSeek splits its price into peak
+  // (01:00-04:00 and 06:00-10:00 UTC) and off-peak at half the peak rate, and the gateway
+  // routes across ~10 providers of this model whose rates differ. Pricing at the highest
+  // rate makes every cheaper hour and cheaper provider margin, never a shortfall — same
+  // treatment as the Gemini rows that seed the post-promotion list rate.
+  // https://api-docs.deepseek.com/quick_start/pricing
+  {
+    name: "deepseek-v4-flash-tokens-input",
+    provider: "vercel",
+    providerDomain: PROVIDER_DOMAINS.vercel,
+    type: "Input tokens (DeepSeek V4 Flash via Vercel AI Gateway)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000440000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "deepseek-v4-flash-tokens-output",
+    provider: "vercel",
+    providerDomain: PROVIDER_DOMAINS.vercel,
+    type: "Output tokens (DeepSeek V4 Flash via Vercel AI Gateway)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001320000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
 ];
 
 export const SEED_PLATFORM_COSTS = [
@@ -1007,6 +1040,15 @@ export const SEED_PLATFORM_COSTS = [
   },
   {
     provider: "twilio",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Vercel AI Gateway — resolves the deepseek-v4-flash-tokens-* prices.
+  // Already present in production; declared here so staging / CI / a fresh DB get it too.
+  // Byte-equal to the production row, so the append-only seed is a no-op against prod.
+  {
+    provider: "vercel",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
