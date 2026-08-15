@@ -119,6 +119,18 @@
           "costPerUnitInUsdCents": {
             "type": "string"
           },
+          "pricingRegime": {
+            "type": "string",
+            "nullable": true,
+            "description": "Time-of-day pricing regime this price belongs to ('peak' or 'off-peak'), or null when the provider charges one rate at every hour. The cost name carries the same segment.",
+            "example": "peak"
+          },
+          "regimeHoursUtc": {
+            "type": "string",
+            "nullable": true,
+            "description": "UTC windows during which this regime is in force, as comma-separated half-open HH:MM-HH:MM ranges. Null when pricingRegime is null. A provider's regimes partition the day, so exactly one cost name matches any instant.",
+            "example": "01:00-04:00,06:00-10:00"
+          },
           "effectiveFrom": {
             "type": "string",
             "format": "date-time"
@@ -142,6 +154,8 @@
           "planTier",
           "billingCycle",
           "costPerUnitInUsdCents",
+          "pricingRegime",
+          "regimeHoursUtc",
           "effectiveFrom",
           "createdAt",
           "updatedAt"
@@ -225,6 +239,14 @@
           "billingCycle": {
             "type": "string"
           },
+          "pricingRegime": {
+            "type": "string",
+            "nullable": true
+          },
+          "regimeHoursUtc": {
+            "type": "string",
+            "nullable": true
+          },
           "effectiveFrom": {
             "type": "string",
             "format": "date-time"
@@ -272,6 +294,18 @@
           "unit": {
             "type": "string"
           },
+          "pricingRegime": {
+            "type": "string",
+            "nullable": true,
+            "description": "Time-of-day pricing regime this price belongs to ('peak' or 'off-peak'), or null when the provider charges one rate at every hour. The cost name carries the same segment, so a consumer picks the name for a moment rather than computing a rate.",
+            "example": "peak"
+          },
+          "regimeHoursUtc": {
+            "type": "string",
+            "nullable": true,
+            "description": "UTC windows during which this regime is in force, as comma-separated half-open HH:MM-HH:MM ranges (a window may wrap past 24:00 only as the literal end 24:00). Null when pricingRegime is null. A provider's regimes partition the day, so for a given model and token class exactly one cost name matches any instant.",
+            "example": "01:00-04:00,06:00-10:00"
+          },
           "effectiveFrom": {
             "type": "string",
             "format": "date-time"
@@ -284,6 +318,8 @@
           "providerDomain",
           "type",
           "unit",
+          "pricingRegime",
+          "regimeHoursUtc",
           "effectiveFrom"
         ]
       },

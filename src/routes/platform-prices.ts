@@ -62,6 +62,8 @@ router.get("/v1/platform-prices", async (req, res) => {
         providerDomain: row.providerDomain,
         type: row.type,
         unit: row.unit,
+        pricingRegime: row.pricingRegime,
+        regimeHoursUtc: row.regimeHoursUtc,
         effectiveFrom: row.effectiveFrom,
       }));
 
@@ -133,6 +135,8 @@ router.get("/v1/platform-prices/:name", async (req, res) => {
       providerDomain: result.providerDomain,
       type: result.type,
       unit: result.unit,
+      pricingRegime: result.pricingRegime,
+      regimeHoursUtc: result.regimeHoursUtc,
       effectiveFrom: result.effectiveFrom,
     });
   } catch (err) {
