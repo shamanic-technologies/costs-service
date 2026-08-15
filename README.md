@@ -77,6 +77,8 @@ All provider seed costs apply a default markup of `COST_RISK_MULTIPLIER = 2` × 
 | `cloudflare-r2-class-b-operation` | 0.000144 | operation | R2 Class B operation | cloudflare | cloudflare.com | pay-as-you-go | monthly |
 | `deepseek-v4-flash-tokens-input` | 0.000176 | 1M tokens | Input tokens (DeepSeek V4 Flash via Vercel AI Gateway) | vercel | vercel.com | pay-as-you-go | monthly |
 | `deepseek-v4-flash-tokens-output` | 0.000528 | 1M tokens | Output tokens (DeepSeek V4 Flash via Vercel AI Gateway) | vercel | vercel.com | pay-as-you-go | monthly |
+| `deepseek-v4-pro-tokens-input` | 0.000696 | 1M tokens | Input tokens (DeepSeek V4 Pro via Vercel AI Gateway) | vercel | vercel.com | pay-as-you-go | monthly |
+| `deepseek-v4-pro-tokens-output` | 0.001392 | 1M tokens | Output tokens (DeepSeek V4 Pro via Vercel AI Gateway) | vercel | vercel.com | pay-as-you-go | monthly |
 
 `Domain` powers the public pricing page logo (logo.dev). `Type` is the human-readable cost-type label used for grouping. `Unit` is what one billed unit represents. A Twilio SMS over 160 characters splits into multiple segments — pricing is per segment.
 

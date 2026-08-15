@@ -59,11 +59,13 @@ describe("DeepSeek V4 Flash unit costs (Vercel AI Gateway)", () => {
     expect(PROVIDER_DOMAINS.vercel).toBe("vercel.com");
   });
 
-  it("adds exactly the two DeepSeek rows and no other vercel-provided cost", () => {
+  it("keeps the vercel provider limited to the DeepSeek token rows", () => {
     const vercelRows = SEED_PROVIDERS_COSTS.filter((c) => c.provider === "vercel").map((c) => c.name);
     expect(vercelRows.sort()).toEqual([
       "deepseek-v4-flash-tokens-input",
       "deepseek-v4-flash-tokens-output",
+      "deepseek-v4-pro-tokens-input",
+      "deepseek-v4-pro-tokens-output",
     ]);
   });
 });
