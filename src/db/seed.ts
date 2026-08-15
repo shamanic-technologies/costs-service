@@ -962,6 +962,34 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001320000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Vercel AI Gateway — DeepSeek V4 Pro: $1.74/MTok input, $3.48/MTok output.
+  // Vendor list price read from the Vercel AI Gateway model catalog on 2026-08-15.
+  // Same shape as the V4 Flash rows above: provider `vercel` (the gateway bills us),
+  // `pay-as-you-go` / `monthly` so the existing vercel platform-cost row resolves them.
+  // The gateway also lists dated variants of this model; our aliases are version-free,
+  // so only the undated model is priced.
+  {
+    name: "deepseek-v4-pro-tokens-input",
+    provider: "vercel",
+    providerDomain: PROVIDER_DOMAINS.vercel,
+    type: "Input tokens (DeepSeek V4 Pro via Vercel AI Gateway)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001740000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "deepseek-v4-pro-tokens-output",
+    provider: "vercel",
+    providerDomain: PROVIDER_DOMAINS.vercel,
+    type: "Output tokens (DeepSeek V4 Pro via Vercel AI Gateway)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0003480000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
 ];
 
 export const SEED_PLATFORM_COSTS = [
@@ -1044,7 +1072,7 @@ export const SEED_PLATFORM_COSTS = [
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Vercel AI Gateway — resolves the deepseek-v4-flash-tokens-* prices.
+  // Vercel AI Gateway — resolves the deepseek-v4-{flash,pro}-tokens-* prices.
   // Already present in production; declared here so staging / CI / a fresh DB get it too.
   // Byte-equal to the production row, so the append-only seed is a no-op against prod.
   {
