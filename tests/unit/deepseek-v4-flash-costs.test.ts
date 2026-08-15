@@ -44,14 +44,29 @@ describe("DeepSeek V4 Flash unit costs (direct vendor)", () => {
     expect(Number(output.costPerUnitInUsdCents)).toBeLessThan(Number(gatewayOutput));
   });
 
-  it("carries the CACHE-MISS input rate — the cache-hit rate has no cost name yet", () => {
+  it("keeps the superseded row at the CACHE-MISS rate, never blended with the cache-hit rate", () => {
     // DeepSeek prices a V4 Flash cache hit at $0.0028/MTok, 50x cheaper than a miss.
-    // There is no cached-input cost name in this catalog, so the input row must stay at the
-    // miss rate (over-bills a hit) rather than blend the two, which would mis-price both.
+    // This row predates the cached-input names and must stay at the miss rate — blending the
+    // two into one input price would mis-price both modes.
     const cacheHit = applyCostRiskMultiplier("0.0000002800");
     const input = SEED_PROVIDERS_COSTS.find((c) => c.name === "deepseek-v4-flash-tokens-input")!;
+    expect(input.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000140000"));
     expect(input.costPerUnitInUsdCents).not.toBe(cacheHit);
-    expect(SEED_PROVIDERS_COSTS.some((c) => c.name.includes("cached"))).toBe(false);
+  });
+
+  it("prices the cache-hit input token on its own name, at the vendor's cache-hit rate", () => {
+    // The dimension the superseded row could not express. Declaring a cache hit against
+    // `-tokens-input` would over-charge it 50x.
+    const cached = SEED_PROVIDERS_COSTS.filter(
+      (c) => c.name === "deepseek-v4-flash-peak-tokens-cached-input",
+    );
+    const current = cached.find((c) => c.effectiveFrom.toISOString() === "2025-01-01T00:00:00.000Z")!;
+    expect(current.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000002800"));
+    expect(current.type).toBe("Cached input tokens (DeepSeek V4 Flash, peak)");
+    expect(Number(current.costPerUnitInUsdCents) * 50).toBeCloseTo(
+      Number(applyCostRiskMultiplier("0.0000140000")),
+      12,
+    );
   });
 
   it("resolves both rows against the active deepseek platform cost (plan_tier + billing_cycle match)", () => {
@@ -72,12 +87,24 @@ describe("DeepSeek V4 Flash unit costs (direct vendor)", () => {
   });
 
   it("moves every DeepSeek row off the vercel provider, leaving no priced vercel cost", () => {
-    const deepseekRows = SEED_PROVIDERS_COSTS.filter((c) => c.provider === "deepseek").map(
-      (c) => c.name,
+    const deepseekNames = new Set(
+      SEED_PROVIDERS_COSTS.filter((c) => c.provider === "deepseek").map((c) => c.name),
     );
-    expect(deepseekRows.sort()).toEqual([
+    expect([...deepseekNames].sort()).toEqual([
+      "deepseek-v4-flash-off-peak-tokens-cached-input",
+      "deepseek-v4-flash-off-peak-tokens-input",
+      "deepseek-v4-flash-off-peak-tokens-output",
+      "deepseek-v4-flash-peak-tokens-cached-input",
+      "deepseek-v4-flash-peak-tokens-input",
+      "deepseek-v4-flash-peak-tokens-output",
       "deepseek-v4-flash-tokens-input",
       "deepseek-v4-flash-tokens-output",
+      "deepseek-v4-pro-off-peak-tokens-cached-input",
+      "deepseek-v4-pro-off-peak-tokens-input",
+      "deepseek-v4-pro-off-peak-tokens-output",
+      "deepseek-v4-pro-peak-tokens-cached-input",
+      "deepseek-v4-pro-peak-tokens-input",
+      "deepseek-v4-pro-peak-tokens-output",
       "deepseek-v4-pro-tokens-input",
       "deepseek-v4-pro-tokens-output",
     ]);

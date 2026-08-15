@@ -37,6 +37,16 @@ export const ProviderCostSchema = z
     planTier: z.string(),
     billingCycle: z.string(),
     costPerUnitInUsdCents: z.string(),
+    pricingRegime: z.string().nullable().openapi({
+      description:
+        "Time-of-day pricing regime this price belongs to ('peak' or 'off-peak'), or null when the provider charges one rate at every hour. The cost name carries the same segment.",
+      example: "peak",
+    }),
+    regimeHoursUtc: z.string().nullable().openapi({
+      description:
+        "UTC windows during which this regime is in force, as comma-separated half-open HH:MM-HH:MM ranges. Null when pricingRegime is null. A provider's regimes partition the day, so exactly one cost name matches any instant.",
+      example: "01:00-04:00,06:00-10:00",
+    }),
     effectiveFrom: z.string().datetime(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
@@ -51,6 +61,16 @@ export const PriceSchema = z
     providerDomain: z.string().nullable(),
     type: z.string(),
     unit: z.string(),
+    pricingRegime: z.string().nullable().openapi({
+      description:
+        "Time-of-day pricing regime this price belongs to ('peak' or 'off-peak'), or null when the provider charges one rate at every hour. The cost name carries the same segment, so a consumer picks the name for a moment rather than computing a rate.",
+      example: "peak",
+    }),
+    regimeHoursUtc: z.string().nullable().openapi({
+      description:
+        "UTC windows during which this regime is in force, as comma-separated half-open HH:MM-HH:MM ranges (a window may wrap past 24:00 only as the literal end 24:00). Null when pricingRegime is null. A provider's regimes partition the day, so for a given model and token class exactly one cost name matches any instant.",
+      example: "01:00-04:00,06:00-10:00",
+    }),
     effectiveFrom: z.string().datetime(),
   })
   .openapi("Price");
@@ -78,6 +98,8 @@ export const PutProviderCostBodySchema = z
     unit: z.string(),
     planTier: z.string(),
     billingCycle: z.string(),
+    pricingRegime: z.string().nullable().optional(),
+    regimeHoursUtc: z.string().nullable().optional(),
     effectiveFrom: z.string().datetime().optional(),
   })
   .openapi("PutProviderCostBody");

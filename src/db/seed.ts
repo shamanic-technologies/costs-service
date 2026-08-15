@@ -78,7 +78,113 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   zai: "z.ai",
 };
 
-export const SEED_PROVIDERS_COSTS = [
+/**
+ * One price point in the seed catalog.
+ *
+ * A cost NAME may appear more than once: each entry is a version of that name's price,
+ * dated by `effectiveFrom`. The read path resolves the newest version whose
+ * `effectiveFrom <= now()`, so a vendor's announced future price change is expressed by
+ * adding a second entry dated at the moment the new rate takes effect — the earlier entry
+ * stays as history and nothing already declared is re-priced.
+ */
+export interface SeedProviderCost {
+  name: string;
+  provider: string;
+  providerDomain: string | undefined;
+  type: string;
+  unit: string;
+  planTier: string;
+  billingCycle: string;
+  costPerUnitInUsdCents: string;
+  effectiveFrom: Date;
+  /** 'peak' | 'off-peak' for a provider that charges by time of day; omitted otherwise. */
+  pricingRegime?: string;
+  /** UTC windows during which this regime is in force, e.g. "01:00-04:00,06:00-10:00". */
+  regimeHoursUtc?: string;
+}
+
+/**
+ * DeepSeek time-of-day pricing, live from 2026-08-16T16:00:00Z.
+ * Peak hours are 01:00-04:00 and 06:00-10:00 UTC; every other hour is off-peak.
+ * Read from https://api-docs.deepseek.com/quick_start/pricing on 2026-08-15.
+ */
+export const DEEPSEEK_TIME_OF_DAY_PRICING_FROM = new Date("2026-08-16T16:00:00Z");
+export const DEEPSEEK_PEAK_HOURS_UTC = "01:00-04:00,06:00-10:00";
+export const DEEPSEEK_OFF_PEAK_HOURS_UTC = "00:00-01:00,04:00-06:00,10:00-24:00";
+
+/**
+ * Build the six DeepSeek cost names for one model — {peak, off-peak} × {input, cached input,
+ * output} — each with two price points:
+ *
+ *  - `2025-01-01` … the rate DeepSeek charges today, which is the SAME at every hour because
+ *    time-of-day pricing is not live yet. Both regimes therefore carry the same number, read
+ *    from the vendor's current table.
+ *  - `2026-08-16T16:00Z` … the regime rates from the vendor's future table.
+ *
+ * Splitting by regime from the first version (rather than only from the schedule's start)
+ * keeps the selection rule total: at every instant, for every token class, exactly one cost
+ * name matches the clock, so a consumer never has to fall back to a regime-free name.
+ *
+ * Every number is a verbatim cell from https://api-docs.deepseek.com/quick_start/pricing
+ * (read 2026-08-15), converted to cents-per-token by ÷10⁴ and marked up by the store
+ * multiplier. Nothing is derived from another cell — the vendor's off-peak column happens to
+ * be half its peak column, but both are read, not computed.
+ */
+function deepSeekModelCosts(args: {
+  /** Name segment, e.g. "deepseek-v4-flash". */
+  namePrefix: string;
+  /** Human label, e.g. "DeepSeek V4 Flash". */
+  label: string;
+  /** Rates in force before 2026-08-16T16:00Z (single regime, so identical for both). */
+  current: { input: string; cachedInput: string; output: string };
+  peak: { input: string; cachedInput: string; output: string };
+  offPeak: { input: string; cachedInput: string; output: string };
+}): SeedProviderCost[] {
+  const base = {
+    provider: "deepseek",
+    providerDomain: PROVIDER_DOMAINS.deepseek,
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+  };
+  const classes = [
+    { suffix: "tokens-input", type: `Input tokens (${args.label}, cache miss` },
+    { suffix: "tokens-cached-input", type: `Cached input tokens (${args.label}` },
+    { suffix: "tokens-output", type: `Output tokens (${args.label}` },
+  ] as const;
+  const keys = ["input", "cachedInput", "output"] as const;
+  const regimes = [
+    { regime: "peak", hours: DEEPSEEK_PEAK_HOURS_UTC, rates: args.peak },
+    { regime: "off-peak", hours: DEEPSEEK_OFF_PEAK_HOURS_UTC, rates: args.offPeak },
+  ] as const;
+
+  return regimes.flatMap(({ regime, hours, rates }) =>
+    classes.flatMap(({ suffix, type }, i) => {
+      const name = `${args.namePrefix}-${regime}-${suffix}`;
+      const shared = {
+        ...base,
+        name,
+        type: `${type}, ${regime})`,
+        pricingRegime: regime,
+        regimeHoursUtc: hours,
+      };
+      return [
+        {
+          ...shared,
+          costPerUnitInUsdCents: applyCostRiskMultiplier(args.current[keys[i]]),
+          effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+        },
+        {
+          ...shared,
+          costPerUnitInUsdCents: applyCostRiskMultiplier(rates[keys[i]]),
+          effectiveFrom: DEEPSEEK_TIME_OF_DAY_PRICING_FROM,
+        },
+      ];
+    })
+  );
+}
+
+export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   // Apollo — unified credit: Basic plan $59/mo ÷ 2,500 credits = 2.36¢/credit
   // Covers enrichment + person match. Quantity comes from Apollo webhook (credits_consumed).
   // Search is free (0 credits) and not tracked.
@@ -942,19 +1048,18 @@ export const SEED_PROVIDERS_COSTS = [
   // V4 Pro   — $0.435/MTok input (cache miss), $0.87/MTok output.
   // Read from https://api-docs.deepseek.com/quick_start/pricing on 2026-08-15.
   //
-  // CACHE-HIT INPUT IS NOT EXPRESSIBLE HERE. DeepSeek prices a cache hit at $0.0028/MTok
-  // (Flash) and $0.003625/MTok (Pro) — 50x and 120x cheaper than a miss — but this catalog
-  // has no cached-input cost name for any provider and chat-service declares a single
-  // `-tokens-input` quantity. The input rows therefore carry the CACHE-MISS rate, which
-  // over-bills a cache hit. Do NOT "fix" this by blending the two rates into one input
-  // price: that silently mis-prices both modes. The fix is a cached-input cost name here
-  // PLUS a split token declaration in chat-service, shipped together.
+  // ⚠️ THESE FOUR ROWS ARE SUPERSEDED AND FROZEN. They carry a single price per model per
+  // token class, which cannot express either priced dimension DeepSeek actually bills:
+  // cache-hit input (50x-120x cheaper than a miss) or the peak/off-peak schedule that starts
+  // 2026-08-16T16:00Z. The replacements are the `deepseek-v4-{flash,pro}-{peak,off-peak}-
+  // tokens-{input,cached-input,output}` names appended below.
   //
-  // These rows are dated 2026-08-15. DeepSeek's own page announces a peak/off-peak schedule
-  // from 2026-08-16 whose PEAK rates are higher than the values below (Flash $0.44 in /
-  // $1.32 out, Pro $1.32 in / $3.96 out) — which is exactly what the superseded gateway rows
-  // carried. Once that schedule is live these rows under-price peak traffic and must be
-  // repriced per the append-only rule in CLAUDE.md.
+  // They are kept, unchanged, because the ledger froze these prices onto costs already
+  // declared against them and the catalog is append-only — deleting or re-pricing them would
+  // rewrite history. They still resolve, so chat-service MUST stop declaring them before
+  // 2026-08-16T16:00Z: from that instant DeepSeek has no regime-free rate, and these rows
+  // would under-bill peak traffic. There is no honest value to append to them — a regime-free
+  // DeepSeek price stops existing rather than changing.
   {
     name: "deepseek-v4-flash-tokens-input",
     provider: "deepseek",
@@ -999,14 +1104,51 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000870000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // DeepSeek — every priced dimension, per model: token class in the name, pricing regime in
+  // the name, and the UTC windows that select the regime carried on the row itself.
+  //
+  // Vendor tables, https://api-docs.deepseek.com/quick_start/pricing (read 2026-08-15):
+  //
+  //   Current, per 1M tokens        | v4-flash | v4-pro
+  //     Input tokens (cache hit)    | $0.0028  | $0.003625
+  //     Input tokens (cache miss)   | $0.14    | $0.435
+  //     Output tokens               | $0.28    | $0.87
+  //
+  //   From 2026-08-16 16:00 UTC     | off-peak | peak      (v4-flash)
+  //     Input tokens (cache hit)    | $0.007   | $0.014
+  //     Input tokens (cache miss)   | $0.22    | $0.44
+  //     Output tokens               | $0.66    | $1.32
+  //
+  //   From 2026-08-16 16:00 UTC     | off-peak | peak      (v4-pro)
+  //     Input tokens (cache hit)    | $0.022   | $0.044
+  //     Input tokens (cache miss)   | $0.66    | $1.32
+  //     Output tokens               | $1.98    | $3.96
+  //
+  //   Peak hours: 01:00-04:00 and 06:00-10:00 UTC; off-peak all other hours.
+  ...deepSeekModelCosts({
+    namePrefix: "deepseek-v4-flash",
+    label: "DeepSeek V4 Flash",
+    current: { input: "0.0000140000", cachedInput: "0.0000002800", output: "0.0000280000" },
+    peak: { input: "0.0000440000", cachedInput: "0.0000014000", output: "0.0001320000" },
+    offPeak: { input: "0.0000220000", cachedInput: "0.0000007000", output: "0.0000660000" },
+  }),
+  ...deepSeekModelCosts({
+    namePrefix: "deepseek-v4-pro",
+    label: "DeepSeek V4 Pro",
+    current: { input: "0.0000435000", cachedInput: "0.0000003625", output: "0.0000870000" },
+    peak: { input: "0.0001320000", cachedInput: "0.0000044000", output: "0.0003960000" },
+    offPeak: { input: "0.0000660000", cachedInput: "0.0000022000", output: "0.0001980000" },
+  }),
   // Z.ai — direct vendor path, same shape as the DeepSeek rows above.
   // GLM-4.7-FlashX — $0.07/MTok input, $0.40/MTok output.
   // GLM-5.2        — $1.40/MTok input, $4.40/MTok output.
   // Read from https://docs.z.ai/guides/overview/pricing on 2026-08-15.
   //
-  // Z.ai also publishes a cached-input rate ($0.01/MTok FlashX, $0.26/MTok GLM-5.2). Same
-  // limitation as DeepSeek above: no cached-input cost name exists, so the input rows carry
-  // the uncached rate and a cache hit is over-billed. Not folded into the input price.
+  // Cached input is its own cost name ($0.01/MTok FlashX, $0.26/MTok GLM-5.2) — the input
+  // rows below stay at the uncached rate and the two are never blended.
+  //
+  // Z.ai publishes no time-of-day schedule, so these rows carry no pricing regime: one rate
+  // applies at every hour and the name has no regime segment.
   {
     name: "zai-glm-4.7-flashx-tokens-input",
     provider: "zai",
@@ -1016,6 +1158,17 @@ export const SEED_PROVIDERS_COSTS = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000070000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "zai-glm-4.7-flashx-tokens-cached-input",
+    provider: "zai",
+    providerDomain: PROVIDER_DOMAINS.zai,
+    type: "Cached input tokens (GLM-4.7-FlashX)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000010000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1038,6 +1191,17 @@ export const SEED_PROVIDERS_COSTS = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001400000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "zai-glm-5.2-tokens-cached-input",
+    provider: "zai",
+    providerDomain: PROVIDER_DOMAINS.zai,
+    type: "Cached input tokens (GLM-5.2)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000260000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1198,26 +1362,62 @@ export async function seedProvidersCosts() {
   });
 
   try {
+    const columns =
+      "name, provider, provider_domain, type, unit, plan_tier, billing_cycle, pricing_regime, regime_hours_utc, cost_per_unit_in_usd_cents, effective_from";
+    const valuesColumns =
+      "name, provider, provider_domain, type, unit, plan_tier, billing_cycle, pricing_regime, regime_hours_utc, cost, declared_eff";
     const valuesClause = SEED_PROVIDERS_COSTS.map(
       (c) =>
-        `('${escapeSqlLiteral(c.name)}', '${escapeSqlLiteral(c.provider)}', ${nullableSqlLiteral(c.providerDomain)}, '${escapeSqlLiteral(c.type)}', '${escapeSqlLiteral(c.unit)}', '${escapeSqlLiteral(c.planTier)}', '${escapeSqlLiteral(c.billingCycle)}', ${c.costPerUnitInUsdCents}, '${c.effectiveFrom.toISOString()}'::timestamptz)`
+        `('${escapeSqlLiteral(c.name)}', '${escapeSqlLiteral(c.provider)}', ${nullableSqlLiteral(c.providerDomain)}::text, '${escapeSqlLiteral(c.type)}', '${escapeSqlLiteral(c.unit)}', '${escapeSqlLiteral(c.planTier)}', '${escapeSqlLiteral(c.billingCycle)}', ${nullableSqlLiteral(c.pricingRegime)}::text, ${nullableSqlLiteral(c.regimeHoursUtc)}::text, ${c.costPerUnitInUsdCents}, '${c.effectiveFrom.toISOString()}'::timestamptz)`
     ).join(", ");
 
     await directSql.begin(async (tx) => {
       await tx.unsafe(`SELECT pg_advisory_xact_lock(911001)`);
+
+      // (1) SCHEDULED versions — a seed row dated in the future is a price change the vendor
+      // has announced but not yet started charging. Insert it verbatim at its declared date so
+      // the change is queryable ahead of time and lands by itself at the stroke of the hour;
+      // the read path filters effective_from <= now(), so it serves nothing until then.
+      // Keyed on the exact (name, plan_tier, billing_cycle, effective_from) — the same unique
+      // index the append-only history uses — so re-seeding is a no-op.
       await tx.unsafe(`
-        INSERT INTO providers_costs (name, provider, provider_domain, type, unit, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, effective_from)
-        SELECT v.name, v.provider, v.provider_domain, v.type, v.unit, v.plan_tier, v.billing_cycle, v.cost,
-               CASE WHEN latest.effective_from IS NULL THEN v.declared_eff ELSE now() END
-        FROM (VALUES ${valuesClause}) AS v (name, provider, provider_domain, type, unit, plan_tier, billing_cycle, cost, declared_eff)
+        INSERT INTO providers_costs (${columns})
+        SELECT v.name, v.provider, v.provider_domain, v.type, v.unit, v.plan_tier, v.billing_cycle, v.pricing_regime, v.regime_hours_utc, v.cost, v.declared_eff
+        FROM (VALUES ${valuesClause}) AS v (${valuesColumns})
+        WHERE v.declared_eff > now()
+          AND NOT EXISTS (
+            SELECT 1 FROM providers_costs pc
+            WHERE pc.name = v.name AND pc.plan_tier = v.plan_tier AND pc.billing_cycle = v.billing_cycle
+              AND pc.effective_from = v.declared_eff
+          )
+      `);
+
+      // (2) IN-FORCE version — of the seed versions whose date has arrived, the newest one is
+      // what the catalog should be charging now. Compare it to the newest row already in force
+      // and append a now()-dated row only when they differ.
+      //
+      // Both "newest" filters are bounded by now(): a scheduled row inserted by (1) must not
+      // be read as the current price (it would look like a mismatch and get reverted every
+      // boot), and a seed version whose date has not arrived must not be applied early.
+      await tx.unsafe(`
+        INSERT INTO providers_costs (${columns})
+        SELECT cur.name, cur.provider, cur.provider_domain, cur.type, cur.unit, cur.plan_tier, cur.billing_cycle, cur.pricing_regime, cur.regime_hours_utc, cur.cost,
+               CASE WHEN latest.effective_from IS NULL THEN cur.declared_eff ELSE now() END
+        FROM (
+          SELECT DISTINCT ON (v.name, v.plan_tier, v.billing_cycle) v.*
+          FROM (VALUES ${valuesClause}) AS v (${valuesColumns})
+          WHERE v.declared_eff <= now()
+          ORDER BY v.name, v.plan_tier, v.billing_cycle, v.declared_eff DESC
+        ) cur
         LEFT JOIN LATERAL (
           SELECT pc.cost_per_unit_in_usd_cents AS cost, pc.effective_from
           FROM providers_costs pc
-          WHERE pc.name = v.name AND pc.plan_tier = v.plan_tier AND pc.billing_cycle = v.billing_cycle
+          WHERE pc.name = cur.name AND pc.plan_tier = cur.plan_tier AND pc.billing_cycle = cur.billing_cycle
+            AND pc.effective_from <= now()
           ORDER BY pc.effective_from DESC
           LIMIT 1
         ) latest ON TRUE
-        WHERE latest.cost IS DISTINCT FROM v.cost
+        WHERE latest.cost IS DISTINCT FROM cur.cost
       `);
     });
 

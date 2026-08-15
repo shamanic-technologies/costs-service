@@ -12,6 +12,18 @@ export const providersCosts = pgTable(
     planTier: text("plan_tier").notNull(),
     billingCycle: text("billing_cycle").notNull(),
     costPerUnitInUsdCents: numeric("cost_per_unit_in_usd_cents", { precision: 18, scale: 10 }).notNull(),
+    // Time-of-day pricing regime this price point belongs to.
+    // NULL  = the provider charges one rate at every hour (the common case).
+    // 'peak' / 'off-peak' = the provider charges by time of day (DeepSeek from
+    // 2026-08-16T16:00Z); the cost NAME carries the same segment, so a consumer selects the
+    // regime by name and never has to compute a rate.
+    pricingRegime: text("pricing_regime"),
+    // UTC hour windows during which THIS row's regime is the one in force, as a
+    // comma-separated list of half-open HH:MM-HH:MM ranges, e.g. "01:00-04:00,06:00-10:00".
+    // NULL when pricingRegime is NULL (the price applies at every hour). For a provider that
+    // does have regimes, the regimes' windows partition the 24h day, so exactly one cost name
+    // matches any given instant.
+    regimeHoursUtc: text("regime_hours_utc"),
     effectiveFrom: timestamp("effective_from", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
