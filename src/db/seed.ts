@@ -64,6 +64,7 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   apify: "apify.com",
   anthropic: "anthropic.com",
   cloudflare: "cloudflare.com",
+  deepseek: "deepseek.com",
   featured: "featured.com",
   firecrawl: "firecrawl.dev",
   google: "google.com",
@@ -74,6 +75,7 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   stripe: "stripe.com",
   twilio: "twilio.com",
   vercel: "vercel.com",
+  zai: "z.ai",
 };
 
 export const SEED_PROVIDERS_COSTS = [
@@ -930,64 +932,123 @@ export const SEED_PROVIDERS_COSTS = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000360000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Vercel AI Gateway — DeepSeek V4 Flash: $0.44/MTok input, $1.32/MTok output.
-  // The provider is `vercel` because Vercel bills us (the AI Gateway resells the model at
-  // the underlying list price, zero gateway markup on tokens); DeepSeek V4 Flash is only
-  // the model behind it.
-  // We seed DeepSeek's PEAK-hour list rate on purpose. DeepSeek splits its price into peak
-  // (01:00-04:00 and 06:00-10:00 UTC) and off-peak at half the peak rate, and the gateway
-  // routes across ~10 providers of this model whose rates differ. Pricing at the highest
-  // rate makes every cheaper hour and cheaper provider margin, never a shortfall — same
-  // treatment as the Gemini rows that seed the post-promotion list rate.
-  // https://api-docs.deepseek.com/quick_start/pricing
+  // DeepSeek — direct vendor path (the Vercel AI Gateway is being dropped from chat-service).
+  // Provider is now `deepseek`: DeepSeek bills us directly, so the price basis is DeepSeek's
+  // own published list price, not the gateway's resale price. The names are unchanged
+  // (`deepseek-v4-{flash,pro}-tokens-{input,output}`) — chat-service's costPrefix is
+  // `deepseek-v4-flash` / `deepseek-v4-pro` and must stay byte-equal.
+  //
+  // V4 Flash — $0.14/MTok input (cache miss), $0.28/MTok output.
+  // V4 Pro   — $0.435/MTok input (cache miss), $0.87/MTok output.
+  // Read from https://api-docs.deepseek.com/quick_start/pricing on 2026-08-15.
+  //
+  // CACHE-HIT INPUT IS NOT EXPRESSIBLE HERE. DeepSeek prices a cache hit at $0.0028/MTok
+  // (Flash) and $0.003625/MTok (Pro) — 50x and 120x cheaper than a miss — but this catalog
+  // has no cached-input cost name for any provider and chat-service declares a single
+  // `-tokens-input` quantity. The input rows therefore carry the CACHE-MISS rate, which
+  // over-bills a cache hit. Do NOT "fix" this by blending the two rates into one input
+  // price: that silently mis-prices both modes. The fix is a cached-input cost name here
+  // PLUS a split token declaration in chat-service, shipped together.
+  //
+  // These rows are dated 2026-08-15. DeepSeek's own page announces a peak/off-peak schedule
+  // from 2026-08-16 whose PEAK rates are higher than the values below (Flash $0.44 in /
+  // $1.32 out, Pro $1.32 in / $3.96 out) — which is exactly what the superseded gateway rows
+  // carried. Once that schedule is live these rows under-price peak traffic and must be
+  // repriced per the append-only rule in CLAUDE.md.
   {
     name: "deepseek-v4-flash-tokens-input",
-    provider: "vercel",
-    providerDomain: PROVIDER_DOMAINS.vercel,
-    type: "Input tokens (DeepSeek V4 Flash via Vercel AI Gateway)",
+    provider: "deepseek",
+    providerDomain: PROVIDER_DOMAINS.deepseek,
+    type: "Input tokens (DeepSeek V4 Flash)",
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000440000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000140000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
     name: "deepseek-v4-flash-tokens-output",
-    provider: "vercel",
-    providerDomain: PROVIDER_DOMAINS.vercel,
-    type: "Output tokens (DeepSeek V4 Flash via Vercel AI Gateway)",
+    provider: "deepseek",
+    providerDomain: PROVIDER_DOMAINS.deepseek,
+    type: "Output tokens (DeepSeek V4 Flash)",
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001320000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000280000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Vercel AI Gateway — DeepSeek V4 Pro: $1.74/MTok input, $3.48/MTok output.
-  // Vendor list price read from the Vercel AI Gateway model catalog on 2026-08-15.
-  // Same shape as the V4 Flash rows above: provider `vercel` (the gateway bills us),
-  // `pay-as-you-go` / `monthly` so the existing vercel platform-cost row resolves them.
-  // The gateway also lists dated variants of this model; our aliases are version-free,
-  // so only the undated model is priced.
   {
     name: "deepseek-v4-pro-tokens-input",
-    provider: "vercel",
-    providerDomain: PROVIDER_DOMAINS.vercel,
-    type: "Input tokens (DeepSeek V4 Pro via Vercel AI Gateway)",
+    provider: "deepseek",
+    providerDomain: PROVIDER_DOMAINS.deepseek,
+    type: "Input tokens (DeepSeek V4 Pro)",
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001740000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000435000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
     name: "deepseek-v4-pro-tokens-output",
-    provider: "vercel",
-    providerDomain: PROVIDER_DOMAINS.vercel,
-    type: "Output tokens (DeepSeek V4 Pro via Vercel AI Gateway)",
+    provider: "deepseek",
+    providerDomain: PROVIDER_DOMAINS.deepseek,
+    type: "Output tokens (DeepSeek V4 Pro)",
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0003480000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000870000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Z.ai — direct vendor path, same shape as the DeepSeek rows above.
+  // GLM-4.7-FlashX — $0.07/MTok input, $0.40/MTok output.
+  // GLM-5.2        — $1.40/MTok input, $4.40/MTok output.
+  // Read from https://docs.z.ai/guides/overview/pricing on 2026-08-15.
+  //
+  // Z.ai also publishes a cached-input rate ($0.01/MTok FlashX, $0.26/MTok GLM-5.2). Same
+  // limitation as DeepSeek above: no cached-input cost name exists, so the input rows carry
+  // the uncached rate and a cache hit is over-billed. Not folded into the input price.
+  {
+    name: "zai-glm-4.7-flashx-tokens-input",
+    provider: "zai",
+    providerDomain: PROVIDER_DOMAINS.zai,
+    type: "Input tokens (GLM-4.7-FlashX)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000070000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "zai-glm-4.7-flashx-tokens-output",
+    provider: "zai",
+    providerDomain: PROVIDER_DOMAINS.zai,
+    type: "Output tokens (GLM-4.7-FlashX)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000400000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "zai-glm-5.2-tokens-input",
+    provider: "zai",
+    providerDomain: PROVIDER_DOMAINS.zai,
+    type: "Input tokens (GLM-5.2)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001400000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "zai-glm-5.2-tokens-output",
+    provider: "zai",
+    providerDomain: PROVIDER_DOMAINS.zai,
+    type: "Output tokens (GLM-5.2)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0004400000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
 ];
@@ -1014,6 +1075,14 @@ export const SEED_PLATFORM_COSTS = [
   },
   {
     provider: "cloudflare",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // DeepSeek — direct vendor account. Resolves the deepseek-v4-{flash,pro}-tokens-* prices
+  // now that those rows carry provider `deepseek` instead of `vercel`.
+  {
+    provider: "deepseek",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
@@ -1072,11 +1141,18 @@ export const SEED_PLATFORM_COSTS = [
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Vercel AI Gateway — resolves the deepseek-v4-{flash,pro}-tokens-* prices.
-  // Already present in production; declared here so staging / CI / a fresh DB get it too.
+  // Vercel AI Gateway — kept even though the DeepSeek rows moved to the `deepseek` provider.
+  // chat-service removes the gateway path first; this row is cleaned up after that lands.
   // Byte-equal to the production row, so the append-only seed is a no-op against prod.
   {
     provider: "vercel",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Z.ai — direct vendor account. Resolves the zai-glm-* prices.
+  {
+    provider: "zai",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
