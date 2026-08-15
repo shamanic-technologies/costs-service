@@ -8,8 +8,10 @@ import {
 
 const ZAI_NAMES = [
   "zai-glm-4.7-flashx-tokens-input",
+  "zai-glm-4.7-flashx-tokens-cached-input",
   "zai-glm-4.7-flashx-tokens-output",
   "zai-glm-5.2-tokens-input",
+  "zai-glm-5.2-tokens-cached-input",
   "zai-glm-5.2-tokens-output",
 ];
 
@@ -48,20 +50,36 @@ describe("Z.ai GLM unit costs (direct vendor)", () => {
     expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0004400000"));
   });
 
-  it("carries the UNCACHED input rate — the cached-input rate has no cost name yet", () => {
+  it("prices cached input on its own name, never blended into the uncached input rate", () => {
     // Z.ai prices a cached input token at $0.01/MTok (FlashX) and $0.26/MTok (GLM-5.2).
-    // No cached-input cost name exists in this catalog, so the input rows stay uncached
-    // rather than blend the two rates, which would mis-price both modes.
     const flashxCached = applyCostRiskMultiplier("0.0000010000");
     const glm52Cached = applyCostRiskMultiplier("0.0000260000");
+
+    expect(
+      SEED_PROVIDERS_COSTS.find((c) => c.name === "zai-glm-4.7-flashx-tokens-cached-input")!
+        .costPerUnitInUsdCents,
+    ).toBe(flashxCached);
+    expect(
+      SEED_PROVIDERS_COSTS.find((c) => c.name === "zai-glm-5.2-tokens-cached-input")!
+        .costPerUnitInUsdCents,
+    ).toBe(glm52Cached);
+
+    // The uncached rows keep the uncached rate — blending would mis-price both modes.
     expect(
       SEED_PROVIDERS_COSTS.find((c) => c.name === "zai-glm-4.7-flashx-tokens-input")!
         .costPerUnitInUsdCents,
-    ).not.toBe(flashxCached);
+    ).toBe(applyCostRiskMultiplier("0.0000070000"));
     expect(
       SEED_PROVIDERS_COSTS.find((c) => c.name === "zai-glm-5.2-tokens-input")!
         .costPerUnitInUsdCents,
-    ).not.toBe(glm52Cached);
+    ).toBe(applyCostRiskMultiplier("0.0001400000"));
+  });
+
+  it("carries no pricing regime — Z.ai publishes no time-of-day schedule", () => {
+    for (const row of SEED_PROVIDERS_COSTS.filter((c) => c.provider === "zai")) {
+      expect(row.pricingRegime).toBeUndefined();
+      expect(row.regimeHoursUtc).toBeUndefined();
+    }
   });
 
   it("resolves every row against the active zai platform cost (plan_tier + billing_cycle match)", () => {

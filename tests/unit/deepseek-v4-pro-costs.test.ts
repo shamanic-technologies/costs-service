@@ -50,11 +50,22 @@ describe("DeepSeek V4 Pro unit costs (direct vendor)", () => {
     expect(Number(output.costPerUnitInUsdCents)).toBeLessThan(Number(gatewayOutput));
   });
 
-  it("carries the CACHE-MISS input rate — the cache-hit rate has no cost name yet", () => {
+  it("keeps the superseded row at the CACHE-MISS rate, never blended with the cache-hit rate", () => {
     // DeepSeek prices a V4 Pro cache hit at $0.003625/MTok, 120x cheaper than a miss.
     const cacheHit = applyCostRiskMultiplier("0.0000003625");
     const input = SEED_PROVIDERS_COSTS.find((c) => c.name === "deepseek-v4-pro-tokens-input")!;
+    expect(input.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000435000"));
     expect(input.costPerUnitInUsdCents).not.toBe(cacheHit);
+  });
+
+  it("prices the cache-hit input token on its own name, at the vendor's cache-hit rate", () => {
+    const current = SEED_PROVIDERS_COSTS.find(
+      (c) =>
+        c.name === "deepseek-v4-pro-off-peak-tokens-cached-input" &&
+        c.effectiveFrom.toISOString() === "2025-01-01T00:00:00.000Z",
+    )!;
+    expect(current.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000003625"));
+    expect(current.type).toBe("Cached input tokens (DeepSeek V4 Pro, off-peak)");
   });
 
   it("resolves both rows against the active deepseek platform cost (plan_tier + billing_cycle match)", () => {
@@ -73,13 +84,14 @@ describe("DeepSeek V4 Pro unit costs (direct vendor)", () => {
     expect(PROVIDER_DOMAINS.deepseek).toBe("deepseek.com");
   });
 
-  it("names the Pro rows distinctly from the Flash rows (no version-dated variants)", () => {
-    const deepseekRows = SEED_PROVIDERS_COSTS.filter((c) => c.name.startsWith("deepseek-")).map(
-      (c) => c.name,
+  it("names every DeepSeek row {model}[-{regime}]-tokens-{class} and nothing else", () => {
+    const names = new Set(
+      SEED_PROVIDERS_COSTS.filter((c) => c.name.startsWith("deepseek-")).map((c) => c.name),
     );
-    expect(new Set(deepseekRows).size).toBe(deepseekRows.length);
-    for (const name of deepseekRows) {
-      expect(name).toMatch(/^deepseek-v4-(flash|pro)-tokens-(input|output)$/);
+    for (const name of names) {
+      expect(name).toMatch(
+        /^deepseek-v4-(flash|pro)(-(peak|off-peak))?-tokens-(input|cached-input|output)$/,
+      );
     }
   });
 });

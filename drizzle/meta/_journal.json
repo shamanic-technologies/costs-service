@@ -43,6 +43,13 @@
       "when": 1778664395037,
       "tag": "0005_bored_kat_farrell",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786806796863,
+      "tag": "0006_right_colleen_wing",
+      "breakpoints": true
     }
   ]
 }

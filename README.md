@@ -79,9 +79,35 @@ All provider seed costs apply a default markup of `COST_RISK_MULTIPLIER = 2` × 
 | `deepseek-v4-flash-tokens-output` | 0.000112 | 1M tokens | Output tokens (DeepSeek V4 Flash) | deepseek | deepseek.com | pay-as-you-go | monthly |
 | `deepseek-v4-pro-tokens-input` | 0.000174 | 1M tokens | Input tokens (DeepSeek V4 Pro) | deepseek | deepseek.com | pay-as-you-go | monthly |
 | `deepseek-v4-pro-tokens-output` | 0.000348 | 1M tokens | Output tokens (DeepSeek V4 Pro) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-flash-peak-tokens-input` | 0.000056 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-flash-peak-tokens-input` | 0.000176 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-flash-peak-tokens-cached-input` | 0.00000112 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-flash-peak-tokens-cached-input` | 0.0000056 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-flash-peak-tokens-output` | 0.000112 | 1M tokens | Output tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-flash-peak-tokens-output` | 0.000528 | 1M tokens | Output tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-flash-off-peak-tokens-input` | 0.000056 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-flash-off-peak-tokens-input` | 0.000088 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-flash-off-peak-tokens-cached-input` | 0.00000112 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-flash-off-peak-tokens-cached-input` | 0.0000028 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-flash-off-peak-tokens-output` | 0.000112 | 1M tokens | Output tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-flash-off-peak-tokens-output` | 0.000264 | 1M tokens | Output tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-pro-peak-tokens-input` | 0.000174 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-pro-peak-tokens-input` | 0.000528 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-pro-peak-tokens-cached-input` | 0.00000145 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-pro-peak-tokens-cached-input` | 0.0000176 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-pro-peak-tokens-output` | 0.000348 | 1M tokens | Output tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-pro-peak-tokens-output` | 0.001584 | 1M tokens | Output tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-pro-off-peak-tokens-input` | 0.000174 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-pro-off-peak-tokens-input` | 0.000264 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-pro-off-peak-tokens-cached-input` | 0.00000145 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-pro-off-peak-tokens-cached-input` | 0.0000088 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-pro-off-peak-tokens-output` | 0.000348 | 1M tokens | Output tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
+| `deepseek-v4-pro-off-peak-tokens-output` | 0.000792 | 1M tokens | Output tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly |
 | `zai-glm-4.7-flashx-tokens-input` | 0.000028 | 1M tokens | Input tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly |
+| `zai-glm-4.7-flashx-tokens-cached-input` | 0.000004 | 1M tokens | Cached input tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly |
 | `zai-glm-4.7-flashx-tokens-output` | 0.00016 | 1M tokens | Output tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly |
 | `zai-glm-5.2-tokens-input` | 0.00056 | 1M tokens | Input tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly |
+| `zai-glm-5.2-tokens-cached-input` | 0.000104 | 1M tokens | Cached input tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly |
 | `zai-glm-5.2-tokens-output` | 0.00176 | 1M tokens | Output tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly |
 
 `Domain` powers the public pricing page logo (logo.dev). `Type` is the human-readable cost-type label used for grouping. `Unit` is what one billed unit represents. A Twilio SMS over 160 characters splits into multiple segments — pricing is per segment.
@@ -93,6 +119,42 @@ All provider seed costs apply a default markup of `COST_RISK_MULTIPLIER = 2` × 
 ```
 
 Examples: `apollo-credit`, `anthropic-opus-4.5-tokens-input`, `postmark-email-send`
+
+### Picking the right name for a token spend
+
+A vendor may price the same model along more than one dimension. Every priced dimension is a
+separate cost name, so a consumer selects a name and never computes a rate.
+
+**Token class** — the last name segment. `-tokens-input` is an uncached (cache-miss) input
+token, `-tokens-cached-input` is a cache-hit input token, `-tokens-output` is an output token.
+Vendors return the split in their usage payload; declare each count against its own name.
+Cache-hit input is 50x-120x cheaper than a miss at DeepSeek, so declaring a hit against
+`-tokens-input` over-charges by that factor.
+
+**Pricing regime** — the segment before `-tokens-…`, present only for a vendor that charges by
+time of day. DeepSeek does, from 2026-08-16 16:00 UTC:
+
+| Regime | UTC hours |
+|---|---|
+| `peak` | 01:00-04:00, 06:00-10:00 |
+| `off-peak` | 00:00-01:00, 04:00-06:00, 10:00-24:00 |
+
+The hours are on the price itself (`regimeHoursUtc`, alongside `pricingRegime`) in every
+`/v1/platform-prices` response, so a consumer reads the windows rather than hard-coding them.
+A vendor's regimes partition the day, so for one model and one token class exactly one name
+matches any instant: `deepseek-v4-flash-peak-tokens-cached-input` is a V4 Flash cache-hit input
+token spent during peak hours. A vendor with no time-of-day pricing (Z.ai, Anthropic, Google)
+has no regime segment and reports `pricingRegime: null`.
+
+The regime names carry two price points: DeepSeek's current uniform rate until
+2026-08-16 16:00 UTC, then its peak and off-peak rates. Both are read from the vendor's own
+tables. `GET /v1/platform-prices/:name` always serves the one in force at request time, and
+prices already declared keep whatever they were written with.
+
+> The regime-free `deepseek-v4-{flash,pro}-tokens-{input,output}` names are **superseded**.
+> They are frozen at the pre-2026-08-16 rate and kept only because costs were declared against
+> them. DeepSeek has no regime-free rate after that instant, so there is no honest value to
+> append to them — consumers must move to the regime names before it.
 
 ## Platform costs
 
