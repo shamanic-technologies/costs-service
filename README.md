@@ -109,6 +109,12 @@ All provider seed costs apply a default markup of `COST_RISK_MULTIPLIER = 2` × 
 | `zai-glm-5.2-tokens-input` | 0.00056 | 1M tokens | Input tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly |
 | `zai-glm-5.2-tokens-cached-input` | 0.000104 | 1M tokens | Cached input tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly |
 | `zai-glm-5.2-tokens-output` | 0.00176 | 1M tokens | Output tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly |
+| `moonshot-kimi-k2.6-tokens-input` | 0.00038 | 1M tokens | Input tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly |
+| `moonshot-kimi-k2.6-tokens-cached-input` | 0.000064 | 1M tokens | Cached input tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly |
+| `moonshot-kimi-k2.6-tokens-output` | 0.0016 | 1M tokens | Output tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly |
+| `moonshot-kimi-k3-tokens-input` | 0.0012 | 1M tokens | Input tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly |
+| `moonshot-kimi-k3-tokens-cached-input` | 0.00012 | 1M tokens | Cached input tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly |
+| `moonshot-kimi-k3-tokens-output` | 0.006 | 1M tokens | Output tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly |
 
 `Domain` powers the public pricing page logo (logo.dev). `Type` is the human-readable cost-type label used for grouping. `Unit` is what one billed unit represents. A Twilio SMS over 160 characters splits into multiple segments — pricing is per segment.
 
@@ -171,13 +177,15 @@ Each provider has an active platform cost config that determines which cost tier
 | firecrawl | hobby | monthly |
 | google | pay-as-you-go | monthly |
 | instantly | hypergrowth | monthly |
+| moonshot | pay-as-you-go | monthly |
 | postmark | pro-10k | monthly |
 | scrape-do | hobby | monthly |
 | serper-dev | pay-as-you-go | monthly |
 | stripe | pay-as-you-go | monthly |
 | twilio | pay-as-you-go | monthly |
-| vercel | pay-as-you-go | monthly |
 | zai | pay-as-you-go | monthly |
+
+The `vercel` (AI Gateway) plan row is **retired** — chat-service dropped the gateway in v0.51.0 and the catalog no longer declares it. The seed never deletes, so production keeps the retired plan row and the four gateway-priced `deepseek-v4-*-tokens-*` rows dated 2025-01-01 as history: spend already declared under those names must keep reading back at the price it was written with. They are inert at read time — each of those names has a newer, vendor-priced `deepseek` row in force, and a name's provider is resolved from its newest in-force row.
 
 ## API
 

@@ -87,11 +87,18 @@ router.get("/v1/platform-prices/:name", async (req, res) => {
     const { name } = req.params;
     const now = new Date();
 
-    // 1. Find the provider for this cost name
+    // 1. Find the provider for this cost name, from its NEWEST IN-FORCE row.
+    // A name can carry rows from more than one provider once a vendor path is retired (the
+    // Vercel AI Gateway left `vercel`-provider rows under the `deepseek-v4-*` names). An
+    // unordered pick could read the superseded provider and then resolve the price against a
+    // retired provider's plan — or 500 once that plan row is gone. The provider in force is
+    // the one on the newest row whose effective_from has arrived, same row the price below
+    // resolves to.
     const [anyCost] = await db
       .select({ provider: providersCosts.provider })
       .from(providersCosts)
-      .where(eq(providersCosts.name, name))
+      .where(and(eq(providersCosts.name, name), lte(providersCosts.effectiveFrom, now)))
+      .orderBy(desc(providersCosts.effectiveFrom))
       .limit(1);
 
     if (!anyCost) {
