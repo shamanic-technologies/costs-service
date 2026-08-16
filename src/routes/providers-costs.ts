@@ -77,11 +77,14 @@ router.get("/v1/providers-costs/:name", async (req, res) => {
     const { name } = req.params;
     const now = new Date();
 
-    // 1. Find the provider for this cost name
+    // 1. Find the provider for this cost name, from its NEWEST IN-FORCE row (see the same
+    // step in platform-prices.ts): a name whose vendor path was retired carries rows from
+    // both the old and the new provider, and only the newest in-force one is authoritative.
     const [anyCost] = await db
       .select({ provider: providersCosts.provider })
       .from(providersCosts)
-      .where(eq(providersCosts.name, name))
+      .where(and(eq(providersCosts.name, name), lte(providersCosts.effectiveFrom, now)))
+      .orderBy(desc(providersCosts.effectiveFrom))
       .limit(1);
 
     if (!anyCost) {

@@ -111,7 +111,18 @@ describe("DeepSeek V4 Flash unit costs (direct vendor)", () => {
     expect(SEED_PROVIDERS_COSTS.filter((c) => c.provider === "vercel")).toHaveLength(0);
   });
 
-  it("keeps the vercel platform-cost row until chat-service drops the gateway path", () => {
-    expect(SEED_PLATFORM_COSTS.filter((c) => c.provider === "vercel")).toHaveLength(1);
+  it("retires the vercel platform-cost row now that chat-service dropped the gateway", () => {
+    // chat-service v0.51.0 removed the AI Gateway path; nothing routes through Vercel. The
+    // catalog stops declaring the provider entirely — there is no honest plan to name for a
+    // provider we no longer buy from, the same call made for the superseded flat DeepSeek
+    // cost names above (frozen, not re-priced).
+    //
+    // This does NOT delete anything in production: the seed is append-only, so the prod
+    // `vercel` platform row and the four gateway-priced `deepseek-v4-*-tokens-*` rows dated
+    // 2025-01-01 survive as history, which is what lets spend already declared under those
+    // names read back at the price it was written with.
+    expect(SEED_PLATFORM_COSTS.filter((c) => c.provider === "vercel")).toHaveLength(0);
+    expect(SEED_PROVIDERS_COSTS.filter((c) => c.provider === "vercel")).toHaveLength(0);
+    expect(PROVIDER_DOMAINS.vercel).toBeUndefined();
   });
 });

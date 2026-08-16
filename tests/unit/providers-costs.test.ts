@@ -406,10 +406,10 @@ describe("Seed platform costs", () => {
 
   it("each platform cost matches a provider cost's plan tier and billing cycle", () => {
     for (const pc of SEED_PLATFORM_COSTS) {
-      // A provider with no priced rows at all is inert, not broken: `vercel` is in this
-      // state while the DeepSeek rows sit on the direct-vendor `deepseek` provider and
-      // chat-service still has to drop its AI Gateway path. The invariant that matters is
-      // the tier match — a provider that HAS rows on a different tier 404s at read time.
+      // A provider with no priced rows at all is inert, not broken. The invariant that
+      // matters is the tier match — a provider that HAS rows on a different tier 404s at
+      // read time. (`vercel` used to sit in the no-rows state; it is now retired from the
+      // seed outright — see deepseek-v4-flash-costs.test.ts.)
       const providerCosts = SEED_PROVIDERS_COSTS.filter((c) => c.provider === pc.provider);
       if (providerCosts.length === 0) continue;
       const matchingCost = SEED_PROVIDERS_COSTS.find(

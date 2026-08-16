@@ -69,12 +69,15 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   firecrawl: "firecrawl.dev",
   google: "google.com",
   instantly: "instantly.ai",
+  moonshot: "moonshot.ai",
   postmark: "postmarkapp.com",
   "scrape-do": "scrape.do",
   "serper-dev": "serper.dev",
   stripe: "stripe.com",
   twilio: "twilio.com",
-  vercel: "vercel.com",
+  // No `vercel` entry: the AI Gateway is retired (see SEED_PLATFORM_COSTS below). The four
+  // gateway-priced rows still in production carry their provider_domain on the row itself,
+  // so dropping the map entry cannot change what history reads back.
   zai: "z.ai",
 };
 
@@ -1215,6 +1218,89 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0004400000"),
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Moonshot (Kimi) — direct vendor path, same shape as the DeepSeek and Z.ai rows above.
+  // chat-service routes the `kimi-flash` / `kimi-pro` aliases to `kimi-k2.6` / `kimi-k3` on
+  // Moonshot's OpenAI-compatible endpoint, with costPrefix `moonshot-kimi-k2.6` /
+  // `moonshot-kimi-k3` — the names below are byte-equal to those prefixes.
+  //
+  // Vendor tables, per 1M tokens (USD):
+  //   https://platform.kimi.ai/docs/pricing/chat-k26 (read 2026-08-16)
+  //     Kimi K2.6 — input (cache miss) $0.95 · input (cache hit) $0.16 · output $4.00
+  //   https://platform.kimi.ai/docs/pricing/chat-k3  (read 2026-08-16)
+  //     Kimi K3   — input (cache miss) $3.00 · input (cache hit) $0.30 · output $15.00
+  //
+  // `platform.moonshot.ai/docs/pricing/*` 301s to `platform.kimi.ai/docs/pricing/*`; the
+  // index page carries no figures, the per-model pages do. Cache-hit input is its own cost
+  // name at the vendor's own rate — never blended into the uncached input row.
+  //
+  // Moonshot publishes no time-of-day schedule, so these rows carry no pricing regime: one
+  // rate applies at every hour and the name has no regime segment.
+  {
+    name: "moonshot-kimi-k2.6-tokens-input",
+    provider: "moonshot",
+    providerDomain: PROVIDER_DOMAINS.moonshot,
+    type: "Input tokens (Kimi K2.6)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000950000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "moonshot-kimi-k2.6-tokens-cached-input",
+    provider: "moonshot",
+    providerDomain: PROVIDER_DOMAINS.moonshot,
+    type: "Cached input tokens (Kimi K2.6)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000160000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "moonshot-kimi-k2.6-tokens-output",
+    provider: "moonshot",
+    providerDomain: PROVIDER_DOMAINS.moonshot,
+    type: "Output tokens (Kimi K2.6)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0004000000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "moonshot-kimi-k3-tokens-input",
+    provider: "moonshot",
+    providerDomain: PROVIDER_DOMAINS.moonshot,
+    type: "Input tokens (Kimi K3)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0003000000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "moonshot-kimi-k3-tokens-cached-input",
+    provider: "moonshot",
+    providerDomain: PROVIDER_DOMAINS.moonshot,
+    type: "Cached input tokens (Kimi K3)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000300000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "moonshot-kimi-k3-tokens-output",
+    provider: "moonshot",
+    providerDomain: PROVIDER_DOMAINS.moonshot,
+    type: "Output tokens (Kimi K3)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0015000000"),
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
 ];
 
 export const SEED_PLATFORM_COSTS = [
@@ -1275,6 +1361,13 @@ export const SEED_PLATFORM_COSTS = [
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Moonshot — direct vendor account. Resolves the moonshot-kimi-* prices.
+  {
+    provider: "moonshot",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   {
     provider: "postmark",
     planTier: "pro-10k",
@@ -1305,15 +1398,20 @@ export const SEED_PLATFORM_COSTS = [
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Vercel AI Gateway — kept even though the DeepSeek rows moved to the `deepseek` provider.
-  // chat-service removes the gateway path first; this row is cleaned up after that lands.
-  // Byte-equal to the production row, so the append-only seed is a no-op against prod.
-  {
-    provider: "vercel",
-    planTier: "pay-as-you-go",
-    billingCycle: "monthly",
-    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
-  },
+  // ⚠️ THE `vercel` PLATFORM ROW IS RETIRED — chat-service dropped the AI Gateway in v0.51.0
+  // and nothing routes through it. It is removed from this catalog rather than re-pointed:
+  // there is no honest plan to declare for a provider we no longer buy from, exactly as the
+  // superseded flat DeepSeek cost names were frozen rather than re-priced.
+  //
+  // Retirement here means "the seed stops declaring it", NOT "the rows are deleted". The seed
+  // is append-only and never DELETEs, so production keeps both the `vercel` platform row and
+  // the four gateway-priced `deepseek-v4-{flash,pro}-tokens-{input,output}` rows dated
+  // 2025-01-01. That is deliberate: the runs ledger froze those prices onto spend already
+  // declared, and reading that spend back must keep resolving the row it was written with.
+  // They are inert at read time — every one of those names has a newer, vendor-priced
+  // `deepseek` row in force, and both `/v1/platform-prices/:name` and
+  // `/v1/providers-costs/:name` now resolve a name's provider from its NEWEST in-force row,
+  // so a retired provider can never be picked up from a superseded one.
   // Z.ai — direct vendor account. Resolves the zai-glm-* prices.
   {
     provider: "zai",
