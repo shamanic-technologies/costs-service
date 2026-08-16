@@ -103,10 +103,12 @@ describe("Z.ai GLM unit costs (direct vendor)", () => {
     expect(rows.sort()).toEqual([...ZAI_NAMES].sort());
   });
 
-  it("omits the Kimi rows — no vendor-confirmed price yet", () => {
-    // kimi-k3 / kimi-k2.6 prices are only available from third-party aggregators today.
-    // Pricing a model we cannot confirm at the vendor would bill customers on a guess.
-    expect(SEED_PROVIDERS_COSTS.some((c) => c.name.includes("kimi"))).toBe(false);
-    expect(SEED_PROVIDERS_COSTS.some((c) => c.provider === "moonshot")).toBe(false);
+  it("keeps the Kimi rows on their own provider, off the zai rows", () => {
+    // The Kimi prices ARE vendor-confirmed now (platform.kimi.ai per-model pricing pages) and
+    // live under provider `moonshot` — see moonshot-kimi-costs.test.ts. Z.ai must not absorb
+    // them: a Kimi row on the zai provider would resolve against Z.ai's plan.
+    for (const row of SEED_PROVIDERS_COSTS.filter((c) => c.name.includes("kimi"))) {
+      expect(row.provider).toBe("moonshot");
+    }
   });
 });
