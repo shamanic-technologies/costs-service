@@ -63,6 +63,38 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
     expect(rows[1].effectiveFrom.getTime()).toBeLessThan(rows[0].effectiveFrom.getTime());
   });
 
+  it("AC1b: dropping the markup appends a new row even where the NUMBER is unchanged", async () => {
+    // The Stripe fees went from marked-up 4¢/cent to pass-through 1¢/cent, so their value moved
+    // and a plain value comparison would have caught them. A future line could keep its number
+    // and change only its class (a 1× markup dropped, say) — that is still a change in what the
+    // customer is promised, so the comparison covers pricing_basis too.
+    await insertTestProviderCost({
+      name: "stripe-processing-fee",
+      provider: "stripe",
+      providerDomain: "stripe.com",
+      type: "Charge processing fee",
+      unit: "USD cent",
+      planTier: "pay-as-you-go",
+      billingCycle: "monthly",
+      costPerUnitInUsdCents: "1.0000000000", // same number the seed now declares…
+      pricingBasis: "marked-up", // …but the old class
+      effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+    });
+
+    await seedProvidersCosts();
+
+    const rows = await db
+      .select()
+      .from(providersCosts)
+      .where(eq(providersCosts.name, "stripe-processing-fee"))
+      .orderBy(desc(providersCosts.effectiveFrom));
+
+    expect(rows.length).toBe(2);
+    expect(rows[0].pricingBasis).toBe("pass-through");
+    expect(rows[0].costPerUnitInUsdCents).toBe("1.0000000000");
+    expect(rows[1].pricingBasis).toBe("marked-up"); // history intact
+  });
+
   it("AC2: re-running the seed with no change appends nothing (idempotent)", async () => {
     await seedProvidersCosts();
     const after1 = await db.select().from(providersCosts);
