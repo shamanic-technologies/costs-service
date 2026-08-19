@@ -41,6 +41,7 @@ describe("Providers Costs CRUD", { timeout: 30_000 }, () => {
         .set(authHeaders)
         .send({
           costPerUnitInUsdCents: "0.0003000000",
+          pricingBasis: "marked-up",
           provider: "test-provider",
           planTier: "basic",
           billingCycle: "monthly",
@@ -74,6 +75,7 @@ describe("Providers Costs CRUD", { timeout: 30_000 }, () => {
         .set(authHeaders)
         .send({
           costPerUnitInUsdCents: "0.0003000000",
+          pricingBasis: "marked-up",
           provider: "test-provider",
           planTier: "basic",
           billingCycle: "monthly",
@@ -102,6 +104,7 @@ describe("Providers Costs CRUD", { timeout: 30_000 }, () => {
         .set(authHeaders)
         .send({
           costPerUnitInUsdCents: "0.01",
+          pricingBasis: "marked-up",
           provider: "test",
           planTier: "basic",
           billingCycle: "monthly",
@@ -125,6 +128,7 @@ describe("Providers Costs CRUD", { timeout: 30_000 }, () => {
         .set(authHeaders)
         .send({
           costPerUnitInUsdCents: "0.01",
+          pricingBasis: "marked-up",
           provider: "test",
           planTier: "basic",
           billingCycle: "monthly",
@@ -140,6 +144,7 @@ describe("Providers Costs CRUD", { timeout: 30_000 }, () => {
         .set(authHeaders)
         .send({
           costPerUnitInUsdCents: "0.01",
+          pricingBasis: "marked-up",
           provider: "fake-provider",
           planTier: "basic",
           billingCycle: "monthly",
@@ -158,6 +163,7 @@ describe("Providers Costs CRUD", { timeout: 30_000 }, () => {
         .set(identityHeaders)
         .send({
           costPerUnitInUsdCents: "0.01",
+          pricingBasis: "marked-up",
           provider: "test",
           planTier: "basic",
           billingCycle: "monthly",
@@ -250,6 +256,7 @@ describe("Providers Costs CRUD", { timeout: 30_000 }, () => {
         .set(authHeaders)
         .send({
           costPerUnitInUsdCents: "0.01",
+          pricingBasis: "marked-up",
           provider: "test-provider",
           planTier: "basic",
           billingCycle: "monthly",
@@ -264,6 +271,7 @@ describe("Providers Costs CRUD", { timeout: 30_000 }, () => {
         .set(authHeaders)
         .send({
           costPerUnitInUsdCents: "0.02",
+          pricingBasis: "marked-up",
           provider: "test-provider",
           planTier: "basic",
           billingCycle: "monthly",
@@ -294,6 +302,7 @@ describe("Providers Costs CRUD", { timeout: 30_000 }, () => {
         .set(authHeaders)
         .send({
           costPerUnitInUsdCents: "0.01",
+          pricingBasis: "marked-up",
           provider: "test-provider",
           planTier: "basic",
           billingCycle: "monthly",
@@ -308,6 +317,7 @@ describe("Providers Costs CRUD", { timeout: 30_000 }, () => {
         .set(authHeaders)
         .send({
           costPerUnitInUsdCents: "0.005",
+          pricingBasis: "marked-up",
           provider: "test-provider",
           planTier: "business",
           billingCycle: "monthly",

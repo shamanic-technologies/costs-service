@@ -1,5 +1,6 @@
 import { db, sql } from "../../src/db/index.js";
 import { providersCosts, platformCosts } from "../../src/db/schema.js";
+import type { PricingBasis } from "../../src/db/seed.js";
 
 export async function cleanTestData() {
   await db.delete(providersCosts);
@@ -15,6 +16,8 @@ export async function insertTestProviderCost(data: {
   type?: string;
   unit?: string;
   providerDomain?: string | null;
+  /** Defaults to the historical class: every row pre-dating pricing_basis was marked up. */
+  pricingBasis?: PricingBasis;
   effectiveFrom?: Date;
 }) {
   const [cost] = await db
@@ -28,6 +31,7 @@ export async function insertTestProviderCost(data: {
       type: data.type ?? "Test type",
       unit: data.unit ?? "test-unit",
       providerDomain: data.providerDomain ?? null,
+      pricingBasis: data.pricingBasis ?? "marked-up",
       effectiveFrom: data.effectiveFrom || new Date(),
     })
     .returning();

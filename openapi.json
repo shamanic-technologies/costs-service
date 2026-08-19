@@ -119,6 +119,15 @@
           "costPerUnitInUsdCents": {
             "type": "string"
           },
+          "pricingBasis": {
+            "type": "string",
+            "enum": [
+              "marked-up",
+              "pass-through"
+            ],
+            "description": "Whether this line carries a markup. 'pass-through' means the price IS the vendor's — money we merely route (advertising-platform spend, payment-processing fees) reaches the customer at cost, with no markup. 'marked-up' means work we perform (LLM tokens, embeddings, enrichment, search, creative generation), priced at the vendor rate times the store multiplier. Always present: a line's class is never inferred by the caller.",
+            "example": "pass-through"
+          },
           "pricingRegime": {
             "type": "string",
             "nullable": true,
@@ -154,6 +163,7 @@
           "planTier",
           "billingCycle",
           "costPerUnitInUsdCents",
+          "pricingBasis",
           "pricingRegime",
           "regimeHoursUtc",
           "effectiveFrom",
@@ -220,6 +230,15 @@
               }
             ]
           },
+          "pricingBasis": {
+            "type": "string",
+            "enum": [
+              "marked-up",
+              "pass-through"
+            ],
+            "description": "Required. 'pass-through' for money we route at the vendor price (ad-platform spend, payment fees), 'marked-up' for work we perform. No default — a price point whose class is unstated is rejected.",
+            "example": "marked-up"
+          },
           "provider": {
             "type": "string"
           },
@@ -254,6 +273,7 @@
         },
         "required": [
           "costPerUnitInUsdCents",
+          "pricingBasis",
           "provider",
           "type",
           "unit",
@@ -294,6 +314,15 @@
           "unit": {
             "type": "string"
           },
+          "pricingBasis": {
+            "type": "string",
+            "enum": [
+              "marked-up",
+              "pass-through"
+            ],
+            "description": "Whether this line carries a markup. 'pass-through' means the price IS the vendor's — money we merely route (advertising-platform spend, payment-processing fees) reaches the customer at cost, with no markup. 'marked-up' means work we perform (LLM tokens, embeddings, enrichment, search, creative generation), priced at the vendor rate times the store multiplier. Always present: a line's class is never inferred by the caller.",
+            "example": "pass-through"
+          },
           "pricingRegime": {
             "type": "string",
             "nullable": true,
@@ -318,6 +347,7 @@
           "providerDomain",
           "type",
           "unit",
+          "pricingBasis",
           "pricingRegime",
           "regimeHoursUtc",
           "effectiveFrom"

@@ -37,6 +37,11 @@ export const ProviderCostSchema = z
     planTier: z.string(),
     billingCycle: z.string(),
     costPerUnitInUsdCents: z.string(),
+    pricingBasis: z.enum(["marked-up", "pass-through"]).openapi({
+      description:
+        "Whether this line carries a markup. 'pass-through' means the price IS the vendor's — money we merely route (advertising-platform spend, payment-processing fees) reaches the customer at cost, with no markup. 'marked-up' means work we perform (LLM tokens, embeddings, enrichment, search, creative generation), priced at the vendor rate times the store multiplier. Always present: a line's class is never inferred by the caller.",
+      example: "pass-through",
+    }),
     pricingRegime: z.string().nullable().openapi({
       description:
         "Time-of-day pricing regime this price belongs to ('peak' or 'off-peak'), or null when the provider charges one rate at every hour. The cost name carries the same segment.",
@@ -61,6 +66,11 @@ export const PriceSchema = z
     providerDomain: z.string().nullable(),
     type: z.string(),
     unit: z.string(),
+    pricingBasis: z.enum(["marked-up", "pass-through"]).openapi({
+      description:
+        "Whether this line carries a markup. 'pass-through' means the price IS the vendor's — money we merely route (advertising-platform spend, payment-processing fees) reaches the customer at cost, with no markup. 'marked-up' means work we perform (LLM tokens, embeddings, enrichment, search, creative generation), priced at the vendor rate times the store multiplier. Always present: a line's class is never inferred by the caller.",
+      example: "pass-through",
+    }),
     pricingRegime: z.string().nullable().openapi({
       description:
         "Time-of-day pricing regime this price belongs to ('peak' or 'off-peak'), or null when the provider charges one rate at every hour. The cost name carries the same segment, so a consumer picks the name for a moment rather than computing a rate.",
@@ -92,6 +102,11 @@ export const PlatformCostSchema = z
 export const PutProviderCostBodySchema = z
   .object({
     costPerUnitInUsdCents: z.union([z.string(), z.number()]),
+    pricingBasis: z.enum(["marked-up", "pass-through"]).openapi({
+      description:
+        "Required. 'pass-through' for money we route at the vendor price (ad-platform spend, payment fees), 'marked-up' for work we perform. No default — a price point whose class is unstated is rejected.",
+      example: "marked-up",
+    }),
     provider: z.string(),
     providerDomain: z.string().nullable().optional(),
     type: z.string(),
