@@ -58,6 +58,37 @@ export function applyCostRiskMultiplier(
   return `${whole}.${fractional}`;
 }
 
+/**
+ * How a catalog line's price relates to what the vendor charges. Two values, no third, and no
+ * default anywhere: every seed row states its own class (the field is required on
+ * `SeedProviderCost`, so a row that omits it does not compile) and the column is NOT NULL.
+ *
+ *  - `marked-up`    … work we PERFORM (LLM tokens, embeddings, enrichment, search, creative
+ *                     generation). Price = vendor rate × COST_DEFAULT_MULTIPLIER.
+ *  - `pass-through` … money we merely ROUTE (advertising-platform spend, payment-processing
+ *                     fees). Price IS the vendor rate. The customer pays exactly what the
+ *                     underlying platform charges and nothing more.
+ *
+ * The distinction is a commercial promise, not an implementation detail: the public pricing
+ * page reads it back per line from `/v1/platform-prices`, so it lives on the row here rather
+ * than as a list any consumer has to mirror.
+ */
+export type PricingBasis = "marked-up" | "pass-through";
+
+/**
+ * Price a line we do NOT mark up: the raw vendor rate, stored verbatim.
+ *
+ * Exists as a named counterpart to `applyCostRiskMultiplier` so a pass-through row reads as a
+ * deliberate choice rather than a forgotten markup, and so the same fixed 10-decimal format is
+ * enforced on both paths.
+ */
+export function passThroughVendorPrice(costPerUnitInUsdCents: string): string {
+  if (!/^\d+\.\d{10}$/.test(costPerUnitInUsdCents)) {
+    throw new Error(`Invalid seed cost format: ${costPerUnitInUsdCents}`);
+  }
+  return costPerUnitInUsdCents;
+}
+
 // Domain mapping per provider (used by logo.dev on the public pricing page).
 export const PROVIDER_DOMAINS: Record<string, string> = {
   apollo: "apollo.io",
@@ -75,6 +106,20 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   "serper-dev": "serper.dev",
   stripe: "stripe.com",
   twilio: "twilio.com",
+  // Advertising platforms we route spend to. Each is its own provider: the plan we resolve a
+  // price on is per vendor path, and `google` (Gemini) is a different commercial relationship
+  // from `google-ads` even though both are Google.
+  "google-ads": "ads.google.com",
+  "meta-ads": "facebook.com",
+  "linkedin-ads": "linkedin.com",
+  "tiktok-ads": "tiktok.com",
+  "youtube-ads": "youtube.com",
+  "x-ads": "x.com",
+  "reddit-ads": "reddit.com",
+  "bing-ads": "bing.com",
+  "quora-ads": "quora.com",
+  // Sponsorships and directory listings have no single vendor — the money goes to whichever
+  // newsletter, show, creator or directory the campaign bought. No domain, hence no logo.
   // No `vercel` entry: the AI Gateway is retired (see SEED_PLATFORM_COSTS below). The four
   // gateway-priced rows still in production carry their provider_domain on the row itself,
   // so dropping the map entry cannot change what history reads back.
@@ -99,6 +144,8 @@ export interface SeedProviderCost {
   planTier: string;
   billingCycle: string;
   costPerUnitInUsdCents: string;
+  /** Required — see `PricingBasis`. No default: an untagged line must not compile. */
+  pricingBasis: PricingBasis;
   effectiveFrom: Date;
   /** 'peak' | 'off-peak' for a provider that charges by time of day; omitted otherwise. */
   pricingRegime?: string;
@@ -175,17 +222,63 @@ function deepSeekModelCosts(args: {
         {
           ...shared,
           costPerUnitInUsdCents: applyCostRiskMultiplier(args.current[keys[i]]),
+          pricingBasis: "marked-up",
           effectiveFrom: new Date("2025-01-01T00:00:00Z"),
         },
         {
           ...shared,
           costPerUnitInUsdCents: applyCostRiskMultiplier(rates[keys[i]]),
+          pricingBasis: "marked-up",
           effectiveFrom: DEEPSEEK_TIME_OF_DAY_PRICING_FROM,
         },
       ];
     })
   );
 }
+
+/**
+ * The acquisition channels we ROUTE spend to, one cost name each.
+ *
+ * Every one of these is billed the same way and for the same reason: the org buys placement on
+ * a platform, the platform charges what it charges, and we hand that amount on untouched. So a
+ * line's unit is one USD cent of platform spend and its price is exactly one cent — the
+ * consumer declares `quantity` = the spend it observed in cents, and the org is charged that
+ * number. There is no rate to get wrong and no margin to hide, which is the whole point of the
+ * pass-through basis.
+ *
+ * A creative WE generate for one of these campaigns is a different line (an LLM / image cost
+ * name, marked up as it is today). Buying the placement is routing; making the ad is work.
+ */
+const ADVERTISING_CHANNELS: { provider: string; type: string }[] = [
+  { provider: "google-ads", type: "Google Ads platform spend" },
+  { provider: "meta-ads", type: "Meta Ads platform spend" },
+  { provider: "linkedin-ads", type: "LinkedIn Ads platform spend" },
+  { provider: "tiktok-ads", type: "TikTok Ads platform spend" },
+  { provider: "youtube-ads", type: "YouTube Ads platform spend" },
+  { provider: "x-ads", type: "X Ads platform spend" },
+  { provider: "reddit-ads", type: "Reddit Ads platform spend" },
+  { provider: "bing-ads", type: "Bing Ads platform spend" },
+  { provider: "quora-ads", type: "Quora Ads platform spend" },
+  { provider: "newsletter-sponsorship", type: "Newsletter sponsorship spend" },
+  { provider: "podcast-sponsorship", type: "Podcast sponsorship spend" },
+  { provider: "creator-sponsorship", type: "Creator sponsorship spend" },
+  { provider: "software-directory-listing", type: "Paid software-directory listing spend" },
+];
+
+export const ADVERTISING_CHANNEL_COSTS: SeedProviderCost[] = ADVERTISING_CHANNELS.map(
+  ({ provider, type }) => ({
+    name: `${provider}-spend`,
+    provider,
+    providerDomain: PROVIDER_DOMAINS[provider],
+    type,
+    unit: "USD cent",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: passThroughVendorPrice("1.0000000000"),
+    pricingBasis: "pass-through",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  })
+);
 
 export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   // Apollo — unified credit: Basic plan $59/mo ÷ 2,500 credits = 2.36¢/credit
@@ -200,6 +293,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "basic",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("2.3600000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Apify — pro100chok/ahrefs-seo-tools (actor pC8gsptNv2RwJm0QE)
@@ -215,6 +309,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "starter",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.5000000000"), // $0.005 = 0.5¢
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2026-06-03T00:00:00Z"),
   },
   // Apify — verified B2B email lead actors (apify-service, per-actor cost).
@@ -228,6 +323,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "starter",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.1000000000"), // $0.001 = 0.1¢
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2026-06-12T00:00:00Z"),
   },
   {
@@ -239,6 +335,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "starter",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.1600000000"), // $0.0016 = 0.16¢
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2026-06-12T00:00:00Z"),
   },
   {
@@ -250,6 +347,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "starter",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.5000000000"), // $0.015 = 1.5¢
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2026-06-12T00:00:00Z"),
   },
   // PAY_PER_EVENT actor-start fee, billed once per pipelinelabs actor run (separate from
@@ -263,6 +361,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "starter",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0010000000"), // $0.00001 = 0.001¢ → 0.004¢
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2026-06-12T00:00:00Z"),
   },
   // Apify — email VERIFICATION actor (bounceverify/bounceverify-email-verifier,
@@ -279,6 +378,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "starter",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0890000000"), // $0.00089 = 0.089¢ → 0.356¢
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2026-06-23T00:00:00Z"),
   },
   // Anthropic Opus 4.5: $5/MTok input, $25/MTok output
@@ -292,6 +392,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -303,6 +404,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0025000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Anthropic Sonnet 4.5: $3/MTok input, $15/MTok output
@@ -315,6 +417,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0003000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -326,6 +429,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0015000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Anthropic Sonnet 4.6: $3/MTok input, $15/MTok output (same as 4.5)
@@ -339,6 +443,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0003000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -350,6 +455,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0015000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Anthropic Opus 4.6: $5/MTok input, $25/MTok output (same as 4.5)
@@ -363,6 +469,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -374,6 +481,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0025000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Anthropic Haiku 4.5: $1/MTok input, $5/MTok output
@@ -386,6 +494,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -397,6 +506,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Anthropic — server-side web search tool: $10/1,000 searches = 1.0¢/search
@@ -411,6 +521,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.0000000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Featured.com — one pitch submit = 1 credit.
@@ -426,6 +537,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0500000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Postmark — unit cost = plan price ÷ 10,000 emails (10k volume tier)
@@ -440,6 +552,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "basic-10k",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.1500000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Pro 10k tier: $16.50/mo ÷ 10k = 0.165¢/email
@@ -452,6 +565,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pro-10k",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.1650000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Platform 10k tier: $18/mo ÷ 10k = 0.18¢/email
@@ -464,6 +578,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "platform-10k",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.1800000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Firecrawl — scrape: 1 credit per page
@@ -478,6 +593,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "hobby",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.6333333333"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Firecrawl — map: 1 credit per page
@@ -490,6 +606,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "hobby",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.6333333333"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Firecrawl — extract: token-based billing (1 credit = 15 tokens)
@@ -504,6 +621,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "hobby",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0422222222"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 3 Flash (Preview): $0.50/MTok input, $3.00/MTok output
@@ -517,6 +635,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000500000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -528,6 +647,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0003000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 3.5 Flash: $1.50/MTok input, $9.00/MTok output (standard pay-as-you-go tier).
@@ -542,6 +662,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001500000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -553,6 +674,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0009000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 3.6 Flash: $1.50/MTok input, $7.50/MTok output (standard pay-as-you-go tier).
@@ -567,6 +689,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001500000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -578,6 +701,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0007500000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 3.7 Flash: $1.50/MTok input, $7.50/MTok output (standard pay-as-you-go tier).
@@ -594,6 +718,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001500000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -605,6 +730,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0007500000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 3.5 Flash-Lite: $0.30/MTok input, $2.50/MTok output (standard pay-as-you-go tier).
@@ -619,6 +745,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000300000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -630,6 +757,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0002500000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 3.1 Flash Image: $0.50/MTok input, $60.00/MTok image output.
@@ -644,6 +772,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000500000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -655,6 +784,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0060000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 3.1 Flash Lite (Preview): $0.25/MTok input, $1.50/MTok output
@@ -668,6 +798,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000250000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -679,6 +810,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001500000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 3.1 Pro (Preview): $2.00/MTok input, $12.00/MTok output (≤200k context)
@@ -693,6 +825,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0002000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -704,6 +837,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0012000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 2.5 Pro: $1.25/MTok input, $10.00/MTok output (≤200k context)
@@ -717,6 +851,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001250000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -728,6 +863,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0010000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 2.5 Flash: $0.30/MTok input, $2.50/MTok output
@@ -741,6 +877,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000300000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -752,6 +889,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0002500000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini 2.5 Flash-Lite: $0.10/MTok input, $0.40/MTok output
@@ -765,6 +903,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000100000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -776,6 +915,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000400000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google Gemini Embedding 001: $0.15/MTok input (standard tier).
@@ -791,6 +931,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000150000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Google — Google Search grounding: $14/1,000 queries = 1.4¢/query
@@ -805,6 +946,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.4000000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly — contact uploaded: Growth plan $47/mo ÷ 1,000 contacts = 4.70¢/contact
@@ -818,6 +960,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "growth",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("4.7000000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly — email sent per account (pre-warmed prewarmed-inbox infra).
@@ -842,6 +985,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "growth",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.6370370370"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly — email sent per domain (pre-warmed prewarmed-inbox infra).
@@ -857,6 +1001,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "growth",
     billingCycle: "yearly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0396825397"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly Hypergrowth — contact uploaded: $97/mo ÷ 25,000 contacts = 0.388¢/contact
@@ -870,6 +1015,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "hypergrowth",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.3880000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly Hypergrowth — email sent per account: same prewarmed-inbox model as Growth.
@@ -885,6 +1031,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "hypergrowth",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.6370370370"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Instantly Hypergrowth — email sent per domain: same prewarmed-inbox model as Growth.
@@ -898,6 +1045,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "hypergrowth",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0396825397"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Serper.dev — search query (web, news, batch): $0.001/query = 0.1¢/query
@@ -913,6 +1061,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.1000000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Scrape.do — 1 API credit (quantity varies by request type via scrape.do-request-cost header)
@@ -928,13 +1077,18 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "hobby",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0116000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Stripe — pass-through processing fees (charge, refund, dispute, payout failure).
-  // stripe-service emits one cost write per Stripe-incurred fee event, with quantity
-  // set to the fee in cents (from balance_transaction.fee). Unit price is 1 cent base,
-  // quadrupled to 4¢ by applyCostRiskMultiplier — org is charged 4× the actual Stripe fee,
-  // matching the platform-wide cost-risk markup convention.
+  // Stripe — payment-processing fees (charge, refund, dispute, payout failure). PASS-THROUGH.
+  // stripe-service emits one cost write per Stripe-incurred fee event, with quantity set to the
+  // fee in cents (from balance_transaction.fee). Unit price is therefore 1 cent of Stripe fee,
+  // and the org is charged that fee EXACTLY — we route the money, we do not resell it.
+  //
+  // These four rows carried the 4× markup until this version (an org paid 4¢ per 1¢ of Stripe
+  // fee). Repricing them to the vendor basis is an append-only price change: the seed inserts a
+  // new now()-dated row per name and the marked-up rows stay as history, so spend already
+  // declared still reads back at the price it was written with.
   // https://stripe.com/pricing
   {
     name: "stripe-processing-fee",
@@ -944,7 +1098,8 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "USD cent",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("1.0000000000"),
+    costPerUnitInUsdCents: passThroughVendorPrice("1.0000000000"),
+    pricingBasis: "pass-through",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -955,7 +1110,8 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "USD cent",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("1.0000000000"),
+    costPerUnitInUsdCents: passThroughVendorPrice("1.0000000000"),
+    pricingBasis: "pass-through",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -966,7 +1122,8 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "USD cent",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("1.0000000000"),
+    costPerUnitInUsdCents: passThroughVendorPrice("1.0000000000"),
+    pricingBasis: "pass-through",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -977,7 +1134,8 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "USD cent",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("1.0000000000"),
+    costPerUnitInUsdCents: passThroughVendorPrice("1.0000000000"),
+    pricingBasis: "pass-through",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Twilio — SMS: 1.33¢ per message segment (pay-as-you-go)
@@ -992,6 +1150,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.3300000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Twilio — WhatsApp: 0.5¢ per outbound message (US, all-in per-message model).
@@ -1011,6 +1170,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.5000000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Cloudflare R2 — Class A operations (PUT, POST, COPY, LIST): $4.50 per million ops
@@ -1025,6 +1185,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0004500000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Cloudflare R2 — Class B operations (GET, HEAD): $0.36 per million ops
@@ -1039,6 +1200,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000360000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // DeepSeek — direct vendor path (the Vercel AI Gateway is being dropped from chat-service).
@@ -1072,6 +1234,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000140000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1083,6 +1246,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000280000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1094,6 +1258,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000435000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1105,6 +1270,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000870000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // DeepSeek — every priced dimension, per model: token class in the name, pricing regime in
@@ -1161,6 +1327,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000070000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1172,6 +1339,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000010000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1183,6 +1351,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000400000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1194,6 +1363,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001400000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1205,6 +1375,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000260000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1216,6 +1387,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0004400000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Moonshot (Kimi) — direct vendor path, same shape as the DeepSeek and Z.ai rows above.
@@ -1244,6 +1416,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000950000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1255,6 +1428,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000160000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1266,6 +1440,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0004000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1277,6 +1452,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0003000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1288,6 +1464,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000300000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
@@ -1299,8 +1476,11 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0015000000"),
+    pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Advertising channels — one pass-through line per channel, see ADVERTISING_CHANNELS above.
+  ...ADVERTISING_CHANNEL_COSTS,
 ];
 
 export const SEED_PLATFORM_COSTS = [
@@ -1419,6 +1599,15 @@ export const SEED_PLATFORM_COSTS = [
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Advertising channels — a cost row alone does not serve: `/v1/platform-prices/:name` joins
+  // to the ACTIVE platform row for the provider and matches on (planTier, billingCycle) with no
+  // fallback, so a channel missing here would 500. Every channel is bought as-you-go.
+  ...ADVERTISING_CHANNELS.map(({ provider }) => ({
+    provider,
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  })),
 ];
 
 function escapeSqlLiteral(value: string): string {
@@ -1429,12 +1618,39 @@ function nullableSqlLiteral(value: string | null | undefined): string {
   return value == null ? "NULL" : `'${escapeSqlLiteral(value)}'`;
 }
 
+/**
+ * The fewest rows a completed seed can leave behind, i.e. what a run against an EMPTY database
+ * writes. Not `SEED_PROVIDERS_COSTS.length`: a cost name carries one entry per price VERSION,
+ * and of the versions already in force only the newest is written (the older ones are history
+ * this database never had). So the floor is one row per in-force (name, plan, cycle), plus one
+ * row per scheduled entry, which is inserted verbatim at its own date.
+ *
+ * Counting entries instead of rows made the check a time bomb: it passed while a scheduled
+ * version was still in the future and started failing the moment that version came into force,
+ * which is exactly when nothing about the catalog was wrong. DeepSeek's time-of-day rates set
+ * it off on 2026-08-16.
+ */
+export function expectedSeedRowFloor(now: Date = new Date()): number {
+  const inForceKeys = new Set<string>();
+  let scheduled = 0;
+  for (const cost of SEED_PROVIDERS_COSTS) {
+    if (cost.effectiveFrom > now) {
+      scheduled += 1;
+    } else {
+      inForceKeys.add(`${cost.name}|${cost.planTier}|${cost.billingCycle}`);
+    }
+  }
+  return inForceKeys.size + scheduled;
+}
+
 export async function seedProvidersCosts() {
   // APPEND-ONLY price history — NEVER overwrite a cost. For each seed row we compare its
   // cost to the LATEST existing row for (name, plan_tier, billing_cycle):
   //   - no row yet           → INSERT with the declared effective_from (first version)
-  //   - cost differs         → INSERT a NEW row dated now() (the prior row stays as history)
-  //   - cost equal           → no-op (idempotent across every boot)
+  //   - cost or basis differs → INSERT a NEW row dated now() (the prior row stays as history)
+  //   - both equal            → no-op (idempotent across every boot)
+  // The comparison covers pricing_basis as well as the value: dropping a markup can leave the
+  // number unchanged (a 1× line), and that is still a change in what we promise the customer.
   // A price is thus queryable through time: the read path resolves the newest row whose
   // effective_from <= now(). Do NOT reintroduce `ON CONFLICT ... DO UPDATE cost_per_unit`
   // — that silently destroys history (see CLAUDE.md "Seed = append-only on price change").
@@ -1461,12 +1677,12 @@ export async function seedProvidersCosts() {
 
   try {
     const columns =
-      "name, provider, provider_domain, type, unit, plan_tier, billing_cycle, pricing_regime, regime_hours_utc, cost_per_unit_in_usd_cents, effective_from";
+      "name, provider, provider_domain, type, unit, plan_tier, billing_cycle, pricing_regime, regime_hours_utc, cost_per_unit_in_usd_cents, pricing_basis, effective_from";
     const valuesColumns =
-      "name, provider, provider_domain, type, unit, plan_tier, billing_cycle, pricing_regime, regime_hours_utc, cost, declared_eff";
+      "name, provider, provider_domain, type, unit, plan_tier, billing_cycle, pricing_regime, regime_hours_utc, cost, basis, declared_eff";
     const valuesClause = SEED_PROVIDERS_COSTS.map(
       (c) =>
-        `('${escapeSqlLiteral(c.name)}', '${escapeSqlLiteral(c.provider)}', ${nullableSqlLiteral(c.providerDomain)}::text, '${escapeSqlLiteral(c.type)}', '${escapeSqlLiteral(c.unit)}', '${escapeSqlLiteral(c.planTier)}', '${escapeSqlLiteral(c.billingCycle)}', ${nullableSqlLiteral(c.pricingRegime)}::text, ${nullableSqlLiteral(c.regimeHoursUtc)}::text, ${c.costPerUnitInUsdCents}, '${c.effectiveFrom.toISOString()}'::timestamptz)`
+        `('${escapeSqlLiteral(c.name)}', '${escapeSqlLiteral(c.provider)}', ${nullableSqlLiteral(c.providerDomain)}::text, '${escapeSqlLiteral(c.type)}', '${escapeSqlLiteral(c.unit)}', '${escapeSqlLiteral(c.planTier)}', '${escapeSqlLiteral(c.billingCycle)}', ${nullableSqlLiteral(c.pricingRegime)}::text, ${nullableSqlLiteral(c.regimeHoursUtc)}::text, ${c.costPerUnitInUsdCents}, '${escapeSqlLiteral(c.pricingBasis)}', '${c.effectiveFrom.toISOString()}'::timestamptz)`
     ).join(", ");
 
     await directSql.begin(async (tx) => {
@@ -1480,7 +1696,7 @@ export async function seedProvidersCosts() {
       // index the append-only history uses — so re-seeding is a no-op.
       await tx.unsafe(`
         INSERT INTO providers_costs (${columns})
-        SELECT v.name, v.provider, v.provider_domain, v.type, v.unit, v.plan_tier, v.billing_cycle, v.pricing_regime, v.regime_hours_utc, v.cost, v.declared_eff
+        SELECT v.name, v.provider, v.provider_domain, v.type, v.unit, v.plan_tier, v.billing_cycle, v.pricing_regime, v.regime_hours_utc, v.cost, v.basis, v.declared_eff
         FROM (VALUES ${valuesClause}) AS v (${valuesColumns})
         WHERE v.declared_eff > now()
           AND NOT EXISTS (
@@ -1499,7 +1715,7 @@ export async function seedProvidersCosts() {
       // boot), and a seed version whose date has not arrived must not be applied early.
       await tx.unsafe(`
         INSERT INTO providers_costs (${columns})
-        SELECT cur.name, cur.provider, cur.provider_domain, cur.type, cur.unit, cur.plan_tier, cur.billing_cycle, cur.pricing_regime, cur.regime_hours_utc, cur.cost,
+        SELECT cur.name, cur.provider, cur.provider_domain, cur.type, cur.unit, cur.plan_tier, cur.billing_cycle, cur.pricing_regime, cur.regime_hours_utc, cur.cost, cur.basis,
                CASE WHEN latest.effective_from IS NULL THEN cur.declared_eff ELSE now() END
         FROM (
           SELECT DISTINCT ON (v.name, v.plan_tier, v.billing_cycle) v.*
@@ -1508,21 +1724,22 @@ export async function seedProvidersCosts() {
           ORDER BY v.name, v.plan_tier, v.billing_cycle, v.declared_eff DESC
         ) cur
         LEFT JOIN LATERAL (
-          SELECT pc.cost_per_unit_in_usd_cents AS cost, pc.effective_from
+          SELECT pc.cost_per_unit_in_usd_cents AS cost, pc.pricing_basis AS basis, pc.effective_from
           FROM providers_costs pc
           WHERE pc.name = cur.name AND pc.plan_tier = cur.plan_tier AND pc.billing_cycle = cur.billing_cycle
             AND pc.effective_from <= now()
           ORDER BY pc.effective_from DESC
           LIMIT 1
         ) latest ON TRUE
-        WHERE latest.cost IS DISTINCT FROM cur.cost
+        WHERE (latest.cost, latest.basis) IS DISTINCT FROM (cur.cost, cur.basis)
       `);
     });
 
+    const floor = expectedSeedRowFloor();
     const [{ count }] = await directSql.unsafe(`SELECT count(*)::int as count FROM providers_costs`);
-    if (count < SEED_PROVIDERS_COSTS.length) {
+    if (count < floor) {
       throw new Error(
-        `[Costs Service] Seed verify failed: expected at least ${SEED_PROVIDERS_COSTS.length} rows, found ${count}. Aborting startup.`
+        `[Costs Service] Seed verify failed: expected at least ${floor} rows, found ${count}. Aborting startup.`
       );
     }
     console.log(`[Costs Service] Seed complete (${count} provider cost row(s); append-only history)`);

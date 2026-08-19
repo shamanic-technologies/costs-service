@@ -3,7 +3,7 @@ import request from "supertest";
 import { and, eq, desc } from "drizzle-orm";
 import { createTestApp } from "../helpers/test-app.js";
 import { cleanTestData, closeDb } from "../helpers/test-db.js";
-import { seedProvidersCosts, seedPlatformCosts } from "../../src/db/seed.js";
+import { seedProvidersCosts, seedPlatformCosts, SEED_PROVIDERS_COSTS } from "../../src/db/seed.js";
 import { db } from "../../src/db/index.js";
 import { providersCosts } from "../../src/db/schema.js";
 
@@ -21,8 +21,6 @@ describe("Seed scheduled (future-dated) price points", { timeout: 30_000 }, () =
   const app = createTestApp();
 
   const SCHEDULED_NAME = "deepseek-v4-flash-peak-tokens-input";
-  const PRE_SCHEDULE = "2025-01-01T00:00:00.000Z";
-  const SCHEDULE_START = "2026-08-16T16:00:00.000Z";
 
   async function versionsOf(name: string) {
     return db
@@ -47,39 +45,65 @@ describe("Seed scheduled (future-dated) price points", { timeout: 30_000 }, () =
     await closeDb();
   });
 
-  it("AC1: stores both price points of a scheduled change, each at its declared date", async () => {
+  // What a fresh seed writes for one cost name, derived from the catalog rather than hardcoded:
+  // one row per version dated in the future, plus the single newest version already in force.
+  // Deriving it keeps these assertions true on both sides of a schedule's start — hardcoding
+  // the DeepSeek dates made the suite pass until 2026-08-16T16:00Z and fail forever after,
+  // reporting a break on the day the announced change simply arrived.
+  function declaredVersions(name: string) {
+    return SEED_PROVIDERS_COSTS.filter(
+      (c) => c.name === name && c.planTier === "pay-as-you-go" && c.billingCycle === "monthly"
+    ).sort((a, b) => b.effectiveFrom.getTime() - a.effectiveFrom.getTime());
+  }
+
+  function expectedFreshRows(name: string, now = new Date()) {
+    const versions = declaredVersions(name);
+    const scheduled = versions.filter((c) => c.effectiveFrom > now);
+    const newestInForce = versions.find((c) => c.effectiveFrom <= now);
+    return [...scheduled, ...(newestInForce ? [newestInForce] : [])];
+  }
+
+  it("AC1: stores every declared price point a fresh database can hold, each at its declared date", async () => {
     await seedProvidersCosts();
 
+    const expected = expectedFreshRows(SCHEDULED_NAME);
     const rows = await versionsOf(SCHEDULED_NAME);
-    expect(rows).toHaveLength(2);
-    expect(rows.map((r) => r.effectiveFrom.toISOString())).toEqual([SCHEDULE_START, PRE_SCHEDULE]);
-    expect(rows[0].costPerUnitInUsdCents).toBe("0.0001760000"); // $0.44/MTok × 4
-    expect(rows[1].costPerUnitInUsdCents).toBe("0.0000560000"); // $0.14/MTok × 4
+
+    expect(rows).toHaveLength(expected.length);
+    expect(rows.map((r) => r.effectiveFrom.toISOString())).toEqual(
+      expected.map((c) => c.effectiveFrom.toISOString())
+    );
+    expect(rows.map((r) => r.costPerUnitInUsdCents)).toEqual(
+      expected.map((c) => c.costPerUnitInUsdCents)
+    );
     expect(rows[0].pricingRegime).toBe("peak");
     expect(rows[0].regimeHoursUtc).toBe("01:00-04:00,06:00-10:00");
   });
 
-  it("AC2: re-seeding is a no-op — the scheduled row is not duplicated", async () => {
+  it("AC2: re-seeding is a no-op — no version is duplicated", async () => {
     await seedProvidersCosts();
+    const afterFirst = (await versionsOf(SCHEDULED_NAME)).length;
     await seedProvidersCosts();
     await seedProvidersCosts();
 
-    expect(await versionsOf(SCHEDULED_NAME)).toHaveLength(2);
+    expect(await versionsOf(SCHEDULED_NAME)).toHaveLength(afterFirst);
   });
 
-  it("AC3: a scheduled row does not look like a price change and get reverted on the next boot", async () => {
+  it("AC3: no seed run invents a row on a date the catalog never declared", async () => {
     // The bug this guards: comparing the seed's in-force value against the LATEST row of any
-    // date sees the future $0.44 row, decides the catalog drifted, and appends a now()-dated
-    // $0.14 row — silently cancelling the announced change.
+    // date sees a future price, decides the catalog drifted, and appends a now()-dated row —
+    // silently cancelling the announced change. Such a row is recognisable by its date: it is
+    // one no seed entry declares.
     await seedProvidersCosts();
     await seedProvidersCosts();
 
-    // Only the two declared dates may exist — a now()-dated row would be the revert.
-    const rows = await versionsOf(SCHEDULED_NAME);
-    expect(rows.map((r) => r.effectiveFrom.toISOString()).sort()).toEqual([
-      PRE_SCHEDULE,
-      SCHEDULE_START,
-    ]);
+    const declaredDates = new Set(
+      SEED_PROVIDERS_COSTS.map((c) => c.effectiveFrom.toISOString())
+    );
+    const rows = await db.select().from(providersCosts);
+    const undeclared = rows.filter((r) => !declaredDates.has(r.effectiveFrom.toISOString()));
+
+    expect(undeclared.map((r) => `${r.name}@${r.effectiveFrom.toISOString()}`)).toEqual([]);
   });
 
   it("AC4: serves the price in force now, not the scheduled one", async () => {
@@ -89,9 +113,8 @@ describe("Seed scheduled (future-dated) price points", { timeout: 30_000 }, () =
     const res = await request(app).get(`/v1/platform-prices/${SCHEDULED_NAME}`);
 
     expect(res.status).toBe(200);
-    // The schedule starts 2026-08-16T16:00Z; until then the current uniform rate is in force.
-    const inForce = new Date() >= new Date(SCHEDULE_START) ? "0.0001760000" : "0.0000560000";
-    expect(res.body.pricePerUnitInUsdCents).toBe(inForce);
+    const inForce = declaredVersions(SCHEDULED_NAME).find((c) => c.effectiveFrom <= new Date());
+    expect(res.body.pricePerUnitInUsdCents).toBe(inForce!.costPerUnitInUsdCents);
     expect(res.body.pricingRegime).toBe("peak");
     expect(res.body.regimeHoursUtc).toBe("01:00-04:00,06:00-10:00");
   });

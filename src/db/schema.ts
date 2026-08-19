@@ -24,6 +24,16 @@ export const providersCosts = pgTable(
     // does have regimes, the regimes' windows partition the 24h day, so exactly one cost name
     // matches any given instant.
     regimeHoursUtc: text("regime_hours_utc"),
+    // How this row's price relates to what the vendor charges. Two values, no third:
+    //   'marked-up'    = work we perform (LLM tokens, embeddings, enrichment, search, creative
+    //                    generation). The stored price is the vendor rate × COST_DEFAULT_MULTIPLIER.
+    //   'pass-through' = money we merely route (advertising-platform spend, payment-processing
+    //                    fees). The stored price IS the vendor rate — no markup, ever.
+    // NOT NULL on purpose: a line whose class cannot be resolved must fail loudly rather than
+    // default to either side, because the public promise ("no markup on what we route") is only
+    // true if every line states its own class. Rows that pre-date the column were all marked up,
+    // so migration 0007 backfills them to 'marked-up' before locking the constraint.
+    pricingBasis: text("pricing_basis").notNull(),
     effectiveFrom: timestamp("effective_from", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

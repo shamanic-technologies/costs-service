@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
 import { createTestApp, getIdentityHeaders } from "../helpers/test-app.js";
 import { cleanTestData, insertTestProviderCost, insertPlatformCost, closeDb } from "../helpers/test-db.js";
-import { seedProvidersCosts, seedPlatformCosts, SEED_PROVIDERS_COSTS, SEED_PLATFORM_COSTS } from "../../src/db/seed.js";
+import { seedProvidersCosts, seedPlatformCosts, SEED_PROVIDERS_COSTS,
+  expectedSeedRowFloor, SEED_PLATFORM_COSTS } from "../../src/db/seed.js";
 import { and, eq, desc } from "drizzle-orm";
 import { db } from "../../src/db/index.js";
 import { providersCosts, platformCosts } from "../../src/db/schema.js";
@@ -130,7 +131,7 @@ describe("Seed upsert", { timeout: 30_000 }, () => {
     await seedProvidersCosts();
 
     const rows = await db.select().from(providersCosts);
-    expect(rows.length).toBeGreaterThanOrEqual(SEED_PROVIDERS_COSTS.length);
+    expect(rows.length).toBeGreaterThanOrEqual(expectedSeedRowFloor());
   });
 
   it("should verify platform costs row count after seeding (seed verification)", async () => {
@@ -184,7 +185,7 @@ describe("Seed upsert", { timeout: 30_000 }, () => {
     expect(succeeded.length).toBeGreaterThanOrEqual(1);
 
     const rows = await db.select().from(providersCosts);
-    expect(rows.length).toBeGreaterThanOrEqual(SEED_PROVIDERS_COSTS.length);
+    expect(rows.length).toBeGreaterThanOrEqual(expectedSeedRowFloor());
   });
 
   it("should not lose data when two seed calls run concurrently (platform costs)", async () => {

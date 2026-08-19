@@ -57,8 +57,8 @@ describe("migration 0004 orphan cleanup (issue: prod deploy blocked)", { timeout
 
   it("orphan row with NULL type is deleted by the cleanup statement", async () => {
     await sql.unsafe(`
-      INSERT INTO providers_costs (name, provider, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, type, unit, effective_from)
-      VALUES ('orphan-null-type', 'unknown-provider', 'basic', 'monthly', '1.0000000000', NULL, 'credit', now())
+      INSERT INTO providers_costs (name, provider, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, type, unit, pricing_basis, effective_from)
+      VALUES ('orphan-null-type', 'unknown-provider', 'basic', 'monthly', '1.0000000000', NULL, 'credit', 'marked-up', now())
     `);
 
     await sql.unsafe(`DELETE FROM "providers_costs" WHERE "type" IS NULL OR "unit" IS NULL`);
@@ -71,8 +71,8 @@ describe("migration 0004 orphan cleanup (issue: prod deploy blocked)", { timeout
 
   it("orphan row with NULL unit is deleted by the cleanup statement", async () => {
     await sql.unsafe(`
-      INSERT INTO providers_costs (name, provider, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, type, unit, effective_from)
-      VALUES ('orphan-null-unit', 'unknown-provider', 'basic', 'monthly', '1.0000000000', 'Credit', NULL, now())
+      INSERT INTO providers_costs (name, provider, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, type, unit, pricing_basis, effective_from)
+      VALUES ('orphan-null-unit', 'unknown-provider', 'basic', 'monthly', '1.0000000000', 'Credit', NULL, 'marked-up', now())
     `);
 
     await sql.unsafe(`DELETE FROM "providers_costs" WHERE "type" IS NULL OR "unit" IS NULL`);
@@ -85,8 +85,8 @@ describe("migration 0004 orphan cleanup (issue: prod deploy blocked)", { timeout
 
   it("valid row with both type and unit set is preserved", async () => {
     await sql.unsafe(`
-      INSERT INTO providers_costs (name, provider, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, type, unit, effective_from)
-      VALUES ('valid-cost', 'apollo', 'basic', 'monthly', '2.3600000000', 'Credit', 'credit', now())
+      INSERT INTO providers_costs (name, provider, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, type, unit, pricing_basis, effective_from)
+      VALUES ('valid-cost', 'apollo', 'basic', 'monthly', '2.3600000000', 'Credit', 'credit', 'marked-up', now())
     `);
 
     await sql.unsafe(`DELETE FROM "providers_costs" WHERE "type" IS NULL OR "unit" IS NULL`);
@@ -120,11 +120,11 @@ describe("migration 0004 orphan cleanup (issue: prod deploy blocked)", { timeout
 
     const valuesClause = PROD_ORPHAN_NAMES.map(
       (name) =>
-        `('${name}', 'legacy', 'basic', 'monthly', '1.0000000000', NULL, NULL, now())`
+        `('${name}', 'legacy', 'basic', 'monthly', '1.0000000000', NULL, NULL, 'marked-up', now())`
     ).join(", ");
 
     await sql.unsafe(`
-      INSERT INTO providers_costs (name, provider, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, type, unit, effective_from)
+      INSERT INTO providers_costs (name, provider, plan_tier, billing_cycle, cost_per_unit_in_usd_cents, type, unit, pricing_basis, effective_from)
       VALUES ${valuesClause}
     `);
 

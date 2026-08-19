@@ -6,6 +6,24 @@ import { getTraceIdentityHeaders, traceEvent } from "../lib/trace-event.js";
 
 const router = Router();
 
+/**
+ * The only two classes a price line can carry. A row is written with one of them by the seed
+ * (TypeScript-required) or by PUT /v1/providers-costs/:name (Zod-required), and the column is
+ * NOT NULL — but the public promise "no markup on what we route" is only worth anything if the
+ * read path refuses to serve a line it cannot classify. So an unrecognised value is a 500, not
+ * a guess and not an omitted field.
+ */
+const PRICING_BASES = ["marked-up", "pass-through"] as const;
+
+function assertPricingBasis(name: string, basis: string): string {
+  if (!(PRICING_BASES as readonly string[]).includes(basis)) {
+    throw new Error(
+      `Cost '${name}' has an unrecognised pricing_basis '${basis}'. Expected one of ${PRICING_BASES.join(", ")}.`
+    );
+  }
+  return basis;
+}
+
 /** Resolve the current platform cost config for a provider. Returns null if none configured. */
 async function getCurrentPlatformCost(provider: string) {
   const now = new Date();
@@ -62,6 +80,7 @@ router.get("/v1/platform-prices", async (req, res) => {
         providerDomain: row.providerDomain,
         type: row.type,
         unit: row.unit,
+        pricingBasis: assertPricingBasis(row.name, row.pricingBasis),
         pricingRegime: row.pricingRegime,
         regimeHoursUtc: row.regimeHoursUtc,
         effectiveFrom: row.effectiveFrom,
@@ -142,6 +161,7 @@ router.get("/v1/platform-prices/:name", async (req, res) => {
       providerDomain: result.providerDomain,
       type: result.type,
       unit: result.unit,
+      pricingBasis: assertPricingBasis(result.name, result.pricingBasis),
       pricingRegime: result.pricingRegime,
       regimeHoursUtc: result.regimeHoursUtc,
       effectiveFrom: result.effectiveFrom,
