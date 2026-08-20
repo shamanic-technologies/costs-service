@@ -101,7 +101,7 @@ describe("Direct-vendor model prices", { timeout: 30_000 }, () => {
     }
   });
 
-  it("serves the four new Z.ai names after boot", async () => {
+  it("serves the Z.ai names after boot, GLM-5.3 alongside GLM-5.2", async () => {
     await seedProvidersCosts();
     await seedPlatformCosts();
 
@@ -110,6 +110,10 @@ describe("Direct-vendor model prices", { timeout: 30_000 }, () => {
       "zai-glm-4.7-flashx-tokens-output": "0.0001600000",
       "zai-glm-5.2-tokens-input": "0.0005600000",
       "zai-glm-5.2-tokens-output": "0.0017600000",
+      // GLM-5.3 — same vendor list price as GLM-5.2, its own cost names.
+      "zai-glm-5.3-tokens-input": "0.0005600000",
+      "zai-glm-5.3-tokens-cached-input": "0.0001040000",
+      "zai-glm-5.3-tokens-output": "0.0017600000",
     };
 
     for (const [name, price] of Object.entries(expected)) {
