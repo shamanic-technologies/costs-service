@@ -1311,10 +1311,16 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   // Z.ai — direct vendor path, same shape as the DeepSeek rows above.
   // GLM-4.7-FlashX — $0.07/MTok input, $0.40/MTok output.
   // GLM-5.2        — $1.40/MTok input, $4.40/MTok output.
-  // Read from https://docs.z.ai/guides/overview/pricing on 2026-08-15.
+  // GLM-5.3        — $1.40/MTok input, $4.40/MTok output (same list price as GLM-5.2).
+  // Read from https://docs.z.ai/guides/overview/pricing on 2026-08-15 (4.7-FlashX, 5.2) and
+  // on 2026-08-20 (5.3).
   //
-  // Cached input is its own cost name ($0.01/MTok FlashX, $0.26/MTok GLM-5.2) — the input
-  // rows below stay at the uncached rate and the two are never blended.
+  // GLM-5.3 is a drop-in successor to GLM-5.2 at an identical rate, but it is its OWN model
+  // and therefore its own set of cost names — GLM-5.2 stays priced and untouched, since a
+  // consumer still on 5.2 must keep resolving the rows its spend was declared with.
+  //
+  // Cached input is its own cost name ($0.01/MTok FlashX, $0.26/MTok GLM-5.2 and GLM-5.3) —
+  // the input rows below stay at the uncached rate and the two are never blended.
   //
   // Z.ai publishes no time-of-day schedule, so these rows carry no pricing regime: one rate
   // applies at every hour and the name has no regime segment.
@@ -1383,6 +1389,42 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     provider: "zai",
     providerDomain: PROVIDER_DOMAINS.zai,
     type: "Output tokens (GLM-5.2)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0004400000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "zai-glm-5.3-tokens-input",
+    provider: "zai",
+    providerDomain: PROVIDER_DOMAINS.zai,
+    type: "Input tokens (GLM-5.3)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001400000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "zai-glm-5.3-tokens-cached-input",
+    provider: "zai",
+    providerDomain: PROVIDER_DOMAINS.zai,
+    type: "Cached input tokens (GLM-5.3)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000260000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "zai-glm-5.3-tokens-output",
+    provider: "zai",
+    providerDomain: PROVIDER_DOMAINS.zai,
+    type: "Output tokens (GLM-5.3)",
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",

@@ -13,6 +13,9 @@ const ZAI_NAMES = [
   "zai-glm-5.2-tokens-input",
   "zai-glm-5.2-tokens-cached-input",
   "zai-glm-5.2-tokens-output",
+  "zai-glm-5.3-tokens-input",
+  "zai-glm-5.3-tokens-cached-input",
+  "zai-glm-5.3-tokens-output",
 ];
 
 describe("Z.ai GLM unit costs (direct vendor)", () => {
@@ -48,6 +51,54 @@ describe("Z.ai GLM unit costs (direct vendor)", () => {
     expect(row).toBeDefined();
     expect(row!.type).toBe("Output tokens (GLM-5.2)");
     expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0004400000"));
+  });
+
+  it("registers zai-glm-5.3-tokens-input at $1.40/1M input tokens", () => {
+    const row = SEED_PROVIDERS_COSTS.find((c) => c.name === "zai-glm-5.3-tokens-input");
+    expect(row).toBeDefined();
+    expect(row!.provider).toBe("zai");
+    expect(row!.providerDomain).toBe("z.ai");
+    expect(row!.type).toBe("Input tokens (GLM-5.3)");
+    expect(row!.unit).toBe("1M tokens");
+    expect(row!.planTier).toBe("pay-as-you-go");
+    expect(row!.billingCycle).toBe("monthly");
+    expect(row!.pricingBasis).toBe("marked-up");
+    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0001400000"));
+  });
+
+  it("registers zai-glm-5.3-tokens-output at $4.40/1M output tokens", () => {
+    const row = SEED_PROVIDERS_COSTS.find((c) => c.name === "zai-glm-5.3-tokens-output");
+    expect(row).toBeDefined();
+    expect(row!.type).toBe("Output tokens (GLM-5.3)");
+    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0004400000"));
+  });
+
+  it("registers zai-glm-5.3-tokens-cached-input at $0.26/1M cached input tokens", () => {
+    const row = SEED_PROVIDERS_COSTS.find((c) => c.name === "zai-glm-5.3-tokens-cached-input");
+    expect(row).toBeDefined();
+    expect(row!.type).toBe("Cached input tokens (GLM-5.3)");
+    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000260000"));
+  });
+
+  it("adds GLM-5.3 alongside GLM-5.2 — the 5.2 rows keep their own prices, one version each", () => {
+    // GLM-5.3 is a new model, not a reprice of GLM-5.2: spend already declared on a 5.2 name
+    // must keep resolving the row it was written with.
+    for (const suffix of ["tokens-input", "tokens-cached-input", "tokens-output"]) {
+      const v52 = SEED_PROVIDERS_COSTS.filter((c) => c.name === `zai-glm-5.2-${suffix}`);
+      const v53 = SEED_PROVIDERS_COSTS.filter((c) => c.name === `zai-glm-5.3-${suffix}`);
+      expect(v52, `zai-glm-5.2-${suffix} must stay a single in-force version`).toHaveLength(1);
+      expect(v53, `zai-glm-5.3-${suffix} must be a single in-force version`).toHaveLength(1);
+      // Identical vendor list price, but each on its own name.
+      expect(v53[0].costPerUnitInUsdCents).toBe(v52[0].costPerUnitInUsdCents);
+    }
+    expect(
+      SEED_PROVIDERS_COSTS.find((c) => c.name === "zai-glm-5.2-tokens-input")!
+        .costPerUnitInUsdCents,
+    ).toBe(applyCostRiskMultiplier("0.0001400000"));
+    expect(
+      SEED_PROVIDERS_COSTS.find((c) => c.name === "zai-glm-5.2-tokens-output")!
+        .costPerUnitInUsdCents,
+    ).toBe(applyCostRiskMultiplier("0.0004400000"));
   });
 
   it("prices cached input on its own name, never blended into the uncached input rate", () => {
@@ -98,7 +149,7 @@ describe("Z.ai GLM unit costs (direct vendor)", () => {
     expect(PROVIDER_DOMAINS.zai).toBe("z.ai");
   });
 
-  it("keeps the zai provider limited to the four GLM token rows", () => {
+  it("keeps the zai provider limited to the declared GLM token rows", () => {
     const rows = SEED_PROVIDERS_COSTS.filter((c) => c.provider === "zai").map((c) => c.name);
     expect(rows.sort()).toEqual([...ZAI_NAMES].sort());
   });
