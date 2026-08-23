@@ -117,7 +117,10 @@
             "type": "string"
           },
           "costPerUnitInUsdCents": {
-            "type": "string"
+            "type": "string",
+            "nullable": true,
+            "description": "The price we charge per unit, or null when this line carries NO billable price any more (a cost we still incur but stopped rebilling — the cold-email infrastructure lines). Null is not zero: zero would assert the line is free, which is false. A null-priced newest version delists the name from the current catalog listing while every by-name read keeps resolving it, so spend already declared against the name stays readable.",
+            "example": "0.0005000000"
           },
           "pricingBasis": {
             "type": "string",
@@ -299,7 +302,15 @@
             "type": "string"
           },
           "pricePerUnitInUsdCents": {
-            "type": "string"
+            "type": "string",
+            "nullable": true,
+            "description": "Current price per unit, or null when the line has no billable price any more. Never zero for a delisted line: absence of a price is the honest representation of 'we still pay for this, we just stopped charging for it'.",
+            "example": "0.0005000000"
+          },
+          "billable": {
+            "type": "boolean",
+            "description": "Whether this line is something we currently charge for. False only on a delisted line, which is served by name for historical reads but never appears in GET /v1/platform-prices.",
+            "example": true
           },
           "provider": {
             "type": "string"
@@ -343,6 +354,7 @@
         "required": [
           "name",
           "pricePerUnitInUsdCents",
+          "billable",
           "provider",
           "providerDomain",
           "type",

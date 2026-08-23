@@ -91,11 +91,13 @@ describe("pricing basis", () => {
     }
   });
 
-  it("a marked-up line is the vendor rate times the store multiplier (spot check, unchanged)", () => {
+  it("a marked-up line is the vendor rate times the store multiplier (5x)", () => {
     const webSearch = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-web-search");
     expect(webSearch?.pricingBasis).toBe("marked-up");
     expect(webSearch?.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("1.0000000000"));
-    expect(webSearch?.costPerUnitInUsdCents).toBe("4.0000000000");
+    // 5× = COST_RISK_MULTIPLIER 2 × COST_PROFIT_MULTIPLIER 2.5 (raised from 4× when the
+    // cold-email lines stopped being rebilled; the markup carries the unit economics they did).
+    expect(webSearch?.costPerUnitInUsdCents).toBe("5.0000000000");
   });
 
   it("passThroughVendorPrice returns its input and rejects a malformed one", () => {

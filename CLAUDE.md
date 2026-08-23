@@ -99,54 +99,56 @@ No default anywhere on the write side: the field is required on `SeedProviderCos
 
 **The seed's startup verify counts ROWS A FRESH SEED WRITES, not seed ENTRIES — `expectedSeedRowFloor()`, never `SEED_PROVIDERS_COSTS.length`.** A cost name carries one entry per price VERSION, and of the versions already in force only the NEWEST is written to an empty database; a version dated in the future is written as its own row. Counting entries therefore passes while a scheduled price is pending and starts failing the instant it comes into force — i.e. on the one day nothing is wrong. That fired on 2026-08-16T16:00Z when DeepSeek's peak/off-peak rates arrived, taking the startup verify and three integration tests red (fixed in the same PR as the pricing basis). Same trap in tests: assert against dates/values DERIVED from `SEED_PROVIDERS_COSTS`, never hardcoded schedule literals — `seed-scheduled-price.test.ts` hardcoded DeepSeek's two dates and could only ever be correct on one side of them.
 
-**Store markup = `COST_RISK_MULTIPLIER` × `COST_PROFIT_MULTIPLIER` (two factors, default 2 × 2 = 4×).** Every seed value is `raw × COST_DEFAULT_MULTIPLIER` where `COST_DEFAULT_MULTIPLIER = COST_RISK_MULTIPLIER * COST_PROFIT_MULTIPLIER` (`src/db/seed.ts`). Risk covers cost under-estimation; profit is the store margin. `applyCostRiskMultiplier(raw)` applies the product; an explicit 2nd-arg override REPLACES the whole markup (profit does NOT stack on an override — the override path is test-only today). Changing either factor reprices EVERY cost at once via the append-only path above (new `now()`-dated rows on deploy). When you touch a factor you must also: double/halve the README catalog values (`npm run check:readme`), the seed-derived test literals (`tests/unit/providers-costs.test.ts` + per-provider `*-costs.test.ts` + `tests/integration/{stripe-fees,seed-append-history}.test.ts`), leaving fixture-inserted integration literals (`insertTestProviderCost`) untouched.
+**Store markup = `COST_RISK_MULTIPLIER` × `COST_PROFIT_MULTIPLIER` (two factors, default 2 × 2.5 = 5×).** Every seed value is `raw × COST_DEFAULT_MULTIPLIER` where `COST_DEFAULT_MULTIPLIER = COST_RISK_MULTIPLIER * COST_PROFIT_MULTIPLIER` (`src/db/seed.ts`). Risk covers cost under-estimation; profit is the store margin. `applyCostRiskMultiplier(raw)` applies the product; an explicit 2nd-arg override REPLACES the whole markup (profit does NOT stack on an override — the override path is test-only today). Changing either factor reprices EVERY cost at once via the append-only path above (new `now()`-dated rows on deploy) — and only `marked-up` lines: `pass-through` never carries a markup, so a factor change must leave every routed line at exactly the vendor rate. Profit went 2 → 2.5 (4× → 5×) in 2026-08 when the cold-email infrastructure spend moved onto our own fixed costs: the markup on what we still rebill carries the unit economics the retired lines used to. When you touch a factor you must also: rescale the README catalog values (`npm run check:readme`), the seed-derived test literals (`tests/unit/providers-costs.test.ts` + per-provider `*-costs.test.ts` + `tests/integration/{stripe-fees,seed-append-history}.test.ts`), leaving fixture-inserted integration literals (`insertTestProviderCost`) untouched.
 
 **NEVER reintroduce `ON CONFLICT (...) DO UPDATE SET cost_per_unit_in_usd_cents` (or `plan_tier`).** Reusing an `effective_from` + DO UPDATE silently OVERWRITES the row and destroys history — that was the bug. Past reprices (featured pitch #134, google rename, etc.) already lost their history this way; the fix only protects future changes. A `pg_advisory_xact_lock` serializes concurrent boots so multi-replica deploys can't double-append. Regression: `tests/integration/seed-append-history.test.ts` (fails red under DO UPDATE — one row, old value gone).
 
-## Instantly cost model (prewarmed-inbox infra, 2026-07)
+## Cold-email infrastructure = DELISTED, not deleted (2026-08)
 
-Instantly cold-email spend is seeded as **3 cost names**, all `provider: "instantly"`. The
-SERVED tier is **`hypergrowth` / `monthly`** (`SEED_PLATFORM_COSTS`); the `growth` rows are
-inert history (never resolved by `platform-prices`) kept only so both tiers stay coherent.
-The email infra is **plan-agnostic**, so `growth` and `hypergrowth` carry identical email values.
+Instantly subscriptions, MailForge, PrimeForge and the Claude Max seat moved OFF the
+per-customer rebill and onto our own fixed costs, and instantly-service stopped declaring
+per-email spend. So the three `provider: "instantly"` names — `instantly-account-email-sent`,
+`instantly-domain-email-sent`, `instantly-contact-uploaded` — receive no new usage and must
+stop being advertised as a current price. (MailForge/PrimeForge never had catalog lines of
+their own; that infra was priced through the `instantly-*-email-sent` rows.)
 
-**Infra assumptions** (replaced the older Mailforge model — domain $26/yr shared by 2 accounts,
-$3/mo/account, 20 sends/business-day):
+**A line that stops being rebilled gets a NULL price, and that is the whole mechanism.**
+`costPerUnitInUsdCents: noLongerBillable()` in the seed is a price VERSION like any other, so
+the append-only path writes one `now()`-dated null row per (name, plan, cycle) and leaves every
+priced row exactly as written. Read-side consequences, all already implemented:
 
-| input | value |
-|-------|-------|
-| domain purchase | $15/yr |
-| accounts per domain | 5 (prewarmed) |
-| account hosting | **$10/mo per account** = $120/yr |
-| max sends | 30 emails/business-day/account |
-| business days | 252/yr → **7,560 sends/yr/account**, **37,800/yr/domain** (×5) |
-| contact upload | $97/mo Hypergrowth sub → 25,000 contacts |
-| deliverability tool | $47/mo **global** (one subscription for the whole fleet) = $564/yr |
-| fleet size (deliverability denominator) | 30 domains × 5 = 150 accounts × 7,560 = **1,134,000 sends/yr** |
+- `GET /v1/platform-prices` and `GET /v1/providers-costs` DROP the name — and mark it `seen`
+  BEFORE the null check, so an older priced version can never be served in its place (that
+  would resurrect a price we stopped charging).
+- `GET /v1/platform-prices/:name` still answers **200** with `pricePerUnitInUsdCents: null` and
+  `billable: false`; `/v1/providers-costs/:name`, `/:name/history` and `/:name/plans` still
+  resolve. runs-service holds historical cost rows under these names and a reconcile sweep
+  still PATCHes old holds by cost id, so they must never 404 or 500.
 
-**Per-cost derivation** (base ¢/email, before the ×2 `applyCostRiskMultiplier` store markup):
+**Three things that look like the fix and are not:**
 
-- `instantly-account-email-sent` = hosting **+ folded deliverability** (option B — no separate
-  cost name, so instantly-service declares no new cost):
-  - hosting = $120/yr ÷ 7,560 = **1.5873015873¢**
-  - deliverability = $564/yr ÷ 1,134,000 = **0.0497354497¢**
-  - account row = **1.6370370370¢** (stored ×2 = 3.2740740740)
-- `instantly-domain-email-sent` = $15/yr ÷ 37,800 = **0.0396825397¢** (stored ×2 = 0.0793650794)
-- account + domain = **1.6767195767¢/email** total (stored ×2 = 3.3534391534)
-- `instantly-contact-uploaded` = $97/mo ÷ 25,000 = **0.388¢/contact** (unchanged; stored ×2 = 0.776)
+1. **A zero price.** It asserts the line costs nothing, which is false — we still pay for the
+   inboxes, we simply stopped passing it on. Absence of a billable price is the honest record.
+2. **Deleting the name from the seed.** The seed never DELETEs, so the rows would survive as
+   orphans, but the name would drift out of the catalog with nothing stating why.
+3. **Retiring the `instantly` PROVIDER** (the `vercel` playbook above). That only works when
+   every name has a newer in-force row on another provider. These three do not, so removing the
+   `SEED_PLATFORM_COSTS` row would make every by-name read 500 `No platform cost configured` —
+   exactly the "goes dark" case that section warns about. The `instantly` platform row and
+   `PROVIDER_DOMAINS` entry are KEPT deliberately, and both tiers stay declared so no plan
+   switch can resurrect a price.
 
-**Why deliverability is folded into the account row (option B, not a 4th cost name):** a new
-cost name would be inert until instantly-service declares it per send (extra consumer PR). Folding
-keeps the SUM correct with zero consumer change. The account row is the right home because
-deliverability testing is per-inbox health. If you ever need it broken out for reporting, split it
-into `instantly-deliverability-test-email-sent` AND add the declaration in instantly-service — do
-not leave a dangling cost name.
+The column is nullable as of migration `0008`. Regressions:
+`tests/unit/instantly-email-costs.test.ts` (seed declares null, never zero, name never dropped),
+`tests/integration/cold-email-delisting.test.ts` (absent from both listings, resolvable by name,
+history intact, no fall-through to a superseded price, 5× marked-up vs 1× pass-through),
+`tests/integration/seed-append-history.test.ts` AC7/AC8 (delisting appends and is idempotent).
 
-Regression: `tests/unit/instantly-email-costs.test.ts` asserts each base value, that account+domain
-sum to the full per-email cost, and that the served row matches the active platform cost's
-`(planTier, billingCycle)`. Reprice = edit the value in `src/db/seed.ts` per the append-only rule
-below; update the same literals in `tests/unit/providers-costs.test.ts`,
-`tests/integration/seed-append-history.test.ts`, and the README table.
+The infra model these lines were priced on (2026-07, prewarmed inboxes: $15/yr domain hosting 5
+accounts at $10/mo, 30 sends/business-day, $47/mo global deliverability tool folded into the
+account row) is kept in the seed comments as the record of how the frozen rows were derived. If
+the spend ever goes back on the rebill, that is a new priced version on the same names — not a
+new name.
 
 ## Migration safety
 

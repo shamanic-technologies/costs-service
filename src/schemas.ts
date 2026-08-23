@@ -36,7 +36,11 @@ export const ProviderCostSchema = z
     unit: z.string(),
     planTier: z.string(),
     billingCycle: z.string(),
-    costPerUnitInUsdCents: z.string(),
+    costPerUnitInUsdCents: z.string().nullable().openapi({
+      description:
+        "The price we charge per unit, or null when this line carries NO billable price any more (a cost we still incur but stopped rebilling — the cold-email infrastructure lines). Null is not zero: zero would assert the line is free, which is false. A null-priced newest version delists the name from the current catalog listing while every by-name read keeps resolving it, so spend already declared against the name stays readable.",
+      example: "0.0005000000",
+    }),
     pricingBasis: z.enum(["marked-up", "pass-through"]).openapi({
       description:
         "Whether this line carries a markup. 'pass-through' means the price IS the vendor's — money we merely route (advertising-platform spend, payment-processing fees) reaches the customer at cost, with no markup. 'marked-up' means work we perform (LLM tokens, embeddings, enrichment, search, creative generation), priced at the vendor rate times the store multiplier. Always present: a line's class is never inferred by the caller.",
@@ -61,7 +65,16 @@ export const ProviderCostSchema = z
 export const PriceSchema = z
   .object({
     name: z.string(),
-    pricePerUnitInUsdCents: z.string(),
+    pricePerUnitInUsdCents: z.string().nullable().openapi({
+      description:
+        "Current price per unit, or null when the line has no billable price any more. Never zero for a delisted line: absence of a price is the honest representation of 'we still pay for this, we just stopped charging for it'.",
+      example: "0.0005000000",
+    }),
+    billable: z.boolean().openapi({
+      description:
+        "Whether this line is something we currently charge for. False only on a delisted line, which is served by name for historical reads but never appears in GET /v1/platform-prices.",
+      example: true,
+    }),
     provider: z.string(),
     providerDomain: z.string().nullable(),
     type: z.string(),
