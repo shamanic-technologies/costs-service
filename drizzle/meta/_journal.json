@@ -57,6 +57,13 @@
       "when": 1787115041516,
       "tag": "0007_easy_boomer",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787504450379,
+      "tag": "0008_military_human_fly",
+      "breakpoints": true
     }
   ]
 }

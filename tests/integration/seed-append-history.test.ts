@@ -31,35 +31,38 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
 
   it("AC1: changing a provider cost appends a new dated row and preserves the old (no overwrite)", async () => {
     // Pre-seed the OLD price at the declared effective_from (mirrors prod's 2025-01-01 rows).
+    // anthropic-web-search is a marked-up line: the store markup went 4× → 5× when the
+    // cold-email lines stopped being rebilled, so its 4¢ row must be preserved as history and
+    // the 5¢ row appended — spend already declared still reads back at 4¢.
     await insertTestProviderCost({
-      name: "instantly-account-email-sent",
-      provider: "instantly",
-      providerDomain: "instantly.ai",
-      type: "Email send (per account)",
-      unit: "email",
-      planTier: "hypergrowth",
+      name: "anthropic-web-search",
+      provider: "anthropic",
+      providerDomain: "anthropic.com",
+      type: "Web search",
+      unit: "search",
+      planTier: "pay-as-you-go",
       billingCycle: "monthly",
-      costPerUnitInUsdCents: "3.3334000000", // old price
+      costPerUnitInUsdCents: "4.0000000000", // the 4x-markup price
       effectiveFrom: new Date("2025-01-01T00:00:00Z"),
     });
 
-    await seedProvidersCosts(); // seed now carries 6.5481481480 → must APPEND
+    await seedProvidersCosts(); // seed now carries 5.0000000000 (1¢ vendor × 5) → must APPEND
 
     const rows = await db
       .select()
       .from(providersCosts)
       .where(
         and(
-          eq(providersCosts.name, "instantly-account-email-sent"),
-          eq(providersCosts.planTier, "hypergrowth"),
+          eq(providersCosts.name, "anthropic-web-search"),
+          eq(providersCosts.planTier, "pay-as-you-go"),
           eq(providersCosts.billingCycle, "monthly")
         )
       )
       .orderBy(desc(providersCosts.effectiveFrom));
 
     expect(rows.length).toBe(2); // history preserved, not overwritten
-    expect(rows[0].costPerUnitInUsdCents).toBe("6.5481481480"); // newest = new price
-    expect(rows[1].costPerUnitInUsdCents).toBe("3.3334000000"); // old value still queryable
+    expect(rows[0].costPerUnitInUsdCents).toBe("5.0000000000"); // newest = 5x markup
+    expect(rows[1].costPerUnitInUsdCents).toBe("4.0000000000"); // old value still queryable
     expect(rows[1].effectiveFrom.getTime()).toBeLessThan(rows[0].effectiveFrom.getTime());
   });
 
@@ -124,20 +127,54 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
     expect(rows[1].planTier).toBe("growth"); // history preserved
   });
 
-  it("AC7: resolves the repriced instantly email costs after seeding", async () => {
+  it("AC7: delisting a cold-email line appends a null-priced row and keeps every priced row", async () => {
+    // The cold-email infrastructure spend moved onto our own fixed costs, so the line stopped
+    // being rebilled. Delisting must not touch the priced rows: runs-service holds historical
+    // cost rows under this name and a reconcile sweep still PATCHes old holds by cost id.
+    await insertTestProviderCost({
+      name: "instantly-account-email-sent",
+      provider: "instantly",
+      providerDomain: "instantly.ai",
+      type: "Email send (per account)",
+      unit: "email",
+      planTier: "hypergrowth",
+      billingCycle: "monthly",
+      costPerUnitInUsdCents: "6.5481481480", // the price it was rebilled at
+      effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+    });
+
     await seedProvidersCosts();
     await seedPlatformCosts();
 
-    const account = await request(app)
-      .get("/v1/platform-prices/instantly-account-email-sent")
-      .set(identityHeaders);
-    expect(account.status).toBe(200);
-    expect(account.body.pricePerUnitInUsdCents).toBe("6.5481481480");
+    const rows = await db
+      .select()
+      .from(providersCosts)
+      .where(
+        and(
+          eq(providersCosts.name, "instantly-account-email-sent"),
+          eq(providersCosts.planTier, "hypergrowth"),
+          eq(providersCosts.billingCycle, "monthly")
+        )
+      )
+      .orderBy(desc(providersCosts.effectiveFrom));
 
-    const domain = await request(app)
-      .get("/v1/platform-prices/instantly-domain-email-sent")
-      .set(identityHeaders);
-    expect(domain.status).toBe(200);
-    expect(domain.body.pricePerUnitInUsdCents).toBe("0.1587301588");
+    expect(rows.length).toBe(2);
+    expect(rows[0].costPerUnitInUsdCents).toBeNull(); // newest = no billable price
+    expect(rows[1].costPerUnitInUsdCents).toBe("6.5481481480"); // untouched history
+    expect(rows[1].effectiveFrom.getTime()).toBeLessThan(rows[0].effectiveFrom.getTime());
+  });
+
+  it("AC8: re-seeding a delisted line appends nothing (null is idempotent)", async () => {
+    await seedProvidersCosts();
+    const after1 = await db
+      .select()
+      .from(providersCosts)
+      .where(eq(providersCosts.name, "instantly-account-email-sent"));
+    await seedProvidersCosts();
+    const after2 = await db
+      .select()
+      .from(providersCosts)
+      .where(eq(providersCosts.name, "instantly-account-email-sent"));
+    expect(after2.length).toBe(after1.length);
   });
 });

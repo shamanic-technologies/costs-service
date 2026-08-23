@@ -16,6 +16,10 @@ seed_costs=$(cd "$ROOT" && npm exec -- tsx -e '
 import { SEED_PROVIDERS_COSTS } from "./src/db/seed.ts";
 
 for (const cost of SEED_PROVIDERS_COSTS) {
+  // A null price means the line has no billable price any more (delisted, see seed.ts).
+  // The README table is the CURRENT billable catalog, so a delisted name belongs in neither
+  // side of this comparison: it must not be required in the table, and it must not appear.
+  if (cost.costPerUnitInUsdCents === null) continue;
   console.log(`${cost.name} ${cost.costPerUnitInUsdCents}`);
 }
 ' | sort)

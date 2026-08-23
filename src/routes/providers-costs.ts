@@ -46,7 +46,13 @@ router.get("/v1/providers-costs", async (req, res) => {
       .where(lte(providersCosts.effectiveFrom, now))
       .orderBy(providersCosts.name, desc(providersCosts.effectiveFrom));
 
-    // 3. Filter by matching platform cost config, deduplicate per name
+    // 3. Filter by matching platform cost config, deduplicate per name.
+    //
+    // Same delisting rule as `/v1/platform-prices`: a name whose newest in-force row on the
+    // active plan has a NULL cost carries no billable price any more, so it leaves the current
+    // catalog. `seen` is marked before the null check so an older priced version cannot be
+    // served in its place. `/v1/providers-costs/:name`, `/:name/history` and `/:name/plans`
+    // still resolve it — spend already declared against the name must stay readable.
     const seen = new Set<string>();
     const current = allCosts.filter((row) => {
       if (seen.has(row.name)) return false;
@@ -54,7 +60,7 @@ router.get("/v1/providers-costs", async (req, res) => {
       if (!plan) return false;
       if (row.planTier !== plan.planTier || row.billingCycle !== plan.billingCycle) return false;
       seen.add(row.name);
-      return true;
+      return row.costPerUnitInUsdCents !== null;
     });
 
     traceEvent({

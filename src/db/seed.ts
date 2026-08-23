@@ -10,11 +10,17 @@ export const COST_RISK_MULTIPLIER = 2;
 
 /**
  * Profit markup — stacks multiplicatively on top of the risk markup.
+ *
+ * Raised 2 → 2.5 (default markup 4× → 5×) when the cold-email infrastructure spend
+ * (Instantly subscriptions, MailForge, PrimeForge, the Claude Max seat) moved OFF the
+ * per-customer rebill and onto our own fixed costs: the lines we still rebill carry the
+ * unit economics that the retired cold-email lines used to. Risk is untouched — nothing
+ * changed about how well we estimate a vendor's rate; what changed is the store margin.
  */
-export const COST_PROFIT_MULTIPLIER = 2;
+export const COST_PROFIT_MULTIPLIER = 2.5;
 
 /**
- * DEFAULT markup applied to EVERY seed cost: risk × profit (2 × 2 = 4× everywhere).
+ * DEFAULT markup applied to EVERY marked-up seed cost: risk × profit (2 × 2.5 = 5× everywhere).
  * The helper still accepts a per-cost override, but no cost currently uses one — all
  * rows fall back to this default.
  */
@@ -89,6 +95,19 @@ export function passThroughVendorPrice(costPerUnitInUsdCents: string): string {
   return costPerUnitInUsdCents;
 }
 
+/**
+ * Price for a line we stopped charging for: none at all.
+ *
+ * Used when a cost we still incur stops being rebilled to customers — the cold-email
+ * infrastructure lines, whose spend moved onto our own fixed costs. The honest catalog
+ * entry is the ABSENCE of a billable price, not a zero: zero would claim the work is free,
+ * and it is not. The name itself is kept forever (spend already declared against it must
+ * stay readable), it simply stops being advertised as something we sell.
+ */
+export function noLongerBillable(): null {
+  return null;
+}
+
 // Domain mapping per provider (used by logo.dev on the public pricing page).
 export const PROVIDER_DOMAINS: Record<string, string> = {
   apollo: "apollo.io",
@@ -143,7 +162,20 @@ export interface SeedProviderCost {
   unit: string;
   planTier: string;
   billingCycle: string;
-  costPerUnitInUsdCents: string;
+  /**
+   * The price we charge, or `null` when the line carries NO billable price any more.
+   *
+   * `null` is a real version like any other: it says "from this date on, this catalog line
+   * is not something a customer is charged for". It is NOT a zero — a zero would assert the
+   * line costs nothing, which is false (we still pay the vendor; we simply stopped passing
+   * it on). Use `noLongerBillable()` so the choice reads as a decision, exactly as
+   * `passThroughVendorPrice` marks a deliberate zero markup.
+   *
+   * A null-priced version delists the name: it disappears from `GET /v1/platform-prices`
+   * and `GET /v1/providers-costs` (the current billable catalog) while every by-name read
+   * still resolves it, so historical spend written against the name stays readable.
+   */
+  costPerUnitInUsdCents: string | null;
   /** Required — see `PricingBasis`. No default: an untagged line must not compile. */
   pricingBasis: PricingBasis;
   effectiveFrom: Date;
@@ -949,7 +981,32 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly — contact uploaded: Growth plan $47/mo ÷ 1,000 contacts = 4.70¢/contact
+  // ⚠️ THE COLD-EMAIL INFRASTRUCTURE LINES ARE NO LONGER BILLABLE (2026-08).
+  //
+  // Instantly subscriptions, MailForge, PrimeForge and the Claude Max seat moved OFF the
+  // per-customer rebill and onto our own fixed costs, and instantly-service stopped
+  // declaring per-email spend — so these three names (`instantly-contact-uploaded`,
+  // `instantly-account-email-sent`, `instantly-domain-email-sent`) receive no new usage and
+  // must stop being advertised as a current price. The lost rebill is recovered by the
+  // profit markup above (4× → 5× on everything we DO still rebill).
+  //
+  // They are DELISTED, not deleted, and not zeroed:
+  //   - `noLongerBillable()` appends a null-priced version dated at deploy time. Every prior
+  //     priced row stays exactly as written, so spend already declared still reads back at
+  //     the price it was written with.
+  //   - A null price drops the name from the current billable catalog
+  //     (`GET /v1/platform-prices`, `GET /v1/providers-costs`) while `/:name`, `/:name/history`
+  //     and `/:name/plans` keep resolving it — runs-service holds cost rows under these names
+  //     and a reconcile sweep still PATCHes them.
+  //   - A zero price was rejected: it would assert the line costs nothing. It does not. We
+  //     still pay for the inboxes; we simply stopped passing that on.
+  //   - Retiring the `instantly` PROVIDER was rejected too: these names have no newer row on
+  //     another provider, so dropping the platform-cost row would 500 every by-name read
+  //     (see CLAUDE.md, "Retiring a PROVIDER").
+  // MailForge and PrimeForge never carried catalog lines of their own — that infra was priced
+  // through the `instantly-*-email-sent` rows below — so there is nothing else to delist.
+  //
+  // Instantly — contact uploaded: was Growth plan $47/mo ÷ 1,000 contacts = 4.70¢/contact
   // https://instantly.ai/pricing
   {
     name: "instantly-contact-uploaded",
@@ -959,11 +1016,13 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "contact",
     planTier: "growth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("4.7000000000"),
+    costPerUnitInUsdCents: noLongerBillable(),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly — email sent per account (pre-warmed prewarmed-inbox infra).
+  // Instantly — email sent per account (pre-warmed prewarmed-inbox infra). NO LONGER BILLABLE.
+  // The infra model below is what this line USED to charge, kept as the record of how the
+  // frozen priced rows were derived.
   // Infra model (2026-07, replaces Mailforge): a domain is bought $15/yr and hosts 5
   // pre-warmed accounts at $10/mo EACH; each account sends 30 emails/business-day max.
   //   sends/account/yr = 30 × 252 business days = 7,560
@@ -975,7 +1034,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   //                   (30 domains × 5 = 150 accounts × 7,560 = 1,134,000 sends/yr)
   //                   $564/yr ÷ 1,134,000                    = 0.0497354497¢/email
   //   account row   = 1.5873015873 + 0.0497354497           = 1.6370370370¢/email
-  // (Infra is plan-agnostic, so growth + hypergrowth carry the same value; ×4 markup at store.)
+  // (Infra was plan-agnostic, so growth + hypergrowth carried the same value.)
   {
     name: "instantly-account-email-sent",
     provider: "instantly",
@@ -984,14 +1043,15 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "email",
     planTier: "growth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("1.6370370370"),
+    costPerUnitInUsdCents: noLongerBillable(),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly — email sent per domain (pre-warmed prewarmed-inbox infra).
+  // Instantly — email sent per domain (pre-warmed prewarmed-inbox infra). NO LONGER BILLABLE.
   // Domain purchase $15/yr, shared by all 5 accounts' combined sends:
   //   $15/yr ÷ (7,560 sends × 5 accounts = 37,800/yr) = 0.0396825397¢/email.
-  // account + domain = 1.6767195767¢/email total (×2 risk markup applied at store time).
+  // account + domain = 1.6767195767¢/email total — the rate this line charged until it was
+  // delisted; the frozen rows carry it at the markup in force when each was written.
   {
     name: "instantly-domain-email-sent",
     provider: "instantly",
@@ -1000,11 +1060,12 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "email",
     planTier: "growth",
     billingCycle: "yearly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0396825397"),
+    costPerUnitInUsdCents: noLongerBillable(),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly Hypergrowth — contact uploaded: $97/mo ÷ 25,000 contacts = 0.388¢/contact
+  // Instantly Hypergrowth — contact uploaded. NO LONGER BILLABLE.
+  // Was $97/mo ÷ 25,000 contacts = 0.388¢/contact
   // https://instantly.ai/pricing
   {
     name: "instantly-contact-uploaded",
@@ -1014,14 +1075,17 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "contact",
     planTier: "hypergrowth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.3880000000"),
+    costPerUnitInUsdCents: noLongerBillable(),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly Hypergrowth — email sent per account: same prewarmed-inbox model as Growth.
+  // Instantly Hypergrowth — email sent per account. NO LONGER BILLABLE.
+  // Same prewarmed-inbox model as Growth.
   // hosting $10/mo = $120/yr ÷ 7,560 sends = 1.5873015873¢ + deliverability (folded, option B)
   // $564/yr ÷ 1,134,000 fleet sends = 0.0497354497¢ → 1.6370370370¢/email.
-  // This is the SERVED row (instantly platform cost = hypergrowth/monthly).
+  // This was the SERVED row (instantly platform cost = hypergrowth/monthly): the plan row is
+  // KEPT so `/v1/platform-prices/:name` still resolves the name instead of 500-ing on a
+  // provider with no plan.
   {
     name: "instantly-account-email-sent",
     provider: "instantly",
@@ -1030,11 +1094,12 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "email",
     planTier: "hypergrowth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("1.6370370370"),
+    costPerUnitInUsdCents: noLongerBillable(),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Instantly Hypergrowth — email sent per domain: same prewarmed-inbox model as Growth.
+  // Instantly Hypergrowth — email sent per domain. NO LONGER BILLABLE.
+  // Same prewarmed-inbox model as Growth.
   // $15/yr domain purchase ÷ (7,560 sends × 5 accounts = 37,800/yr) = 0.0396825397¢/email.
   {
     name: "instantly-domain-email-sent",
@@ -1044,7 +1109,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "email",
     planTier: "hypergrowth",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0396825397"),
+    costPerUnitInUsdCents: noLongerBillable(),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
@@ -1724,7 +1789,7 @@ export async function seedProvidersCosts() {
       "name, provider, provider_domain, type, unit, plan_tier, billing_cycle, pricing_regime, regime_hours_utc, cost, basis, declared_eff";
     const valuesClause = SEED_PROVIDERS_COSTS.map(
       (c) =>
-        `('${escapeSqlLiteral(c.name)}', '${escapeSqlLiteral(c.provider)}', ${nullableSqlLiteral(c.providerDomain)}::text, '${escapeSqlLiteral(c.type)}', '${escapeSqlLiteral(c.unit)}', '${escapeSqlLiteral(c.planTier)}', '${escapeSqlLiteral(c.billingCycle)}', ${nullableSqlLiteral(c.pricingRegime)}::text, ${nullableSqlLiteral(c.regimeHoursUtc)}::text, ${c.costPerUnitInUsdCents}, '${escapeSqlLiteral(c.pricingBasis)}', '${c.effectiveFrom.toISOString()}'::timestamptz)`
+        `('${escapeSqlLiteral(c.name)}', '${escapeSqlLiteral(c.provider)}', ${nullableSqlLiteral(c.providerDomain)}::text, '${escapeSqlLiteral(c.type)}', '${escapeSqlLiteral(c.unit)}', '${escapeSqlLiteral(c.planTier)}', '${escapeSqlLiteral(c.billingCycle)}', ${nullableSqlLiteral(c.pricingRegime)}::text, ${nullableSqlLiteral(c.regimeHoursUtc)}::text, ${c.costPerUnitInUsdCents ?? "NULL"}::numeric, '${escapeSqlLiteral(c.pricingBasis)}', '${c.effectiveFrom.toISOString()}'::timestamptz)`
     ).join(", ");
 
     await directSql.begin(async (tx) => {

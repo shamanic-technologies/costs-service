@@ -11,7 +11,13 @@ export const providersCosts = pgTable(
     unit: text("unit").notNull(),
     planTier: text("plan_tier").notNull(),
     billingCycle: text("billing_cycle").notNull(),
-    costPerUnitInUsdCents: numeric("cost_per_unit_in_usd_cents", { precision: 18, scale: 10 }).notNull(),
+    // NULL means "this line has no billable price any more" — a version like any other,
+    // appended when a cost we still incur stops being rebilled (the cold-email infrastructure
+    // lines, whose spend moved onto our own fixed costs). It is deliberately NOT zero: zero
+    // asserts the work is free, which is false. A null-priced newest version delists the name
+    // from the current billable catalog (`/v1/platform-prices`, `/v1/providers-costs`) while
+    // every by-name read still resolves it, so spend already declared stays readable.
+    costPerUnitInUsdCents: numeric("cost_per_unit_in_usd_cents", { precision: 18, scale: 10 }),
     // Time-of-day pricing regime this price point belongs to.
     // NULL  = the provider charges one rate at every hour (the common case).
     // 'peak' / 'off-peak' = the provider charges by time of day (DeepSeek from
