@@ -1,82 +1,81 @@
 import { describe, it, expect } from "vitest";
-import {
-  SEED_PROVIDERS_COSTS,
-  SEED_PLATFORM_COSTS,
-  applyCostRiskMultiplier,
-} from "../../src/db/seed.js";
+import { SEED_PROVIDERS_COSTS, SEED_PLATFORM_COSTS, noLongerBillable } from "../../src/db/seed.js";
 
-// Instantly email-send is priced on the prewarmed-inbox infra model (2026-07):
-// a domain is bought $15/yr and hosts 5 prewarmed accounts at $10/mo each; each account
-// sends 30 emails/business-day × 252 days = 7,560/yr. A $47/mo global deliverability tool
-// ($564/yr) is amortised over the whole fleet (30 domains × 5 = 150 accounts × 7,560 =
-// 1,134,000 sends/yr) and FOLDED into the account row (option B — no separate cost name):
-//   account = $120/yr hosting ÷ 7,560 + $564/yr deliverability ÷ 1,134,000
-//           = 1.5873015873 + 0.0497354497        = 1.6370370370¢/email
-//   domain  = $15/yr ÷ (7,560 × 5 accounts = 37,800) = 0.0396825397¢/email
-//   total                                        = 1.6767195767¢/email (×4 markup at store).
-describe("Instantly email-send unit costs (prewarmed-inbox infra model)", () => {
+// The cold-email infrastructure spend (Instantly subscriptions, MailForge, PrimeForge, the
+// Claude Max seat) moved OFF the per-customer rebill and onto our own fixed costs in 2026-08,
+// and instantly-service stopped declaring per-email spend. So these three names receive no new
+// usage and must stop being advertised as a current price.
+//
+// They are DELISTED, not deleted and not zeroed:
+//   - the seed declares a null price, which appends a null-priced version at deploy time and
+//     leaves every prior priced row untouched (spend already declared reads back unchanged);
+//   - a zero was rejected — it would assert the line is free, and it is not: we still pay for
+//     the inboxes, we simply stopped passing that on;
+//   - retiring the `instantly` PROVIDER was rejected too — these names have no newer row on
+//     another provider, so dropping the platform-cost row would 500 every by-name read.
+//
+// MailForge and PrimeForge never carried catalog lines of their own (that infra was priced
+// through the instantly-*-email-sent rows), so there is nothing else to delist.
+const COLD_EMAIL_COST_NAMES = [
+  "instantly-account-email-sent",
+  "instantly-domain-email-sent",
+  "instantly-contact-uploaded",
+];
+
+describe("Instantly cold-email infrastructure costs (delisted 2026-08)", () => {
   const platform = SEED_PLATFORM_COSTS.find((c) => c.provider === "instantly");
 
-  it("has an active instantly platform cost (hypergrowth/monthly)", () => {
+  it("keeps the instantly platform cost (hypergrowth/monthly) so the names stay resolvable", () => {
+    // Without an active plan for the provider, /v1/platform-prices/:name and
+    // /v1/providers-costs/:name 500 with "No platform cost configured for provider 'instantly'"
+    // — the names would go dark instead of resolving for historical reads.
     expect(platform).toBeDefined();
     expect(platform!.planTier).toBe("hypergrowth");
     expect(platform!.billingCycle).toBe("monthly");
   });
 
-  it("prices instantly-account-email-sent at 1.6370370370¢ base (×4 markup) on both tiers", () => {
-    const rows = SEED_PROVIDERS_COSTS.filter((c) => c.name === "instantly-account-email-sent");
-    expect(rows.length).toBe(2);
+  it.each(COLD_EMAIL_COST_NAMES)("%s is declared with no billable price", (name) => {
+    const rows = SEED_PROVIDERS_COSTS.filter((c) => c.name === name);
+    expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) {
-      expect(row.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("1.6370370370"));
+      expect(row.costPerUnitInUsdCents).toBe(noLongerBillable());
       expect(row.provider).toBe("instantly");
-      expect(row.unit).toBe("email");
     }
-    expect(rows.map((r) => r.planTier).sort()).toEqual(["growth", "hypergrowth"]);
   });
 
-  it("prices instantly-domain-email-sent at 0.0396825397¢ base (×4 markup) on both tiers", () => {
-    const rows = SEED_PROVIDERS_COSTS.filter((c) => c.name === "instantly-domain-email-sent");
-    expect(rows.length).toBe(2);
+  it.each(COLD_EMAIL_COST_NAMES)("%s is never priced at zero", (name) => {
+    // A zero price would claim the line costs nothing. Absence of a price is the honest
+    // representation of "we still pay for this, we just stopped charging for it".
+    const rows = SEED_PROVIDERS_COSTS.filter((c) => c.name === name);
     for (const row of rows) {
-      expect(row.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0396825397"));
-      expect(row.provider).toBe("instantly");
-      expect(row.unit).toBe("email");
+      expect(row.costPerUnitInUsdCents).not.toBe("0.0000000000");
+      expect(row.costPerUnitInUsdCents).toBeNull();
     }
-    expect(rows.map((r) => r.planTier).sort()).toEqual(["growth", "hypergrowth"]);
   });
 
-  // account + domain on the same tier must sum to the full per-email cost:
-  //   1.6370370370 + 0.0396825397 = 1.6767195767¢ base (deliverability folded into account).
-  it("account + domain rows sum to the full per-email cost on the served tier", () => {
-    const account = SEED_PROVIDERS_COSTS.find(
-      (c) => c.name === "instantly-account-email-sent" && c.planTier === platform!.planTier
-    );
-    const domain = SEED_PROVIDERS_COSTS.find(
-      (c) => c.name === "instantly-domain-email-sent" && c.planTier === platform!.planTier
-    );
-    expect(account).toBeDefined();
-    expect(domain).toBeDefined();
-    const sum =
-      Number(account!.costPerUnitInUsdCents) + Number(domain!.costPerUnitInUsdCents);
-    expect(sum).toBeCloseTo(Number(applyCostRiskMultiplier("1.6767195767")), 9);
+  it.each(COLD_EMAIL_COST_NAMES)("%s is not deleted from the catalog", (name) => {
+    // runs-service holds historical cost rows under these names and a reconcile sweep still
+    // PATCHes old holds by cost id, so the name must remain declared.
+    expect(SEED_PROVIDERS_COSTS.some((c) => c.name === name)).toBe(true);
   });
 
-  // Guard: the served row must match the active platform cost on (planTier, billingCycle),
-  // otherwise GET /v1/platform-prices/instantly-account-email-sent 404s. Fails red if the
-  // platform row is ever removed or the tiers drift apart (mirrors apify-ahrefs-costs.test.ts).
-  it("the served account-email-sent row matches the active platform cost", () => {
-    const served = SEED_PROVIDERS_COSTS.find(
-      (c) => c.name === "instantly-account-email-sent" && c.planTier === platform!.planTier
-    );
-    expect(served).toBeDefined();
-    expect(served!.billingCycle).toBe(platform!.billingCycle);
+  it("delists both tiers, so no plan switch can resurrect a price", () => {
+    for (const name of ["instantly-account-email-sent", "instantly-contact-uploaded"]) {
+      const tiers = SEED_PROVIDERS_COSTS.filter((c) => c.name === name).map((c) => c.planTier);
+      expect(tiers.sort()).toEqual(["growth", "hypergrowth"]);
+    }
   });
 
-  it("the served domain-email-sent row matches the active platform cost", () => {
-    const served = SEED_PROVIDERS_COSTS.find(
-      (c) => c.name === "instantly-domain-email-sent" && c.planTier === platform!.planTier
-    );
-    expect(served).toBeDefined();
-    expect(served!.billingCycle).toBe(platform!.billingCycle);
+  it("keeps a served row on the active platform plan for each delisted name", () => {
+    for (const name of COLD_EMAIL_COST_NAMES) {
+      const served = SEED_PROVIDERS_COSTS.find(
+        (c) => c.name === name && c.planTier === platform!.planTier
+      );
+      expect(served, `${name} must have a row on the active plan tier`).toBeDefined();
+    }
+  });
+
+  it("should not contain a legacy instantly-email-send name", () => {
+    expect(SEED_PROVIDERS_COSTS.find((c) => c.name === "instantly-email-send")).toBeUndefined();
   });
 });

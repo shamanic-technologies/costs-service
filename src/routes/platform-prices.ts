@@ -62,7 +62,13 @@ router.get("/v1/platform-prices", async (req, res) => {
       .where(lte(providersCosts.effectiveFrom, now))
       .orderBy(providersCosts.name, desc(providersCosts.effectiveFrom));
 
-    // 3. Filter by matching platform cost config, deduplicate per name
+    // 3. Filter by matching platform cost config, deduplicate per name.
+    //
+    // A name whose newest in-force row on the active plan carries a NULL price is DELISTED:
+    // it has no billable price any more (the cold-email infrastructure lines, now on our own
+    // fixed costs). It is dropped from this listing — and `seen` is marked first, so an older
+    // priced version can never be served in its place, which would resurrect a price we
+    // stopped charging. The name stays resolvable at `/v1/platform-prices/:name`.
     const seen = new Set<string>();
     const prices = allCosts
       .filter((row) => {
@@ -71,11 +77,13 @@ router.get("/v1/platform-prices", async (req, res) => {
         if (!plan) return false;
         if (row.planTier !== plan.planTier || row.billingCycle !== plan.billingCycle) return false;
         seen.add(row.name);
-        return true;
+        return row.costPerUnitInUsdCents !== null;
       })
       .map((row) => ({
         name: row.name,
         pricePerUnitInUsdCents: row.costPerUnitInUsdCents,
+        // Always true here: a listed line is by definition one we still charge for.
+        billable: true,
         provider: row.provider,
         providerDomain: row.providerDomain,
         type: row.type,
@@ -154,9 +162,15 @@ router.get("/v1/platform-prices/:name", async (req, res) => {
       return;
     }
 
+    // A NULL price is not a missing row — it is the current version of a line we stopped
+    // charging for. Served as 200 with an explicit `billable: false` and a null price rather
+    // than a 404 (the name must stay resolvable for spend already declared against it) and
+    // rather than a zero (which would claim the line is free). A consumer that tries to price
+    // new spend off it gets null, not a silently wrong number.
     res.json({
       name: result.name,
       pricePerUnitInUsdCents: result.costPerUnitInUsdCents,
+      billable: result.costPerUnitInUsdCents !== null,
       provider: result.provider,
       providerDomain: result.providerDomain,
       type: result.type,
