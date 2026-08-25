@@ -3,7 +3,12 @@ import request from "supertest";
 import { and, eq, desc } from "drizzle-orm";
 import { createTestApp } from "../helpers/test-app.js";
 import { cleanTestData, closeDb } from "../helpers/test-db.js";
-import { seedProvidersCosts, seedPlatformCosts, SEED_PROVIDERS_COSTS } from "../../src/db/seed.js";
+import {
+  seedProvidersCosts,
+  seedPlatformCosts,
+  SEED_PROVIDERS_COSTS,
+  DEEPSEEK_PEAK_HOURS_UTC,
+} from "../../src/db/seed.js";
 import { db } from "../../src/db/index.js";
 import { providersCosts } from "../../src/db/schema.js";
 
@@ -77,7 +82,7 @@ describe("Seed scheduled (future-dated) price points", { timeout: 30_000 }, () =
       expected.map((c) => c.costPerUnitInUsdCents)
     );
     expect(rows[0].pricingRegime).toBe("peak");
-    expect(rows[0].regimeHoursUtc).toBe("01:00-04:00,06:00-10:00");
+    expect(rows[0].regimeHoursUtc).toBe(DEEPSEEK_PEAK_HOURS_UTC);
   });
 
   it("AC2: re-seeding is a no-op — no version is duplicated", async () => {
@@ -116,7 +121,7 @@ describe("Seed scheduled (future-dated) price points", { timeout: 30_000 }, () =
     const inForce = declaredVersions(SCHEDULED_NAME).find((c) => c.effectiveFrom <= new Date());
     expect(res.body.pricePerUnitInUsdCents).toBe(inForce!.costPerUnitInUsdCents);
     expect(res.body.pricingRegime).toBe("peak");
-    expect(res.body.regimeHoursUtc).toBe("01:00-04:00,06:00-10:00");
+    expect(res.body.regimeHoursUtc).toBe(DEEPSEEK_PEAK_HOURS_UTC);
   });
 
   it("AC5: every priced dimension of the four direct-vendor models resolves publicly", async () => {

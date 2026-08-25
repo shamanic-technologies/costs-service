@@ -4,6 +4,7 @@ import {
   SEED_PLATFORM_COSTS,
   PROVIDER_DOMAINS,
   applyCostRiskMultiplier,
+  withChinaVat,
 } from "../../src/db/seed.js";
 
 describe("DeepSeek V4 Pro unit costs (direct vendor)", () => {
@@ -64,7 +65,9 @@ describe("DeepSeek V4 Pro unit costs (direct vendor)", () => {
         c.name === "deepseek-v4-pro-off-peak-tokens-cached-input" &&
         c.effectiveFrom.toISOString() === "2025-01-01T00:00:00.000Z",
     )!;
-    expect(current.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000003625"));
+    expect(current.costPerUnitInUsdCents).toBe(
+      applyCostRiskMultiplier(withChinaVat("0.0000003625")),
+    );
     expect(current.type).toBe("Cached input tokens (DeepSeek V4 Pro, off-peak)");
   });
 

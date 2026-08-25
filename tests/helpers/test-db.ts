@@ -18,6 +18,10 @@ export async function insertTestProviderCost(data: {
   providerDomain?: string | null;
   /** Defaults to the historical class: every row pre-dating pricing_basis was marked up. */
   pricingBasis?: PricingBasis;
+  /** Time-of-day regime, for the vendors that price by the clock. */
+  pricingRegime?: string | null;
+  /** The windows during which that regime is in force, e.g. "Mon-Fri@01:00-04:00". */
+  regimeHoursUtc?: string | null;
   effectiveFrom?: Date;
 }) {
   const [cost] = await db
@@ -32,6 +36,8 @@ export async function insertTestProviderCost(data: {
       unit: data.unit ?? "test-unit",
       providerDomain: data.providerDomain ?? null,
       pricingBasis: data.pricingBasis ?? "marked-up",
+      pricingRegime: data.pricingRegime ?? null,
+      regimeHoursUtc: data.regimeHoursUtc ?? null,
       effectiveFrom: data.effectiveFrom || new Date(),
     })
     .returning();
