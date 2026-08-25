@@ -32,36 +32,78 @@ export const COST_DEFAULT_MULTIPLIER =
 const MULTIPLIER_DECIMAL_SCALE = 4;
 
 /**
- * Apply a per-cost risk markup to a raw unit cost.
- * @param costPerUnitInUsdCents raw cost as a fixed 10-decimal string (e.g. "2.3600000000")
- * @param multiplier markup factor; defaults to COST_DEFAULT_MULTIPLIER (risk × profit = 4).
- *   Per-cost overrides allowed (e.g. 1.2). Result is rounded half-up to 10 decimals.
+ * Multiply a fixed 10-decimal cost string by a factor, exactly, rounding half-up.
+ *
+ * Shared by the two places that scale a raw vendor rate — the store markup and the
+ * non-recoverable VAT some vendors add on top of their list price. They are different
+ * decisions with different justifications, so they are different functions; only the
+ * arithmetic is common, and it lives here so neither drifts into lossy float math.
  */
-export function applyCostRiskMultiplier(
+function scaleFixedDecimalCost(
   costPerUnitInUsdCents: string,
-  multiplier: number = COST_DEFAULT_MULTIPLIER,
+  factor: number,
+  factorLabel: string,
 ): string {
   if (!/^\d+\.\d{10}$/.test(costPerUnitInUsdCents)) {
     throw new Error(`Invalid seed cost format: ${costPerUnitInUsdCents}`);
   }
-  if (!Number.isFinite(multiplier) || multiplier < 0) {
-    throw new Error(`Invalid cost-risk multiplier: ${multiplier}`);
+  if (!Number.isFinite(factor) || factor < 0) {
+    throw new Error(`Invalid ${factorLabel}: ${factor}`);
   }
 
   const [wholePart, fractionalPart] = costPerUnitInUsdCents.split(".");
   const scaledCost = BigInt(`${wholePart}${fractionalPart}`); // cost × 10^10
 
-  // Multiplier as an integer scaled by 10^MULTIPLIER_DECIMAL_SCALE, then divided back
+  // Factor as an integer scaled by 10^MULTIPLIER_DECIMAL_SCALE, then divided back
   // out with round-half-up so 1.2 stays exact to 10 decimals (default 2 is unchanged).
-  const multScaled = BigInt(Math.round(multiplier * 10 ** MULTIPLIER_DECIMAL_SCALE));
+  const multScaled = BigInt(Math.round(factor * 10 ** MULTIPLIER_DECIMAL_SCALE));
   const multDivisor = 10n ** BigInt(MULTIPLIER_DECIMAL_SCALE);
-  const marked = (scaledCost * multScaled + multDivisor / 2n) / multDivisor; // cost × multiplier × 10^10
+  const marked = (scaledCost * multScaled + multDivisor / 2n) / multDivisor; // cost × factor × 10^10
 
   const divisor = 10n ** BigInt(USD_CENTS_DECIMAL_SCALE);
   const whole = marked / divisor;
   const fractional = (marked % divisor).toString().padStart(USD_CENTS_DECIMAL_SCALE, "0");
 
   return `${whole}.${fractional}`;
+}
+
+/**
+ * Apply a per-cost risk markup to a raw unit cost.
+ * @param costPerUnitInUsdCents raw cost as a fixed 10-decimal string (e.g. "2.3600000000")
+ * @param multiplier markup factor; defaults to COST_DEFAULT_MULTIPLIER (risk × profit = 5).
+ *   Per-cost overrides allowed (e.g. 1.2). Result is rounded half-up to 10 decimals.
+ */
+export function applyCostRiskMultiplier(
+  costPerUnitInUsdCents: string,
+  multiplier: number = COST_DEFAULT_MULTIPLIER,
+): string {
+  return scaleFixedDecimalCost(costPerUnitInUsdCents, multiplier, "cost-risk multiplier");
+}
+
+/**
+ * VAT rate the Chinese vendors add to their published list price.
+ *
+ * DeepSeek bills 6% VAT on top of every top-up. It is CHINESE VAT, so it cannot be
+ * reclaimed through an EU VAT return — it is money we spend and never get back, which
+ * makes it part of what the call costs us rather than a tax we merely advance. That is
+ * the whole reason it belongs in the vendor basis instead of the markup.
+ */
+export const CHINA_VAT_MULTIPLIER = 1.06;
+
+/**
+ * Raise a vendor's published list price to what we actually pay, VAT included.
+ *
+ * Applied to the vendor cell BEFORE the store markup, so the marked-up price is a markup
+ * on our real cost. The seed literals stay byte-equal to the vendor's own pricing table —
+ * they are quoted as published, and this function is where the invoice differs from it.
+ *
+ * NOT applied fleet-wide to every Chinese vendor: Z.ai and Moonshot invoices carry no such
+ * line, so adding one there would invent a cost we do not pay. If a future invoice from
+ * either does show VAT, that is a price change on those names like any other. Verify
+ * against an invoice before extending this — the vendor's nationality is not the test.
+ */
+export function withChinaVat(costPerUnitInUsdCents: string): string {
+  return scaleFixedDecimalCost(costPerUnitInUsdCents, CHINA_VAT_MULTIPLIER, "VAT multiplier");
 }
 
 /**
@@ -187,12 +229,25 @@ export interface SeedProviderCost {
 
 /**
  * DeepSeek time-of-day pricing, live from 2026-08-16T16:00:00Z.
- * Peak hours are 01:00-04:00 and 06:00-10:00 UTC; every other hour is off-peak.
  * Read from https://api-docs.deepseek.com/quick_start/pricing on 2026-08-15.
+ *
+ * A window is `Days@HH:MM-HH:MM`, half-open on the minute, days as a `Mon`..`Sun` range.
+ * The day scope is part of the grammar because the vendor's regime is not purely
+ * time-of-day: from 2026-08-23 (00:00 Beijing, announced in the top-up console) off-peak
+ * rates apply for the WHOLE day on Saturdays and Sundays, Beijing time.
+ *
+ * The Beijing weekend runs Friday 16:00 UTC to Sunday 16:00 UTC, which does not line up
+ * with a UTC day — but it does not have to. Every peak window sits between 01:00 and 10:00
+ * UTC, entirely inside the part of a UTC day that shares its weekday with Beijing, so the
+ * weekend rule reduces exactly to "no peak on UTC Saturday and UTC Sunday". That reduction
+ * is a property of WHERE the windows sit, not a general truth: if the vendor ever moves a
+ * peak window past 16:00 UTC, the Beijing weekend starts cutting through it and these
+ * strings stop being expressible as whole UTC days.
  */
 export const DEEPSEEK_TIME_OF_DAY_PRICING_FROM = new Date("2026-08-16T16:00:00Z");
-export const DEEPSEEK_PEAK_HOURS_UTC = "01:00-04:00,06:00-10:00";
-export const DEEPSEEK_OFF_PEAK_HOURS_UTC = "00:00-01:00,04:00-06:00,10:00-24:00";
+export const DEEPSEEK_PEAK_HOURS_UTC = "Mon-Fri@01:00-04:00,Mon-Fri@06:00-10:00";
+export const DEEPSEEK_OFF_PEAK_HOURS_UTC =
+  "Mon-Fri@00:00-01:00,Mon-Fri@04:00-06:00,Mon-Fri@10:00-24:00,Sat-Sun@00:00-24:00";
 
 /**
  * Build the six DeepSeek cost names for one model — {peak, off-peak} × {input, cached input,
@@ -208,7 +263,8 @@ export const DEEPSEEK_OFF_PEAK_HOURS_UTC = "00:00-01:00,04:00-06:00,10:00-24:00"
  * name matches the clock, so a consumer never has to fall back to a regime-free name.
  *
  * Every number is a verbatim cell from https://api-docs.deepseek.com/quick_start/pricing
- * (read 2026-08-15), converted to cents-per-token by ÷10⁴ and marked up by the store
+ * (read 2026-08-15), converted to cents-per-token by ÷10⁴, raised by the non-recoverable
+ * Chinese VAT DeepSeek adds on top of that published cell, then marked up by the store
  * multiplier. Nothing is derived from another cell — the vendor's off-peak column happens to
  * be half its peak column, but both are read, not computed.
  */
@@ -253,13 +309,13 @@ function deepSeekModelCosts(args: {
       return [
         {
           ...shared,
-          costPerUnitInUsdCents: applyCostRiskMultiplier(args.current[keys[i]]),
+          costPerUnitInUsdCents: applyCostRiskMultiplier(withChinaVat(args.current[keys[i]])),
           pricingBasis: "marked-up",
           effectiveFrom: new Date("2025-01-01T00:00:00Z"),
         },
         {
           ...shared,
-          costPerUnitInUsdCents: applyCostRiskMultiplier(rates[keys[i]]),
+          costPerUnitInUsdCents: applyCostRiskMultiplier(withChinaVat(rates[keys[i]])),
           pricingBasis: "marked-up",
           effectiveFrom: DEEPSEEK_TIME_OF_DAY_PRICING_FROM,
         },
@@ -1831,14 +1887,23 @@ export async function seedProvidersCosts() {
           ORDER BY v.name, v.plan_tier, v.billing_cycle, v.declared_eff DESC
         ) cur
         LEFT JOIN LATERAL (
-          SELECT pc.cost_per_unit_in_usd_cents AS cost, pc.pricing_basis AS basis, pc.effective_from
+          SELECT pc.cost_per_unit_in_usd_cents AS cost, pc.pricing_basis AS basis,
+                 pc.regime_hours_utc AS windows, pc.effective_from
           FROM providers_costs pc
           WHERE pc.name = cur.name AND pc.plan_tier = cur.plan_tier AND pc.billing_cycle = cur.billing_cycle
             AND pc.effective_from <= now()
           ORDER BY pc.effective_from DESC
           LIMIT 1
         ) latest ON TRUE
-        WHERE (latest.cost, latest.basis) IS DISTINCT FROM (cur.cost, cur.basis)
+        -- The comparison spans everything that determines WHAT a caller is charged, not just
+        -- the number. The basis is here because dropping a markup is a price change even when
+        -- the figure is unchanged; the regime windows are here for the same reason one step
+        -- removed: they say WHEN this row's rate applies, so moving a window reprices every
+        -- instant that changed sides. Leaving them out made a windows-only edit a silent
+        -- no-op -- the seed wrote nothing, production kept serving the old schedule, and the
+        -- deploy looked clean. Covered by seed-append-history.test.ts (AC9).
+        WHERE (latest.cost, latest.basis, latest.windows)
+              IS DISTINCT FROM (cur.cost, cur.basis, cur.regime_hours_utc)
       `);
     });
 

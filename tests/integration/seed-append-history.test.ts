@@ -8,7 +8,12 @@ import {
   insertPlatformCost,
   closeDb,
 } from "../helpers/test-db.js";
-import { seedProvidersCosts, seedPlatformCosts } from "../../src/db/seed.js";
+import {
+  seedProvidersCosts,
+  seedPlatformCosts,
+  SEED_PROVIDERS_COSTS,
+  DEEPSEEK_PEAK_HOURS_UTC,
+} from "../../src/db/seed.js";
 import { db } from "../../src/db/index.js";
 import { providersCosts, platformCosts } from "../../src/db/schema.js";
 
@@ -96,6 +101,56 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
     expect(rows[0].pricingBasis).toBe("pass-through");
     expect(rows[0].costPerUnitInUsdCents).toBe("1.0000000000");
     expect(rows[1].pricingBasis).toBe("marked-up"); // history intact
+  });
+
+  it("AC9: moving a regime's WINDOWS appends a new row even where the price is unchanged", async () => {
+    // A regime row says two things: what the rate is, and when it applies. DeepSeek's
+    // 2026-08-23 rule moved the second without touching the first — weekends went off-peak
+    // all day — so a comparison on price alone found nothing to write and the seed silently
+    // no-op'd. Production kept serving the old schedule and the deploy looked clean, which is
+    // the worst shape a pricing bug can take. Fails red without regime_hours_utc in the
+    // comparison: one row, old windows, no append.
+    //
+    // Everything below is DERIVED from the seed rather than typed out, so this test cannot
+    // rot into asserting a schedule the catalog no longer declares.
+    const name = "deepseek-v4-flash-peak-tokens-input";
+    const inForce = SEED_PROVIDERS_COSTS.filter(
+      (c) => c.name === name && c.effectiveFrom <= new Date(),
+    ).sort((a, b) => b.effectiveFrom.getTime() - a.effectiveFrom.getTime())[0];
+    expect(inForce, `${name} has no in-force version`).toBeDefined();
+    expect(inForce.regimeHoursUtc).toBe(DEEPSEEK_PEAK_HOURS_UTC);
+
+    // The same price and basis the seed declares, under the PRE-weekend windows.
+    const supersededWindows = "01:00-04:00,06:00-10:00";
+    expect(supersededWindows).not.toBe(DEEPSEEK_PEAK_HOURS_UTC);
+    await insertTestProviderCost({
+      name,
+      provider: inForce.provider,
+      providerDomain: inForce.providerDomain ?? null,
+      type: inForce.type,
+      unit: inForce.unit,
+      planTier: inForce.planTier,
+      billingCycle: inForce.billingCycle,
+      costPerUnitInUsdCents: inForce.costPerUnitInUsdCents!,
+      pricingBasis: inForce.pricingBasis,
+      pricingRegime: inForce.pricingRegime ?? null,
+      regimeHoursUtc: supersededWindows,
+      effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+    });
+
+    await seedProvidersCosts();
+
+    const rows = await db
+      .select()
+      .from(providersCosts)
+      .where(eq(providersCosts.name, name))
+      .orderBy(desc(providersCosts.effectiveFrom));
+
+    expect(rows.length).toBe(2);
+    expect(rows[0].regimeHoursUtc).toBe(DEEPSEEK_PEAK_HOURS_UTC);
+    expect(rows[0].costPerUnitInUsdCents).toBe(inForce.costPerUnitInUsdCents); // price untouched
+    expect(rows[1].regimeHoursUtc).toBe(supersededWindows); // the old schedule stays queryable
+    expect(rows[1].effectiveFrom.getTime()).toBeLessThan(rows[0].effectiveFrom.getTime());
   });
 
   it("AC2: re-running the seed with no change appends nothing (idempotent)", async () => {
