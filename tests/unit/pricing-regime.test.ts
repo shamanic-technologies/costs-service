@@ -5,23 +5,51 @@ import {
   DEEPSEEK_PEAK_HOURS_UTC,
   DEEPSEEK_OFF_PEAK_HOURS_UTC,
   applyCostRiskMultiplier,
+  withChinaVat,
   type SeedProviderCost,
 } from "../../src/db/seed.js";
 
-/** Parse "01:00-04:00,06:00-10:00" into half-open [startMinute, endMinute) ranges. */
-function parseWindows(spec: string): Array<[number, number]> {
-  return spec.split(",").map((range) => {
-    const [from, to] = range.split("-");
+const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+/** Monday-indexed, matching DAY_NAMES. */
+const WEEKDAYS = [0, 1, 2, 3, 4];
+const WEEKEND = [5, 6];
+
+/**
+ * Parse "Mon-Fri@01:00-04:00,Sat-Sun@00:00-24:00" into half-open windows over
+ * (Monday-indexed day, minute of day).
+ *
+ * Deliberately a SEPARATE implementation from anything in src: the point of the test is that
+ * the published string means what the catalog claims, so re-using a shared parser would only
+ * prove the parser agrees with itself.
+ */
+function parseWindows(spec: string): Array<{ days: number[]; from: number; to: number }> {
+  return spec.split(",").map((window) => {
+    const [dayPart, hourPart] = window.split("@");
+    if (hourPart === undefined) {
+      throw new Error(`Window is missing its day scope: ${window}`);
+    }
+    const [firstDay, lastDay] = dayPart.split("-");
+    const firstIdx = DAY_NAMES.indexOf(firstDay as (typeof DAY_NAMES)[number]);
+    const lastIdx = DAY_NAMES.indexOf((lastDay ?? firstDay) as (typeof DAY_NAMES)[number]);
+    if (firstIdx < 0 || lastIdx < 0 || lastIdx < firstIdx) {
+      throw new Error(`Unparseable day scope: ${dayPart}`);
+    }
+    const days: number[] = [];
+    for (let d = firstIdx; d <= lastIdx; d++) days.push(d);
+
     const toMinutes = (hhmm: string) => {
       const [h, m] = hhmm.split(":").map(Number);
       return h * 60 + m;
     };
-    return [toMinutes(from), toMinutes(to)] as [number, number];
+    const [from, to] = hourPart.split("-");
+    return { days, from: toMinutes(from), to: toMinutes(to) };
   });
 }
 
-function covers(spec: string, minuteOfDay: number): boolean {
-  return parseWindows(spec).some(([from, to]) => minuteOfDay >= from && minuteOfDay < to);
+function covers(spec: string, day: number, minuteOfDay: number): boolean {
+  return parseWindows(spec).some(
+    (w) => w.days.includes(day) && minuteOfDay >= w.from && minuteOfDay < w.to,
+  );
 }
 
 const PRE_SCHEDULE = "2025-01-01T00:00:00.000Z";
@@ -41,23 +69,51 @@ describe("Pricing regime — the priced dimension that is a property of the mome
     expect(DEEPSEEK_TIME_OF_DAY_PRICING_FROM.toISOString()).toBe(SCHEDULE_START);
   });
 
-  it("partitions the UTC day between peak and off-peak — exactly one regime per minute", () => {
+  it("partitions the whole WEEK between peak and off-peak — exactly one regime per minute", () => {
     // Totality is what makes the selection rule mechanical: a consumer never has to decide
-    // what to do with a minute that matches both regimes or neither.
-    for (let minute = 0; minute < 24 * 60; minute++) {
-      const matches = [DEEPSEEK_PEAK_HOURS_UTC, DEEPSEEK_OFF_PEAK_HOURS_UTC].filter((spec) =>
-        covers(spec, minute),
-      );
-      expect(matches, `minute ${minute} of the UTC day`).toHaveLength(1);
+    // what to do with a minute that matches both regimes or neither. Since 2026-08-23 the
+    // regime depends on the weekday too, so totality is over (day, minute), not minute alone.
+    for (let day = 0; day < 7; day++) {
+      for (let minute = 0; minute < 24 * 60; minute++) {
+        const matches = [DEEPSEEK_PEAK_HOURS_UTC, DEEPSEEK_OFF_PEAK_HOURS_UTC].filter((spec) =>
+          covers(spec, day, minute),
+        );
+        expect(matches, `${DAY_NAMES[day]} minute ${minute}`).toHaveLength(1);
+      }
     }
   });
 
-  it("declares peak as 01:00-04:00 and 06:00-10:00 UTC, off-peak as the complement", () => {
-    expect(DEEPSEEK_PEAK_HOURS_UTC).toBe("01:00-04:00,06:00-10:00");
-    expect(DEEPSEEK_OFF_PEAK_HOURS_UTC).toBe("00:00-01:00,04:00-06:00,10:00-24:00");
-    expect(covers(DEEPSEEK_PEAK_HOURS_UTC, 2 * 60)).toBe(true); // 02:00 peak
-    expect(covers(DEEPSEEK_PEAK_HOURS_UTC, 5 * 60)).toBe(false); // 05:00 off-peak
-    expect(covers(DEEPSEEK_OFF_PEAK_HOURS_UTC, 23 * 60 + 59)).toBe(true);
+  it("declares peak as 01:00-04:00 and 06:00-10:00 UTC on WEEKDAYS, off-peak as the complement", () => {
+    expect(DEEPSEEK_PEAK_HOURS_UTC).toBe("Mon-Fri@01:00-04:00,Mon-Fri@06:00-10:00");
+    expect(DEEPSEEK_OFF_PEAK_HOURS_UTC).toBe(
+      "Mon-Fri@00:00-01:00,Mon-Fri@04:00-06:00,Mon-Fri@10:00-24:00,Sat-Sun@00:00-24:00",
+    );
+    for (const day of WEEKDAYS) {
+      expect(covers(DEEPSEEK_PEAK_HOURS_UTC, day, 2 * 60), DAY_NAMES[day]).toBe(true); // 02:00 peak
+      expect(covers(DEEPSEEK_PEAK_HOURS_UTC, day, 8 * 60), DAY_NAMES[day]).toBe(true); // 08:00 peak
+      expect(covers(DEEPSEEK_PEAK_HOURS_UTC, day, 5 * 60), DAY_NAMES[day]).toBe(false); // 05:00 off-peak
+      expect(covers(DEEPSEEK_OFF_PEAK_HOURS_UTC, day, 23 * 60 + 59), DAY_NAMES[day]).toBe(true);
+    }
+  });
+
+  it("charges off-peak all weekend, at every minute of Saturday and Sunday", () => {
+    // The vendor's 2026-08-23 rule, announced in the top-up console: "off-peak rates applying
+    // throughout the day on weekends (Saturdays and Sundays, Beijing Time)". Every peak window
+    // sits between 01:00 and 10:00 UTC, well inside the stretch of a UTC day that shares its
+    // weekday with Beijing, so the Beijing weekend lands on whole UTC Saturdays and Sundays.
+    // Before this, 02:00 and 08:00 on a weekend resolved to the peak name and the customer was
+    // charged twice the rate DeepSeek actually billed us.
+    for (const day of WEEKEND) {
+      for (let minute = 0; minute < 24 * 60; minute++) {
+        expect(covers(DEEPSEEK_PEAK_HOURS_UTC, day, minute), `${DAY_NAMES[day]} ${minute}`).toBe(
+          false,
+        );
+        expect(
+          covers(DEEPSEEK_OFF_PEAK_HOURS_UTC, day, minute),
+          `${DAY_NAMES[day]} ${minute}`,
+        ).toBe(true);
+      }
+    }
   });
 
   it("carries the regime windows on every regime-priced row, and on no other row", () => {
@@ -79,17 +135,22 @@ describe("Pricing regime — the priced dimension that is a property of the mome
   it("gives every (model, token class, instant) exactly one cost name", () => {
     for (const model of ["deepseek-v4-flash", "deepseek-v4-pro"]) {
       for (const tokenClass of ["tokens-input", "tokens-cached-input", "tokens-output"]) {
-        for (let hour = 0; hour < 24; hour++) {
-          const matching = SEED_PROVIDERS_COSTS.filter(
-            (c) =>
-              c.provider === "deepseek" &&
-              c.name.startsWith(`${model}-`) &&
-              c.name.endsWith(`-${tokenClass}`) &&
-              c.pricingRegime !== undefined &&
-              covers(c.regimeHoursUtc!, hour * 60),
-          );
-          // Two price points (pre-schedule + scheduled) of ONE name.
-          expect(new Set(matching.map((c) => c.name)).size, `${model} ${tokenClass} @${hour}h`).toBe(1);
+        for (let day = 0; day < 7; day++) {
+          for (let hour = 0; hour < 24; hour++) {
+            const matching = SEED_PROVIDERS_COSTS.filter(
+              (c) =>
+                c.provider === "deepseek" &&
+                c.name.startsWith(`${model}-`) &&
+                c.name.endsWith(`-${tokenClass}`) &&
+                c.pricingRegime !== undefined &&
+                covers(c.regimeHoursUtc!, day, hour * 60),
+            );
+            // Two price points (pre-schedule + scheduled) of ONE name.
+            expect(
+              new Set(matching.map((c) => c.name)).size,
+              `${model} ${tokenClass} ${DAY_NAMES[day]}@${hour}h`,
+            ).toBe(1);
+          }
         }
       }
     }
@@ -115,7 +176,7 @@ describe("Pricing regime — the priced dimension that is a property of the mome
       for (const [tokenClass, raw] of Object.entries(classes)) {
         for (const regime of ["peak", "off-peak"]) {
           const row = version(`${model}-${regime}-${tokenClass}`, PRE_SCHEDULE);
-          expect(row.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier(raw));
+          expect(row.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier(withChinaVat(raw)));
         }
       }
     }
@@ -140,7 +201,7 @@ describe("Pricing regime — the priced dimension that is a property of the mome
 
     for (const [name, raw] of Object.entries(scheduled)) {
       const row = version(name, SCHEDULE_START);
-      expect(row.costPerUnitInUsdCents, name).toBe(applyCostRiskMultiplier(raw));
+      expect(row.costPerUnitInUsdCents, name).toBe(applyCostRiskMultiplier(withChinaVat(raw)));
     }
   });
 

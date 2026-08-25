@@ -4,6 +4,7 @@ import {
   SEED_PLATFORM_COSTS,
   PROVIDER_DOMAINS,
   applyCostRiskMultiplier,
+  withChinaVat,
 } from "../../src/db/seed.js";
 
 describe("DeepSeek V4 Flash unit costs (direct vendor)", () => {
@@ -61,10 +62,13 @@ describe("DeepSeek V4 Flash unit costs (direct vendor)", () => {
       (c) => c.name === "deepseek-v4-flash-peak-tokens-cached-input",
     );
     const current = cached.find((c) => c.effectiveFrom.toISOString() === "2025-01-01T00:00:00.000Z")!;
-    expect(current.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000002800"));
+    expect(current.costPerUnitInUsdCents).toBe(
+      applyCostRiskMultiplier(withChinaVat("0.0000002800")),
+    );
     expect(current.type).toBe("Cached input tokens (DeepSeek V4 Flash, peak)");
+    // The 50x gap between a hit and a miss survives the VAT, which is a common factor.
     expect(Number(current.costPerUnitInUsdCents) * 50).toBeCloseTo(
-      Number(applyCostRiskMultiplier("0.0000140000")),
+      Number(applyCostRiskMultiplier(withChinaVat("0.0000140000"))),
       12,
     );
   });

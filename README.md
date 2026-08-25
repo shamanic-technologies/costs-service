@@ -9,6 +9,7 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 Every line states its **basis**, and there are only two:
 
 - **`marked-up`** — work we perform (LLM tokens, embeddings, enrichment, search, creative generation). Price = the vendor rate × `COST_RISK_MULTIPLIER = 2` × `COST_PROFIT_MULTIPLIER = 2.5` = **5×** (risk covers cost under-estimation; profit is the store margin).
+  The "vendor rate" is what the invoice says, which is not always what the price list says: DeepSeek adds 6% Chinese VAT on top of every top-up, and that VAT cannot be reclaimed through an EU VAT return, so it is part of the cost rather than a tax we advance. `withChinaVat` raises the published cell before the markup is taken. It is applied to DeepSeek only — Z.ai and Moonshot invoices carry no VAT line, and the test for adding it is an invoice, not the vendor's nationality.
 - **`pass-through`** — money we merely route: advertising-platform spend and payment-processing fees. Price **is** the vendor rate. A customer who brings their own creatives pays exactly what the underlying platform charges and nothing more.
 
 The basis is on the row and on every public price read (`GET /v1/platform-prices`, `GET /v1/platform-prices/:name`), so a caller — the public pricing page included — can tell the two apart without keeping its own list of names. The column is `NOT NULL` and the write paths require it: a line whose class cannot be resolved fails loudly rather than defaulting to either side.
@@ -96,30 +97,30 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `deepseek-v4-flash-tokens-output` | 0.00014 | 1M tokens | Output tokens (DeepSeek V4 Flash) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
 | `deepseek-v4-pro-tokens-input` | 0.0002175 | 1M tokens | Input tokens (DeepSeek V4 Pro) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
 | `deepseek-v4-pro-tokens-output` | 0.000435 | 1M tokens | Output tokens (DeepSeek V4 Pro) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-input` | 0.00007 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-input` | 0.00022 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-cached-input` | 0.0000014 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-cached-input` | 0.000007 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-output` | 0.00014 | 1M tokens | Output tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-output` | 0.00066 | 1M tokens | Output tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-input` | 0.00007 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-input` | 0.00011 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-cached-input` | 0.0000014 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-cached-input` | 0.0000035 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-output` | 0.00014 | 1M tokens | Output tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-output` | 0.00033 | 1M tokens | Output tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-input` | 0.0002175 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-input` | 0.00066 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-cached-input` | 0.0000018125 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-cached-input` | 0.000022 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-output` | 0.000435 | 1M tokens | Output tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-output` | 0.00198 | 1M tokens | Output tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-input` | 0.0002175 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-input` | 0.00033 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-cached-input` | 0.0000018125 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-cached-input` | 0.000011 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-output` | 0.000435 | 1M tokens | Output tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-output` | 0.00099 | 1M tokens | Output tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-peak-tokens-input` | 0.0000742 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-peak-tokens-input` | 0.0002332 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-peak-tokens-cached-input` | 0.000001484 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-peak-tokens-cached-input` | 0.00000742 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-peak-tokens-output` | 0.0001484 | 1M tokens | Output tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-peak-tokens-output` | 0.0006996 | 1M tokens | Output tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-off-peak-tokens-input` | 0.0000742 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-off-peak-tokens-input` | 0.0001166 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-off-peak-tokens-cached-input` | 0.000001484 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-off-peak-tokens-cached-input` | 0.00000371 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-off-peak-tokens-output` | 0.0001484 | 1M tokens | Output tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-off-peak-tokens-output` | 0.0003498 | 1M tokens | Output tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-peak-tokens-input` | 0.00023055 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-peak-tokens-input` | 0.0006996 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-peak-tokens-cached-input` | 0.0000019215 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-peak-tokens-cached-input` | 0.00002332 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-peak-tokens-output` | 0.0004611 | 1M tokens | Output tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-peak-tokens-output` | 0.0020988 | 1M tokens | Output tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-off-peak-tokens-input` | 0.00023055 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-off-peak-tokens-input` | 0.0003498 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-off-peak-tokens-cached-input` | 0.0000019215 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-off-peak-tokens-cached-input` | 0.00001166 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-off-peak-tokens-output` | 0.0004611 | 1M tokens | Output tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-off-peak-tokens-output` | 0.0010494 | 1M tokens | Output tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
 | `zai-glm-4.7-flashx-tokens-input` | 0.000035 | 1M tokens | Input tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
 | `zai-glm-4.7-flashx-tokens-cached-input` | 0.000005 | 1M tokens | Cached input tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
 | `zai-glm-4.7-flashx-tokens-output` | 0.0002 | 1M tokens | Output tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
@@ -171,16 +172,24 @@ Cache-hit input is 50x-120x cheaper than a miss at DeepSeek, so declaring a hit 
 `-tokens-input` over-charges by that factor.
 
 **Pricing regime** — the segment before `-tokens-…`, present only for a vendor that charges by
-time of day. DeepSeek does, from 2026-08-16 16:00 UTC:
+the clock. DeepSeek does, from 2026-08-16 16:00 UTC:
 
-| Regime | UTC hours |
+| Regime | Windows (UTC) |
 |---|---|
-| `peak` | 01:00-04:00, 06:00-10:00 |
-| `off-peak` | 00:00-01:00, 04:00-06:00, 10:00-24:00 |
+| `peak` | `Mon-Fri@01:00-04:00`, `Mon-Fri@06:00-10:00` |
+| `off-peak` | `Mon-Fri@00:00-01:00`, `Mon-Fri@04:00-06:00`, `Mon-Fri@10:00-24:00`, `Sat-Sun@00:00-24:00` |
 
-The hours are on the price itself (`regimeHoursUtc`, alongside `pricingRegime`) in every
-`/v1/platform-prices` response, so a consumer reads the windows rather than hard-coding them.
-A vendor's regimes partition the day, so for one model and one token class exactly one name
+A window is `Days@HH:MM-HH:MM`, half-open on the minute, days as a `Mon`..`Sun` range. The day
+scope is part of the grammar because DeepSeek's regime is not purely time-of-day: since
+2026-08-23 (00:00 Beijing) off-peak rates apply for the whole day on Saturdays and Sundays.
+The Beijing weekend runs Friday 16:00 UTC to Sunday 16:00 UTC, but every peak window sits
+between 01:00 and 10:00 UTC — well inside the stretch of a UTC day that shares its weekday with
+Beijing — so the rule lands on whole UTC Saturdays and Sundays. That reduction depends on where
+the windows sit; if the vendor ever moves one past 16:00 UTC it stops holding.
+
+The windows are on the price itself (`regimeHoursUtc`, alongside `pricingRegime`) in every
+`/v1/platform-prices` response, so a consumer reads them rather than hard-coding them.
+A vendor's regimes partition the week, so for one model and one token class exactly one name
 matches any instant: `deepseek-v4-flash-peak-tokens-cached-input` is a V4 Flash cache-hit input
 token spent during peak hours. A vendor with no time-of-day pricing (Z.ai, Anthropic, Google)
 has no regime segment and reports `pricingRegime: null`.
