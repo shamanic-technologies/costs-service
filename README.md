@@ -8,11 +8,7 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 
 Every line states its **basis**, and there are only two:
 
-<<<<<<< HEAD
 - **`marked-up`** — work we perform (LLM tokens, embeddings, enrichment, search, creative generation). Price = the vendor rate × `COST_RISK_MULTIPLIER = 2` × `COST_PROFIT_MULTIPLIER = 3` = **6×** (risk covers cost under-estimation; profit is the store margin).
-=======
-- **`marked-up`** — work we perform (LLM tokens, embeddings, enrichment, search, creative generation). Price = the vendor rate × `COST_RISK_MULTIPLIER = 2` × `COST_PROFIT_MULTIPLIER = 2.5` = **5×** (risk covers cost under-estimation; profit is the store margin).
->>>>>>> origin/main
   The "vendor rate" is what the invoice says, which is not always what the price list says: DeepSeek adds 6% Chinese VAT on top of every top-up, and that VAT cannot be reclaimed through an EU VAT return, so it is part of the cost rather than a tax we advance. `withChinaVat` raises the published cell before the markup is taken. It is applied to DeepSeek only — Z.ai and Moonshot invoices carry no VAT line, and the test for adding it is an invoice, not the vendor's nationality.
 - **`pass-through`** — money we merely route: advertising-platform spend and payment-processing fees. Price **is** the vendor rate. A customer who brings their own creatives pays exactly what the underlying platform charges and nothing more.
 
@@ -93,7 +89,6 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `stripe-refund-fee` | 1 | USD cent | Refund fee | stripe | stripe.com | pay-as-you-go | monthly | pass-through |
 | `stripe-dispute-fee` | 1 | USD cent | Dispute fee | stripe | stripe.com | pay-as-you-go | monthly | pass-through |
 | `stripe-payout-failure-fee` | 1 | USD cent | Payout failure fee | stripe | stripe.com | pay-as-you-go | monthly | pass-through |
-<<<<<<< HEAD
 | `twilio-sms-segment` | 7.98 | segment | SMS message | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
 | `twilio-whatsapp-message` | 3 | message | WhatsApp message | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
 | `cloudflare-r2-class-a-operation` | 0.0027 | operation | R2 Class A operation | cloudflare | cloudflare.com | pay-as-you-go | monthly | marked-up |
@@ -141,55 +136,6 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `moonshot-kimi-k3-tokens-input` | 0.0018 | 1M tokens | Input tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
 | `moonshot-kimi-k3-tokens-cached-input` | 0.00018 | 1M tokens | Cached input tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
 | `moonshot-kimi-k3-tokens-output` | 0.009 | 1M tokens | Output tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
-=======
-| `twilio-sms-segment` | 6.65 | segment | SMS message | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
-| `twilio-whatsapp-message` | 2.5 | message | WhatsApp message | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
-| `cloudflare-r2-class-a-operation` | 0.00225 | operation | R2 Class A operation | cloudflare | cloudflare.com | pay-as-you-go | monthly | marked-up |
-| `cloudflare-r2-class-b-operation` | 0.00018 | operation | R2 Class B operation | cloudflare | cloudflare.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-tokens-input` | 0.00007 | 1M tokens | Input tokens (DeepSeek V4 Flash) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-tokens-output` | 0.00014 | 1M tokens | Output tokens (DeepSeek V4 Flash) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-tokens-input` | 0.0002175 | 1M tokens | Input tokens (DeepSeek V4 Pro) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-tokens-output` | 0.000435 | 1M tokens | Output tokens (DeepSeek V4 Pro) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-input` | 0.0000742 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-input` | 0.0002332 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-cached-input` | 0.000001484 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-cached-input` | 0.00000742 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-output` | 0.0001484 | 1M tokens | Output tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-output` | 0.0006996 | 1M tokens | Output tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-input` | 0.0000742 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-input` | 0.0001166 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-cached-input` | 0.000001484 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-cached-input` | 0.00000371 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-output` | 0.0001484 | 1M tokens | Output tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-output` | 0.0003498 | 1M tokens | Output tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-input` | 0.00023055 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-input` | 0.0006996 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-cached-input` | 0.0000019215 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-cached-input` | 0.00002332 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-output` | 0.0004611 | 1M tokens | Output tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-output` | 0.0020988 | 1M tokens | Output tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-input` | 0.00023055 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-input` | 0.0003498 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-cached-input` | 0.0000019215 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-cached-input` | 0.00001166 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-output` | 0.0004611 | 1M tokens | Output tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-output` | 0.0010494 | 1M tokens | Output tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `zai-glm-4.7-flashx-tokens-input` | 0.000035 | 1M tokens | Input tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-4.7-flashx-tokens-cached-input` | 0.000005 | 1M tokens | Cached input tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-4.7-flashx-tokens-output` | 0.0002 | 1M tokens | Output tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.2-tokens-input` | 0.0007 | 1M tokens | Input tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.2-tokens-cached-input` | 0.00013 | 1M tokens | Cached input tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.2-tokens-output` | 0.0022 | 1M tokens | Output tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.3-tokens-input` | 0.0007 | 1M tokens | Input tokens (GLM-5.3) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.3-tokens-cached-input` | 0.00013 | 1M tokens | Cached input tokens (GLM-5.3) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.3-tokens-output` | 0.0022 | 1M tokens | Output tokens (GLM-5.3) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `moonshot-kimi-k2.6-tokens-input` | 0.000475 | 1M tokens | Input tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
-| `moonshot-kimi-k2.6-tokens-cached-input` | 0.00008 | 1M tokens | Cached input tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
-| `moonshot-kimi-k2.6-tokens-output` | 0.002 | 1M tokens | Output tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
-| `moonshot-kimi-k3-tokens-input` | 0.0015 | 1M tokens | Input tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
-| `moonshot-kimi-k3-tokens-cached-input` | 0.00015 | 1M tokens | Cached input tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
-| `moonshot-kimi-k3-tokens-output` | 0.0075 | 1M tokens | Output tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
->>>>>>> origin/main
 | `google-ads-spend` | 1 | USD cent | Google Ads platform spend | google-ads | ads.google.com | pay-as-you-go | monthly | pass-through |
 | `meta-ads-spend` | 1 | USD cent | Meta Ads platform spend | meta-ads | facebook.com | pay-as-you-go | monthly | pass-through |
 | `linkedin-ads-spend` | 1 | USD cent | LinkedIn Ads platform spend | linkedin-ads | linkedin.com | pay-as-you-go | monthly | pass-through |
