@@ -32,10 +32,10 @@ describe("Vercel AI Gateway retirement", { timeout: 30_000 }, () => {
   ];
 
   const VENDOR_PRICES: Record<string, string> = {
-    "deepseek-v4-flash-tokens-input": "0.0000700000",
-    "deepseek-v4-flash-tokens-output": "0.0001400000",
-    "deepseek-v4-pro-tokens-input": "0.0002175000",
-    "deepseek-v4-pro-tokens-output": "0.0004350000",
+    "deepseek-v4-flash-tokens-input": "0.0000840000",
+    "deepseek-v4-flash-tokens-output": "0.0001680000",
+    "deepseek-v4-pro-tokens-input": "0.0002610000",
+    "deepseek-v4-pro-tokens-output": "0.0005220000",
   };
 
   beforeEach(async () => {
@@ -172,12 +172,12 @@ describe("Vercel AI Gateway retirement", { timeout: 30_000 }, () => {
     await seedPlatformCosts();
 
     const expected: Record<string, string> = {
-      "moonshot-kimi-k2.6-tokens-input": "0.0004750000", // $0.95/MTok × 5
-      "moonshot-kimi-k2.6-tokens-cached-input": "0.0000800000", // $0.16/MTok × 5
-      "moonshot-kimi-k2.6-tokens-output": "0.0020000000", // $4.00/MTok × 5
-      "moonshot-kimi-k3-tokens-input": "0.0015000000", // $3.00/MTok × 5
-      "moonshot-kimi-k3-tokens-cached-input": "0.0001500000", // $0.30/MTok × 5
-      "moonshot-kimi-k3-tokens-output": "0.0075000000", // $15.00/MTok × 5
+      "moonshot-kimi-k2.6-tokens-input": "0.0005700000", // $0.95/MTok × 6
+      "moonshot-kimi-k2.6-tokens-cached-input": "0.0000960000", // $0.16/MTok × 6
+      "moonshot-kimi-k2.6-tokens-output": "0.0024000000", // $4.00/MTok × 6
+      "moonshot-kimi-k3-tokens-input": "0.0018000000", // $3.00/MTok × 6
+      "moonshot-kimi-k3-tokens-cached-input": "0.0001800000", // $0.30/MTok × 6
+      "moonshot-kimi-k3-tokens-output": "0.0090000000", // $15.00/MTok × 6
     };
 
     for (const [name, price] of Object.entries(expected)) {

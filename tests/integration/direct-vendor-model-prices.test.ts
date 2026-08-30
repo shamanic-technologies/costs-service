@@ -76,7 +76,7 @@ describe("Direct-vendor model prices", { timeout: 30_000 }, () => {
       .orderBy(desc(providersCosts.effectiveFrom));
 
     expect(rows.length).toBe(2);
-    expect(rows[0].costPerUnitInUsdCents).toBe("0.0000700000"); // $0.14/MTok × 5
+    expect(rows[0].costPerUnitInUsdCents).toBe("0.0000840000"); // $0.14/MTok × 6
     expect(rows[0].provider).toBe("deepseek");
     expect(rows[1].costPerUnitInUsdCents).toBe("0.0001760000"); // gateway price, still queryable
     expect(rows[1].effectiveFrom.getTime()).toBeLessThan(rows[0].effectiveFrom.getTime());
@@ -88,10 +88,10 @@ describe("Direct-vendor model prices", { timeout: 30_000 }, () => {
     await seedPlatformCosts();
 
     const expected: Record<string, string> = {
-      "deepseek-v4-flash-tokens-input": "0.0000700000",
-      "deepseek-v4-flash-tokens-output": "0.0001400000",
-      "deepseek-v4-pro-tokens-input": "0.0002175000",
-      "deepseek-v4-pro-tokens-output": "0.0004350000",
+      "deepseek-v4-flash-tokens-input": "0.0000840000",
+      "deepseek-v4-flash-tokens-output": "0.0001680000",
+      "deepseek-v4-pro-tokens-input": "0.0002610000",
+      "deepseek-v4-pro-tokens-output": "0.0005220000",
     };
 
     for (const [name, price] of Object.entries(expected)) {
@@ -106,14 +106,14 @@ describe("Direct-vendor model prices", { timeout: 30_000 }, () => {
     await seedPlatformCosts();
 
     const expected: Record<string, string> = {
-      "zai-glm-4.7-flashx-tokens-input": "0.0000350000",
-      "zai-glm-4.7-flashx-tokens-output": "0.0002000000",
-      "zai-glm-5.2-tokens-input": "0.0007000000",
-      "zai-glm-5.2-tokens-output": "0.0022000000",
+      "zai-glm-4.7-flashx-tokens-input": "0.0000420000",
+      "zai-glm-4.7-flashx-tokens-output": "0.0002400000",
+      "zai-glm-5.2-tokens-input": "0.0008400000",
+      "zai-glm-5.2-tokens-output": "0.0026400000",
       // GLM-5.3 — same vendor list price as GLM-5.2, its own cost names.
-      "zai-glm-5.3-tokens-input": "0.0007000000",
-      "zai-glm-5.3-tokens-cached-input": "0.0001300000",
-      "zai-glm-5.3-tokens-output": "0.0022000000",
+      "zai-glm-5.3-tokens-input": "0.0008400000",
+      "zai-glm-5.3-tokens-cached-input": "0.0001560000",
+      "zai-glm-5.3-tokens-output": "0.0026400000",
     };
 
     for (const [name, price] of Object.entries(expected)) {
