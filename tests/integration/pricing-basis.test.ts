@@ -56,11 +56,11 @@ describe("pricing basis on the public price read", { timeout: 60_000 }, () => {
     expect(res.body.pricingBasis).toBe("pass-through");
   });
 
-  it("an LLM line carries the 5x store markup", async () => {
+  it("an LLM line carries the 6x store markup", async () => {
     const res = await request(app).get("/v1/platform-prices/anthropic-web-search").set(identityHeaders);
     expect(res.status).toBe(200);
-    // $0.01/search vendor rate = 1¢ × COST_DEFAULT_MULTIPLIER 5.
-    expect(res.body.pricePerUnitInUsdCents).toBe("5.0000000000");
+    // $0.01/search vendor rate = 1¢ × COST_DEFAULT_MULTIPLIER 6.
+    expect(res.body.pricePerUnitInUsdCents).toBe("6.0000000000");
     expect(res.body.pricingBasis).toBe("marked-up");
   });
 

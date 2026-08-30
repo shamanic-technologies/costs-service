@@ -15,9 +15,9 @@ describe("Featured.com pitch submit unit cost", () => {
     expect(row!.unit).toBe("call");
     expect(row!.planTier).toBe("pay-as-you-go");
     expect(row!.billingCycle).toBe("monthly");
-    // $1/2000 = $0.0005 = 0.05¢ pre-multiplier; stored value is 5× (risk × profit) => 0.25¢.
+    // $1/2000 = $0.0005 = 0.05¢ pre-multiplier; stored value is 6× (risk × profit) => 0.3¢.
     expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0500000000"));
-    expect(row!.costPerUnitInUsdCents).toBe("0.2500000000");
+    expect(row!.costPerUnitInUsdCents).toBe("0.3000000000");
   });
 
   it("resolves against the active featured platform cost (plan_tier + billing_cycle match)", () => {

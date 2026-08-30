@@ -157,6 +157,6 @@ describe("Seed scheduled (future-dated) price points", { timeout: 30_000 }, () =
     expect(res.status).toBe(200);
     expect(res.body.pricingRegime).toBeNull();
     expect(res.body.regimeHoursUtc).toBeNull();
-    expect(res.body.pricePerUnitInUsdCents).toBe("0.0001300000"); // $0.26/MTok × 5
+    expect(res.body.pricePerUnitInUsdCents).toBe("0.0001560000"); // $0.26/MTok × 6
   });
 });
