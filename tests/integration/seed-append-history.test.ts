@@ -36,9 +36,9 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
 
   it("AC1: changing a provider cost appends a new dated row and preserves the old (no overwrite)", async () => {
     // Pre-seed the OLD price at the declared effective_from (mirrors prod's 2025-01-01 rows).
-    // anthropic-web-search is a marked-up line: the store markup went 4× → 5× when the
-    // cold-email lines stopped being rebilled, so its 4¢ row must be preserved as history and
-    // the 5¢ row appended — spend already declared still reads back at 4¢.
+    // anthropic-web-search is a marked-up line: the store markup went 5× → 6× on a profit
+    // raise, so its 5¢ row must be preserved as history and the 6¢ row appended — spend
+    // already declared still reads back at 5¢.
     await insertTestProviderCost({
       name: "anthropic-web-search",
       provider: "anthropic",
@@ -47,11 +47,11 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
       unit: "search",
       planTier: "pay-as-you-go",
       billingCycle: "monthly",
-      costPerUnitInUsdCents: "4.0000000000", // the 4x-markup price
+      costPerUnitInUsdCents: "5.0000000000", // the 5x-markup price
       effectiveFrom: new Date("2025-01-01T00:00:00Z"),
     });
 
-    await seedProvidersCosts(); // seed now carries 5.0000000000 (1¢ vendor × 5) → must APPEND
+    await seedProvidersCosts(); // seed now carries 6.0000000000 (1¢ vendor × 6) → must APPEND
 
     const rows = await db
       .select()
@@ -66,8 +66,8 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
       .orderBy(desc(providersCosts.effectiveFrom));
 
     expect(rows.length).toBe(2); // history preserved, not overwritten
-    expect(rows[0].costPerUnitInUsdCents).toBe("5.0000000000"); // newest = 5x markup
-    expect(rows[1].costPerUnitInUsdCents).toBe("4.0000000000"); // old value still queryable
+    expect(rows[0].costPerUnitInUsdCents).toBe("6.0000000000"); // newest = 6x markup
+    expect(rows[1].costPerUnitInUsdCents).toBe("5.0000000000"); // old value still queryable
     expect(rows[1].effectiveFrom.getTime()).toBeLessThan(rows[0].effectiveFrom.getTime());
   });
 

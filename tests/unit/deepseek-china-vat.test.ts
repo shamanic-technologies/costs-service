@@ -72,7 +72,7 @@ describe("Chinese VAT on the DeepSeek vendor basis", () => {
         c.effectiveFrom.toISOString() === "2025-01-01T00:00:00.000Z",
     )!;
     expect(row.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier(withChinaVat("0.0000003625")));
-    expect(row.costPerUnitInUsdCents).toBe("0.0000019215");
+    expect(row.costPerUnitInUsdCents).toBe("0.0000023058");
     // Marking up first and VAT-ing the result rounds differently, and would mean charging our
     // own margin the vendor's tax.
     expect(row.costPerUnitInUsdCents).not.toBe(withChinaVat(applyCostRiskMultiplier("0.0000003625")));

@@ -16,11 +16,16 @@ export const COST_RISK_MULTIPLIER = 2;
  * per-customer rebill and onto our own fixed costs: the lines we still rebill carry the
  * unit economics that the retired cold-email lines used to. Risk is untouched — nothing
  * changed about how well we estimate a vendor's rate; what changed is the store margin.
+ *
+ * Raised again 2.5 → 3 (default markup 5× → 6×): a pure store-margin move, so it lands
+ * here rather than on risk. Every marked-up line reprices on the next deploy through the
+ * append-only path (one new now()-dated row per name, prior rows kept as history, spend
+ * already declared untouched); pass-through lines carry no markup and are unaffected.
  */
-export const COST_PROFIT_MULTIPLIER = 2.5;
+export const COST_PROFIT_MULTIPLIER = 3;
 
 /**
- * DEFAULT markup applied to EVERY marked-up seed cost: risk × profit (2 × 2.5 = 5× everywhere).
+ * DEFAULT markup applied to EVERY marked-up seed cost: risk × profit (2 × 3 = 6× everywhere).
  * The helper still accepts a per-cost override, but no cost currently uses one — all
  * rows fall back to this default.
  */
