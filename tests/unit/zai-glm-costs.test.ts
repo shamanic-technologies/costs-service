@@ -16,6 +16,9 @@ const ZAI_NAMES = [
   "zai-glm-5.3-tokens-input",
   "zai-glm-5.3-tokens-cached-input",
   "zai-glm-5.3-tokens-output",
+  "zai-glm-5.3-flash-tokens-input",
+  "zai-glm-5.3-flash-tokens-cached-input",
+  "zai-glm-5.3-flash-tokens-output",
 ];
 
 describe("Z.ai GLM unit costs (direct vendor)", () => {
@@ -78,6 +81,76 @@ describe("Z.ai GLM unit costs (direct vendor)", () => {
     expect(row).toBeDefined();
     expect(row!.type).toBe("Cached input tokens (GLM-5.3)");
     expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000260000"));
+  });
+
+  it("registers zai-glm-5.3-flash-tokens-input at the $0.15/1M standard list rate", () => {
+    const row = SEED_PROVIDERS_COSTS.find((c) => c.name === "zai-glm-5.3-flash-tokens-input");
+    expect(row).toBeDefined();
+    expect(row!.provider).toBe("zai");
+    expect(row!.providerDomain).toBe("z.ai");
+    expect(row!.type).toBe("Input tokens (GLM-5.3-Flash)");
+    expect(row!.unit).toBe("1M tokens");
+    expect(row!.planTier).toBe("pay-as-you-go");
+    expect(row!.billingCycle).toBe("monthly");
+    expect(row!.pricingBasis).toBe("marked-up");
+    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000150000"));
+  });
+
+  it("registers zai-glm-5.3-flash-tokens-cached-input at the $0.03/1M standard list rate", () => {
+    const row = SEED_PROVIDERS_COSTS.find(
+      (c) => c.name === "zai-glm-5.3-flash-tokens-cached-input",
+    );
+    expect(row).toBeDefined();
+    expect(row!.type).toBe("Cached input tokens (GLM-5.3-Flash)");
+    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000030000"));
+  });
+
+  it("registers zai-glm-5.3-flash-tokens-output at the $0.50/1M standard list rate", () => {
+    const row = SEED_PROVIDERS_COSTS.find((c) => c.name === "zai-glm-5.3-flash-tokens-output");
+    expect(row).toBeDefined();
+    expect(row!.type).toBe("Output tokens (GLM-5.3-Flash)");
+    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000500000"));
+  });
+
+  it("prices GLM-5.3-Flash at the STANDARD rate, never the 50%-off promotion", () => {
+    // Z.ai ran a 50% promo ($0.075 / $0.015 / $0.25 per 1M) ending 24:00 2026-09-09 (UTC+8).
+    // Seeding it would put the catalog UNDER the vendor rate the moment the promo lapses.
+    const promo: Array<[string, string]> = [
+      ["zai-glm-5.3-flash-tokens-input", "0.0000075000"],
+      ["zai-glm-5.3-flash-tokens-cached-input", "0.0000015000"],
+      ["zai-glm-5.3-flash-tokens-output", "0.0000250000"],
+    ];
+    for (const [name, promoRaw] of promo) {
+      const row = SEED_PROVIDERS_COSTS.find((c) => c.name === name)!;
+      expect(row.costPerUnitInUsdCents).not.toBe(applyCostRiskMultiplier(promoRaw));
+    }
+  });
+
+  it("adds GLM-5.3-Flash alongside GLM-5.3 — the 5.3 rows keep their own prices", () => {
+    // A Flash variant is its own model, not a cheaper tier of GLM-5.3: spend declared on a
+    // 5.3 name must keep resolving the row it was written with.
+    for (const suffix of ["tokens-input", "tokens-cached-input", "tokens-output"]) {
+      expect(
+        SEED_PROVIDERS_COSTS.filter((c) => c.name === `zai-glm-5.3-${suffix}`),
+        `zai-glm-5.3-${suffix} must stay a single in-force version`,
+      ).toHaveLength(1);
+      expect(
+        SEED_PROVIDERS_COSTS.filter((c) => c.name === `zai-glm-5.3-flash-${suffix}`),
+        `zai-glm-5.3-flash-${suffix} must be a single in-force version`,
+      ).toHaveLength(1);
+    }
+    expect(
+      SEED_PROVIDERS_COSTS.find((c) => c.name === "zai-glm-5.3-tokens-input")!
+        .costPerUnitInUsdCents,
+    ).toBe(applyCostRiskMultiplier("0.0001400000"));
+    expect(
+      SEED_PROVIDERS_COSTS.find((c) => c.name === "zai-glm-5.3-tokens-cached-input")!
+        .costPerUnitInUsdCents,
+    ).toBe(applyCostRiskMultiplier("0.0000260000"));
+    expect(
+      SEED_PROVIDERS_COSTS.find((c) => c.name === "zai-glm-5.3-tokens-output")!
+        .costPerUnitInUsdCents,
+    ).toBe(applyCostRiskMultiplier("0.0004400000"));
   });
 
   it("adds GLM-5.3 alongside GLM-5.2 — the 5.2 rows keep their own prices, one version each", () => {
