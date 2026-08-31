@@ -130,6 +130,9 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `zai-glm-5.3-tokens-input` | 0.00084 | 1M tokens | Input tokens (GLM-5.3) | zai | z.ai | pay-as-you-go | monthly | marked-up |
 | `zai-glm-5.3-tokens-cached-input` | 0.000156 | 1M tokens | Cached input tokens (GLM-5.3) | zai | z.ai | pay-as-you-go | monthly | marked-up |
 | `zai-glm-5.3-tokens-output` | 0.00264 | 1M tokens | Output tokens (GLM-5.3) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `zai-glm-5.3-flash-tokens-input` | 0.00009 | 1M tokens | Input tokens (GLM-5.3-Flash) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `zai-glm-5.3-flash-tokens-cached-input` | 0.000018 | 1M tokens | Cached input tokens (GLM-5.3-Flash) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `zai-glm-5.3-flash-tokens-output` | 0.0003 | 1M tokens | Output tokens (GLM-5.3-Flash) | zai | z.ai | pay-as-you-go | monthly | marked-up |
 | `moonshot-kimi-k2.6-tokens-input` | 0.00057 | 1M tokens | Input tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
 | `moonshot-kimi-k2.6-tokens-cached-input` | 0.000096 | 1M tokens | Cached input tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
 | `moonshot-kimi-k2.6-tokens-output` | 0.0024 | 1M tokens | Output tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
