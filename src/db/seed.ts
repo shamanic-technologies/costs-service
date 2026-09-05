@@ -1329,6 +1329,69 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Twilio — outbound voice, priced PER MINUTE, ONE COST NAME PER DESTINATION BAND.
+  //
+  // Twilio's per-minute rate is set by the destination, and the spread is an order of
+  // magnitude: a US number costs $0.014/min while a French MOBILE costs $0.1603/min —
+  // 11.5x — and a French LANDLINE costs $0.0187/min, closer to the US rate than to the
+  // mobile one sitting in its own country. So the destination is a priced dimension and,
+  // per the naming rule in CLAUDE.md, it goes in the NAME. A single blended
+  // `twilio-voice-outbound-minute` would have to pick one number for all three, which
+  // either overcharges an org calling US landlines by ~11x or undercharges us on every
+  // French mobile — and neither error is visible to anyone, because the caller reports a
+  // duration and the catalog reports a rate that was never the vendor's.
+  //
+  // Adding a destination we start calling is therefore a NEW ROW here, not a re-price of
+  // an existing one: never widen a band's meaning to cover a rate it was not written for.
+  // The caller resolves the name from the destination it dialled (E.164 country code +
+  // line type, both of which Twilio returns on the call resource) and declares the call's
+  // billed minutes as the quantity.
+  //
+  // Marked-up, not pass-through: placing the call is work we perform, not money we merely
+  // route on the org's behalf (that basis is reserved for ad spend and processing fees).
+  //
+  // https://www.twilio.com/en-us/voice/pricing/us
+  // https://www.twilio.com/en-us/voice/pricing/fr
+  {
+    name: "twilio-voice-outbound-minute-us",
+    provider: "twilio",
+    providerDomain: PROVIDER_DOMAINS.twilio,
+    type: "Outbound voice minute (US)",
+    unit: "minute",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.4000000000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // France landline (fixed): $0.0187/min. Priced separately from French mobile below —
+  // the two differ 8.6x, so one French rate would be a blend of two real ones.
+  {
+    name: "twilio-voice-outbound-minute-fr-landline",
+    provider: "twilio",
+    providerDomain: PROVIDER_DOMAINS.twilio,
+    type: "Outbound voice minute (France, landline)",
+    unit: "minute",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.8700000000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // France mobile: $0.1603/min, identical across all four carriers (Bouygues, Free,
+  // Orange, SFR), so the carrier is NOT a priced dimension and does not enter the name.
+  {
+    name: "twilio-voice-outbound-minute-fr-mobile",
+    provider: "twilio",
+    providerDomain: PROVIDER_DOMAINS.twilio,
+    type: "Outbound voice minute (France, mobile)",
+    unit: "minute",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("16.0300000000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Cloudflare R2 — Class A operations (PUT, POST, COPY, LIST): $4.50 per million ops
   // Covers POST /upload in cloudflare-service (1 PUT per call).
   // https://developers.cloudflare.com/r2/pricing/

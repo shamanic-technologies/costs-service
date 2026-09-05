@@ -93,6 +93,9 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `stripe-payout-failure-fee` | 1 | USD cent | Payout failure fee | stripe | stripe.com | pay-as-you-go | monthly | pass-through |
 | `twilio-sms-segment` | 7.98 | segment | SMS message | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
 | `twilio-whatsapp-message` | 3 | message | WhatsApp message | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
+| `twilio-voice-outbound-minute-us` | 8.4 | minute | Outbound voice minute (US) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
+| `twilio-voice-outbound-minute-fr-landline` | 11.22 | minute | Outbound voice minute (France, landline) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
+| `twilio-voice-outbound-minute-fr-mobile` | 96.18 | minute | Outbound voice minute (France, mobile) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
 | `cloudflare-r2-class-a-operation` | 0.0027 | operation | R2 Class A operation | cloudflare | cloudflare.com | pay-as-you-go | monthly | marked-up |
 | `cloudflare-r2-class-b-operation` | 0.000216 | operation | R2 Class B operation | cloudflare | cloudflare.com | pay-as-you-go | monthly | marked-up |
 | `deepseek-v4-flash-tokens-input` | 0.000084 | 1M tokens | Input tokens (DeepSeek V4 Flash) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
