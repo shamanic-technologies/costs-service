@@ -826,6 +826,36 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Google Gemini 3.8 Flash: $1.50/MTok input, $7.50/MTok output (standard pay-as-you-go tier).
+  // Internal alias "flash-pro" routes here (replaces Gemini 3.7 Flash — same list price).
+  // Google runs a promotion ($0.75/$3.75 per MTok) through 2026-12-31; we seed the post-promotion
+  // 2027 list rate so nothing has to be repriced when it ends (same treatment as Gemini 3.7 Flash).
+  // Google prices no separate cached-input dimension for these Flash models.
+  // https://ai.google.dev/gemini-api/docs/pricing
+  {
+    name: "google-flash-3.8-tokens-input",
+    provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Input tokens (Gemini 3.8 Flash)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001500000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "google-flash-3.8-tokens-output",
+    provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type: "Output tokens (Gemini 3.8 Flash)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0007500000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Google Gemini 3.5 Flash-Lite: $0.30/MTok input, $2.50/MTok output (standard pay-as-you-go tier).
   // Internal alias "flash" routes here (replaces Gemini 3 Flash — cheaper input + output).
   // https://ai.google.dev/gemini-api/docs/pricing
