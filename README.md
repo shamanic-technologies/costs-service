@@ -67,6 +67,8 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `google-flash-3.6-tokens-output` | 0.0045 | 1M tokens | Output tokens (Gemini 3.6 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-flash-3.7-tokens-input` | 0.0009 | 1M tokens | Input tokens (Gemini 3.7 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-flash-3.7-tokens-output` | 0.0045 | 1M tokens | Output tokens (Gemini 3.7 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.8-tokens-input` | 0.0009 | 1M tokens | Input tokens (Gemini 3.8 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.8-tokens-output` | 0.0045 | 1M tokens | Output tokens (Gemini 3.8 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-flash-lite-3.5-tokens-input` | 0.00018 | 1M tokens | Input tokens (Gemini 3.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-flash-lite-3.5-tokens-output` | 0.0015 | 1M tokens | Output tokens (Gemini 3.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-flash-image-3.1-tokens-input` | 0.0003 | 1M tokens | Input tokens (Gemini 3.1 Flash Image) | google | google.com | pay-as-you-go | monthly | marked-up |
