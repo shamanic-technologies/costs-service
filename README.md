@@ -51,6 +51,9 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `anthropic-opus-4.6-tokens-output` | 0.015 | 1M tokens | Output tokens (Opus 4.6) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-haiku-4.5-tokens-input` | 0.0006 | 1M tokens | Input tokens (Haiku 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-haiku-4.5-tokens-output` | 0.003 | 1M tokens | Output tokens (Haiku 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-fable-5.1-tokens-input` | 0.0006 | 1M tokens | Input tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-fable-5.1-tokens-cached-input` | 0.000015 | 1M tokens | Cached input tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-fable-5.1-tokens-output` | 0.003 | 1M tokens | Output tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-web-search` | 6 | search | Web search | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `featured-api-pitch-submit` | 0.3 | call | API call (pitch submit) | featured | featured.com | pay-as-you-go | monthly | marked-up |
 | `postmark-email-send` | 0.9 | email | Email send | postmark | postmarkapp.com | basic-10k | monthly | marked-up |
@@ -144,6 +147,9 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `moonshot-kimi-k3-tokens-input` | 0.0018 | 1M tokens | Input tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
 | `moonshot-kimi-k3-tokens-cached-input` | 0.00018 | 1M tokens | Cached input tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
 | `moonshot-kimi-k3-tokens-output` | 0.009 | 1M tokens | Output tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-astra-tokens-input` | 0.0006 | 1M tokens | Input tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-astra-tokens-cached-input` | 0.00006 | 1M tokens | Cached input tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-astra-tokens-output` | 0.003 | 1M tokens | Output tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `google-ads-spend` | 1 | USD cent | Google Ads platform spend | google-ads | ads.google.com | pay-as-you-go | monthly | pass-through |
 | `meta-ads-spend` | 1 | USD cent | Meta Ads platform spend | meta-ads | facebook.com | pay-as-you-go | monthly | pass-through |
 | `linkedin-ads-spend` | 1 | USD cent | LinkedIn Ads platform spend | linkedin-ads | linkedin.com | pay-as-you-go | monthly | pass-through |
@@ -228,6 +234,7 @@ Each provider has an active platform cost config that determines which cost tier
 | google | pay-as-you-go | monthly |
 | instantly | hypergrowth | monthly |
 | moonshot | pay-as-you-go | monthly |
+| openai | pay-as-you-go | monthly |
 | postmark | pro-10k | monthly |
 | scrape-do | hobby | monthly |
 | serper-dev | pay-as-you-go | monthly |
