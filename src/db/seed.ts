@@ -167,6 +167,7 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   google: "google.com",
   instantly: "instantly.ai",
   moonshot: "moonshot.ai",
+  openai: "openai.com",
   postmark: "postmarkapp.com",
   "scrape-do": "scrape.do",
   "serper-dev": "serper.dev",
@@ -595,6 +596,54 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     provider: "anthropic",
     providerDomain: PROVIDER_DOMAINS.anthropic,
     type: "Output tokens (Haiku 4.5)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Anthropic Fable 5.1 — $10/MTok input, $50/MTok output, $0.25/MTok cache hit.
+  // https://platform.claude.com/docs/en/about-claude/pricing (read 2026-09-09)
+  //
+  // The cache-hit rate is NOT derivable from the base input price on this model. Every other
+  // Claude model prices a cache hit at 0.1x base input; Fable 5.1 (and Mythos 5.1) price it at
+  // 0.025x, which that page states twice — a table footnote and the prompt-caching multiplier
+  // table. So the cached-input row carries the vendor's own published figure, exactly like the
+  // Z.ai and Moonshot cache-hit rows, and no consumer computes a rate from another row.
+  //
+  // Cache WRITES ($12.50/MTok at 5m, $20/MTok at 1h) and the Batch API's 50% discount are not
+  // modelled: they are separate priced dimensions and would each be their own cost name. Adding
+  // them is a new name when a caller actually declares one, never a blend into these three.
+  {
+    name: "anthropic-fable-5.1-tokens-input",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Input tokens (Fable 5.1)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001000000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "anthropic-fable-5.1-tokens-cached-input",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Cached input tokens (Fable 5.1)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000025000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "anthropic-fable-5.1-tokens-output",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Output tokens (Fable 5.1)",
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
@@ -1789,6 +1838,60 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // OpenAI — a brand-new vendor for us; no OpenAI spend has ever been declared before these
+  // rows. Same shape as the DeepSeek / Z.ai / Moonshot direct-vendor blocks above: our own
+  // account, billed by the vendor, so the price basis is OpenAI's own list price under the
+  // standard store markup. The `openai` platform-cost row below is what makes a first-ever
+  // declaration resolve — a cost row alone would 500 on a missing provider plan.
+  //
+  // GPT-6 Astra (model id `gpt-6-astra`, released 2026-09-03) — per 1M tokens, from
+  // https://developers.openai.com/api/docs/pricing (read 2026-09-09):
+  //   input $10.00 · cached input $1.00 · output $50.00
+  //
+  // Those are the SHORT-CONTEXT figures. That page also lists a long-context column ($20 /
+  // $2 / $75) and states NO threshold at which a request crosses into it — no token count, no
+  // footnote, nothing a caller could evaluate. A cost name has to say when it applies (the
+  // same requirement that made DeepSeek's peak/off-peak rows carry `regimeHoursUtc`), and
+  // there is no honest rule to attach here, so the long-context tier is deliberately NOT
+  // seeded rather than guessed at. Consequence, stated plainly: a long-context call declares
+  // the short-context name and is under-charged. When OpenAI publishes the threshold, that
+  // becomes its own pair of names (`-long-context-` segment), not a reprice of these three.
+  {
+    name: "openai-gpt-6-astra-tokens-input",
+    provider: "openai",
+    providerDomain: PROVIDER_DOMAINS.openai,
+    type: "Input tokens (GPT-6 Astra)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001000000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "openai-gpt-6-astra-tokens-cached-input",
+    provider: "openai",
+    providerDomain: PROVIDER_DOMAINS.openai,
+    type: "Cached input tokens (GPT-6 Astra)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000100000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "openai-gpt-6-astra-tokens-output",
+    provider: "openai",
+    providerDomain: PROVIDER_DOMAINS.openai,
+    type: "Output tokens (GPT-6 Astra)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Advertising channels — one pass-through line per channel, see ADVERTISING_CHANNELS above.
   ...ADVERTISING_CHANNEL_COSTS,
 ];
@@ -1854,6 +1957,15 @@ export const SEED_PLATFORM_COSTS = [
   // Moonshot — direct vendor account. Resolves the moonshot-kimi-* prices.
   {
     provider: "moonshot",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // OpenAI — direct vendor account, first-ever OpenAI spend. Resolves the
+  // openai-gpt-6-astra-tokens-* prices; without this row every one of them 500s
+  // `No platform cost configured for provider 'openai'`.
+  {
+    provider: "openai",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
