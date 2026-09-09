@@ -25,14 +25,14 @@ describe("Anthropic Claude Fable 5.1 unit costs", () => {
     expect(row!.unit).toBe("1M tokens");
     expect(row!.planTier).toBe("pay-as-you-go");
     expect(row!.billingCycle).toBe("monthly");
-    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0001000000"));
+    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0010000000"));
   });
 
   it("registers anthropic-fable-5.1-tokens-output at $50.00/1M output tokens", () => {
     const row = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-fable-5.1-tokens-output");
     expect(row).toBeDefined();
     expect(row!.type).toBe("Output tokens (Fable 5.1)");
-    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0005000000"));
+    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0050000000"));
   });
 
   it("prices the cache hit at the vendor's published $0.25/1M, NOT a derived 0.1x of base input", () => {
@@ -44,7 +44,7 @@ describe("Anthropic Claude Fable 5.1 unit costs", () => {
     );
     expect(cached).toBeDefined();
     expect(cached!.type).toBe("Cached input tokens (Fable 5.1)");
-    expect(cached!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000025000"));
+    expect(cached!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000250000"));
 
     // 0.025x of base input, and specifically NOT the standard 0.1x.
     const base = SEED_PROVIDERS_COSTS.find(
@@ -54,7 +54,7 @@ describe("Anthropic Claude Fable 5.1 unit costs", () => {
       Number(base.costPerUnitInUsdCents) * 0.025,
       12,
     );
-    expect(cached!.costPerUnitInUsdCents).not.toBe(applyCostRiskMultiplier("0.0000100000"));
+    expect(cached!.costPerUnitInUsdCents).not.toBe(applyCostRiskMultiplier("0.0001000000"));
   });
 
   it("marks every Fable 5.1 line marked-up — LLM tokens are work we perform, not money we route", () => {

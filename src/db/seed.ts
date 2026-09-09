@@ -606,6 +606,13 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   // Anthropic Fable 5.1 — $10/MTok input, $50/MTok output, $0.25/MTok cache hit.
   // https://platform.claude.com/docs/en/about-claude/pricing (read 2026-09-09)
   //
+  // Scale, the same one every other `unit: "1M tokens"` row uses: the stored figure is VENDOR
+  // CENTS PER TOKEN, i.e. ($/MTok x 100 cents) / 1,000,000 tokens = $/MTok / 10,000, before
+  // applyCostRiskMultiplier. So $10/MTok -> 0.0010000000 raw -> 0.0060000000 stored at the 6x
+  // markup, which is exactly 10x Haiku 4.5's $1/MTok row (0.0001000000 -> 0.0006000000). The
+  // launch values shipped in #240 were a decade off (0.0001000000 for $10/MTok, i.e. $/MTok /
+  // 100,000) and under-billed all six Fable 5.1 / GPT-6 Astra lines 10x.
+  //
   // The cache-hit rate is NOT derivable from the base input price on this model. Every other
   // Claude model prices a cache hit at 0.1x base input; Fable 5.1 (and Mythos 5.1) price it at
   // 0.025x, which that page states twice — a table footnote and the prompt-caching multiplier
@@ -623,7 +630,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001000000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0010000000"),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
@@ -635,7 +642,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000025000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000250000"),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
@@ -647,7 +654,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0050000000"),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
@@ -1848,6 +1855,10 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   // https://developers.openai.com/api/docs/pricing (read 2026-09-09):
   //   input $10.00 · cached input $1.00 · output $50.00
   //
+  // Stored as vendor cents per token ($/MTok / 10,000) before the markup, same scale as every
+  // other token row — see the Fable 5.1 block above for the arithmetic and for the 10x-low
+  // launch values these three rows correct.
+  //
   // Those are the SHORT-CONTEXT figures. That page also lists a long-context column ($20 /
   // $2 / $75) and states NO threshold at which a request crosses into it — no token count, no
   // footnote, nothing a caller could evaluate. A cost name has to say when it applies (the
@@ -1864,7 +1875,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001000000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0010000000"),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
@@ -1876,7 +1887,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000100000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001000000"),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
@@ -1888,7 +1899,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0050000000"),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
