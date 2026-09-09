@@ -28,14 +28,14 @@ describe("OpenAI GPT-6 Astra unit costs (new direct vendor)", () => {
     expect(row!.unit).toBe("1M tokens");
     expect(row!.planTier).toBe("pay-as-you-go");
     expect(row!.billingCycle).toBe("monthly");
-    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0001000000"));
+    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0010000000"));
   });
 
   it("registers openai-gpt-6-astra-tokens-output at $50.00/1M output tokens", () => {
     const row = SEED_PROVIDERS_COSTS.find((c) => c.name === "openai-gpt-6-astra-tokens-output");
     expect(row).toBeDefined();
     expect(row!.type).toBe("Output tokens (GPT-6 Astra)");
-    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0005000000"));
+    expect(row!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0050000000"));
   });
 
   it("prices cached input on its own name at $1.00/1M, never blended into the uncached rate", () => {
@@ -44,13 +44,13 @@ describe("OpenAI GPT-6 Astra unit costs (new direct vendor)", () => {
     );
     expect(cached).toBeDefined();
     expect(cached!.type).toBe("Cached input tokens (GPT-6 Astra)");
-    expect(cached!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0000100000"));
+    expect(cached!.costPerUnitInUsdCents).toBe(applyCostRiskMultiplier("0.0001000000"));
 
     // The uncached row keeps the uncached rate — blending would mis-price both modes.
     expect(
       SEED_PROVIDERS_COSTS.find((c) => c.name === "openai-gpt-6-astra-tokens-input")!
         .costPerUnitInUsdCents,
-    ).toBe(applyCostRiskMultiplier("0.0001000000"));
+    ).toBe(applyCostRiskMultiplier("0.0010000000"));
   });
 
   it("differs from Fable 5.1 on the cached line only — the two are identical on input/output", () => {
