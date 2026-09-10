@@ -111,6 +111,12 @@ describe("DeepSeek V4 Flash unit costs (direct vendor)", () => {
       "deepseek-v4-pro-peak-tokens-output",
       "deepseek-v4-pro-tokens-input",
       "deepseek-v4-pro-tokens-output",
+      "deepseek-v4.1-flash-off-peak-tokens-cached-input",
+      "deepseek-v4.1-flash-off-peak-tokens-input",
+      "deepseek-v4.1-flash-off-peak-tokens-output",
+      "deepseek-v4.1-flash-peak-tokens-cached-input",
+      "deepseek-v4.1-flash-peak-tokens-input",
+      "deepseek-v4.1-flash-peak-tokens-output",
     ]);
     expect(SEED_PROVIDERS_COSTS.filter((c) => c.provider === "vercel")).toHaveLength(0);
   });

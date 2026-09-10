@@ -124,12 +124,12 @@ describe("Seed scheduled (future-dated) price points", { timeout: 30_000 }, () =
     expect(res.body.regimeHoursUtc).toBe(DEEPSEEK_PEAK_HOURS_UTC);
   });
 
-  it("AC5: every priced dimension of the four direct-vendor models resolves publicly", async () => {
+  it("AC5: every priced dimension of the direct-vendor models resolves publicly", async () => {
     await seedProvidersCosts();
     await seedPlatformCosts();
 
     const names = [
-      ...["deepseek-v4-flash", "deepseek-v4-pro"].flatMap((model) =>
+      ...["deepseek-v4-flash", "deepseek-v4-pro", "deepseek-v4.1-flash"].flatMap((model) =>
         ["peak", "off-peak"].flatMap((regime) =>
           ["tokens-input", "tokens-cached-input", "tokens-output"].map(
             (cls) => `${model}-${regime}-${cls}`

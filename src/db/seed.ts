@@ -256,6 +256,19 @@ export const DEEPSEEK_OFF_PEAK_HOURS_UTC =
   "Mon-Fri@00:00-01:00,Mon-Fri@04:00-06:00,Mon-Fri@10:00-24:00,Sat-Sun@00:00-24:00";
 
 /**
+ * DeepSeek V4.1 Flash, released 2026-09-10. Its price takes effect at 04:00 UTC that day,
+ * per the vendor's announcement and https://api-docs.deepseek.com/quick_start/pricing
+ * (read 2026-09-10). Its peak/off-peak windows are the SAME as every other DeepSeek model —
+ * "1:00-4:00 AM and 6:00-10:00 AM UTC, Monday to Friday" — so it reuses the constants above.
+ *
+ * The API model id is `deepseek-flash`: DeepSeek renamed the Flash id in the same release, so
+ * the old `deepseek-v4-flash` id is no longer listed by GET /v1/models. That is a change to
+ * what chat-service SENDS, not to what V4 Flash COST — the `deepseek-v4-flash-*` rows stay
+ * exactly as written, because spend already declared against them must keep resolving.
+ */
+export const DEEPSEEK_V4_1_FLASH_PRICING_FROM = new Date("2026-09-10T04:00:00Z");
+
+/**
  * Build the six DeepSeek cost names for one model — {peak, off-peak} × {input, cached input,
  * output} — each with two price points:
  *
@@ -263,6 +276,11 @@ export const DEEPSEEK_OFF_PEAK_HOURS_UTC =
  *    time-of-day pricing is not live yet. Both regimes therefore carry the same number, read
  *    from the vendor's current table.
  *  - `2026-08-16T16:00Z` … the regime rates from the vendor's future table.
+ *
+ * A model that LAUNCHES already split by regime has no such pre-schedule rate — DeepSeek never
+ * charged a uniform price for it — so `current` is omitted and the single version is dated at
+ * the instant the vendor says its price takes effect (`regimeFrom`). Inventing a `2025-01-01`
+ * version for it would fabricate a rate that never existed.
  *
  * Splitting by regime from the first version (rather than only from the schedule's start)
  * keeps the selection rule total: at every instant, for every token class, exactly one cost
@@ -279,8 +297,13 @@ function deepSeekModelCosts(args: {
   namePrefix: string;
   /** Human label, e.g. "DeepSeek V4 Flash". */
   label: string;
-  /** Rates in force before 2026-08-16T16:00Z (single regime, so identical for both). */
-  current: { input: string; cachedInput: string; output: string };
+  /**
+   * Rates in force before the regime split (single regime, so identical for both). Omitted
+   * for a model that launched already regime-priced — it never had a uniform rate.
+   */
+  current?: { input: string; cachedInput: string; output: string };
+  /** When the regime rates take effect. Defaults to DeepSeek's 2026-08-16T16:00Z schedule. */
+  regimeFrom?: Date;
   peak: { input: string; cachedInput: string; output: string };
   offPeak: { input: string; cachedInput: string; output: string };
 }): SeedProviderCost[] {
@@ -312,20 +335,23 @@ function deepSeekModelCosts(args: {
         pricingRegime: regime,
         regimeHoursUtc: hours,
       };
-      return [
-        {
+      const current = args.current;
+      const versions: SeedProviderCost[] = [];
+      if (current) {
+        versions.push({
           ...shared,
-          costPerUnitInUsdCents: applyCostRiskMultiplier(withChinaVat(args.current[keys[i]])),
+          costPerUnitInUsdCents: applyCostRiskMultiplier(withChinaVat(current[keys[i]])),
           pricingBasis: "marked-up",
           effectiveFrom: new Date("2025-01-01T00:00:00Z"),
-        },
-        {
-          ...shared,
-          costPerUnitInUsdCents: applyCostRiskMultiplier(withChinaVat(rates[keys[i]])),
-          pricingBasis: "marked-up",
-          effectiveFrom: DEEPSEEK_TIME_OF_DAY_PRICING_FROM,
-        },
-      ];
+        });
+      }
+      versions.push({
+        ...shared,
+        costPerUnitInUsdCents: applyCostRiskMultiplier(withChinaVat(rates[keys[i]])),
+        pricingBasis: "marked-up",
+        effectiveFrom: args.regimeFrom ?? DEEPSEEK_TIME_OF_DAY_PRICING_FROM,
+      });
+      return versions;
     })
   );
 }
@@ -1576,12 +1602,45 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     peak: { input: "0.0000440000", cachedInput: "0.0000014000", output: "0.0001320000" },
     offPeak: { input: "0.0000220000", cachedInput: "0.0000007000", output: "0.0000660000" },
   }),
+  // ⚠️ V4 Pro is discontinued at 2026-09-14T04:00Z (12:00 Beijing): from that instant DeepSeek
+  // routes `deepseek-v4-pro` requests to V4.1 Flash and bills them at the Flash price. These
+  // rows stay exactly as written — they are correct until then, and spend already declared
+  // against them must keep resolving forever. Consumers must move to the V4.1 Flash names
+  // before that instant; there is no honest value to append here, because the V4 Pro rate
+  // stops existing rather than changing.
   ...deepSeekModelCosts({
     namePrefix: "deepseek-v4-pro",
     label: "DeepSeek V4 Pro",
     current: { input: "0.0000435000", cachedInput: "0.0000003625", output: "0.0000870000" },
     peak: { input: "0.0001320000", cachedInput: "0.0000044000", output: "0.0003960000" },
     offPeak: { input: "0.0000660000", cachedInput: "0.0000022000", output: "0.0001980000" },
+  }),
+  // DeepSeek V4.1 Flash — released 2026-09-10, priced from 04:00 UTC that day.
+  //
+  // A NEW MODEL, not a re-price of V4 Flash: V4.1 Flash's peak cache-miss input is $0.3/1M
+  // against V4 Flash's $0.44/1M, and its off-peak output $0.6/1M against $0.66/1M. So it gets
+  // its own cost names and every `deepseek-v4-flash-*` row is left untouched.
+  //
+  //   V4.1 Flash, per 1M tokens   | off-peak | peak
+  //     Input tokens (cache hit)  | $0.003   | $0.006
+  //     Input tokens (cache miss) | $0.15    | $0.3
+  //     Output tokens             | $0.6     | $1.2
+  //
+  // Quoted from DeepSeek's 2026-09-10 announcement and confirmed against
+  // https://api-docs.deepseek.com/quick_start/pricing (read 2026-09-10). Peak hours are
+  // unchanged: 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday.
+  //
+  // No pre-schedule version: the model did not exist before 2026-09-10T04:00Z, so it never
+  // had a regime-free rate. A cost declared before that instant resolves to whatever was in
+  // force then, on whatever name it was declared with.
+  //
+  // The API model id chat-service sends is `deepseek-flash`.
+  ...deepSeekModelCosts({
+    namePrefix: "deepseek-v4.1-flash",
+    label: "DeepSeek V4.1 Flash",
+    regimeFrom: DEEPSEEK_V4_1_FLASH_PRICING_FROM,
+    peak: { input: "0.0000300000", cachedInput: "0.0000006000", output: "0.0001200000" },
+    offPeak: { input: "0.0000150000", cachedInput: "0.0000003000", output: "0.0000600000" },
   }),
   // Z.ai — direct vendor path, same shape as the DeepSeek rows above.
   // GLM-4.7-FlashX — $0.07/MTok input, $0.40/MTok output.
