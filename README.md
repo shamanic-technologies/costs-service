@@ -129,6 +129,12 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `deepseek-v4-pro-off-peak-tokens-cached-input` | 0.000013992 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
 | `deepseek-v4-pro-off-peak-tokens-output` | 0.00055332 | 1M tokens | Output tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
 | `deepseek-v4-pro-off-peak-tokens-output` | 0.00125928 | 1M tokens | Output tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4.1-flash-peak-tokens-input` | 0.0001908 | 1M tokens | Input tokens (DeepSeek V4.1 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4.1-flash-peak-tokens-cached-input` | 0.000003816 | 1M tokens | Cached input tokens (DeepSeek V4.1 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4.1-flash-peak-tokens-output` | 0.0007632 | 1M tokens | Output tokens (DeepSeek V4.1 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4.1-flash-off-peak-tokens-input` | 0.0000954 | 1M tokens | Input tokens (DeepSeek V4.1 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4.1-flash-off-peak-tokens-cached-input` | 0.000001908 | 1M tokens | Cached input tokens (DeepSeek V4.1 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4.1-flash-off-peak-tokens-output` | 0.0003816 | 1M tokens | Output tokens (DeepSeek V4.1 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
 | `zai-glm-4.7-flashx-tokens-input` | 0.000042 | 1M tokens | Input tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
 | `zai-glm-4.7-flashx-tokens-cached-input` | 0.000006 | 1M tokens | Cached input tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
 | `zai-glm-4.7-flashx-tokens-output` | 0.00024 | 1M tokens | Output tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
@@ -217,6 +223,24 @@ prices already declared keep whatever they were written with.
 > They are frozen at the pre-2026-08-16 rate and kept only because costs were declared against
 > them. DeepSeek has no regime-free rate after that instant, so there is no honest value to
 > append to them — consumers must move to the regime names before it.
+
+### DeepSeek V4.1 Flash (released 2026-09-10)
+
+`deepseek-v4.1-flash-{peak,off-peak}-tokens-{input,cached-input,output}`, priced from
+**2026-09-10 04:00 UTC**, the instant the vendor states. Its API model id is `deepseek-flash`
+(DeepSeek renamed the Flash id in the same release). It carries a single price version: the
+model did not exist before that instant, so it never had a regime-free rate. Its peak windows
+are DeepSeek's unchanged `Mon-Fri@01:00-04:00,Mon-Fri@06:00-10:00`.
+
+It is a **new model, not a re-price of V4 Flash** — peak cache-miss input is $0.3/1M against
+V4 Flash's $0.44/1M — so it gets its own names and every `deepseek-v4-flash-*` row is left
+exactly as written.
+
+> **V4 Pro is discontinued at 2026-09-14 04:00 UTC** (12:00 Beijing): from that instant
+> DeepSeek routes `deepseek-v4-pro` requests to V4.1 Flash and bills them at the Flash price.
+> The `deepseek-v4-pro-*` rows are correct until then and are kept unchanged afterwards, so
+> spend already declared against them keeps resolving. Consumers must move to the V4.1 Flash
+> names before that instant.
 
 ## Platform costs
 

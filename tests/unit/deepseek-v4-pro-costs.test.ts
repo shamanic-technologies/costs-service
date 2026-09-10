@@ -93,7 +93,7 @@ describe("DeepSeek V4 Pro unit costs (direct vendor)", () => {
     );
     for (const name of names) {
       expect(name).toMatch(
-        /^deepseek-v4-(flash|pro)(-(peak|off-peak))?-tokens-(input|cached-input|output)$/,
+        /^deepseek-(v4-(flash|pro)|v4\.1-flash)(-(peak|off-peak))?-tokens-(input|cached-input|output)$/,
       );
     }
   });
