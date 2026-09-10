@@ -133,7 +133,7 @@ describe("Pricing regime — the priced dimension that is a property of the mome
   });
 
   it("gives every (model, token class, instant) exactly one cost name", () => {
-    for (const model of ["deepseek-v4-flash", "deepseek-v4-pro"]) {
+    for (const model of ["deepseek-v4-flash", "deepseek-v4-pro", "deepseek-v4.1-flash"]) {
       for (const tokenClass of ["tokens-input", "tokens-cached-input", "tokens-output"]) {
         for (let day = 0; day < 7; day++) {
           for (let hour = 0; hour < 24; hour++) {
@@ -238,7 +238,9 @@ describe("Pricing regime — the priced dimension that is a property of the mome
   it("leaves every non-DeepSeek cost regime-free", () => {
     const regimed = SEED_PROVIDERS_COSTS.filter((c) => c.pricingRegime !== undefined);
     expect(new Set(regimed.map((c) => c.provider))).toEqual(new Set(["deepseek"]));
-    expect(regimed).toHaveLength(24); // 2 models × 2 regimes × 3 token classes × 2 versions
+    // 2 models × 2 regimes × 3 token classes × 2 versions, plus V4.1 Flash's
+    // 2 regimes × 3 token classes × 1 version (it launched already regime-priced).
+    expect(regimed).toHaveLength(30);
   });
 
   it("keeps a single price point per (name, plan, cycle, effective_from)", () => {
