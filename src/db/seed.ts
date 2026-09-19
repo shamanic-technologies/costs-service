@@ -181,6 +181,7 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   "serper-dev": "serper.dev",
   stripe: "stripe.com",
   twilio: "twilio.com",
+  typesafe: "typesafe.ai",
   // Advertising platforms we route spend to. Each is its own provider: the plan we resolve a
   // price on is per vendor path, and `google` (Gemini) is a different commercial relationship
   // from `google-ads` even though both are Google.
@@ -1970,6 +1971,34 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // TypeSafe (typesafe.ai) — direct vendor account, first-ever TypeSafe spend. Jev is served
+  // through chat-service like every other model.
+  //
+  // Vendor table, from https://docs.typesafe.ai/models.md (read 2026-09-19):
+  //   Jev 1.13 (`jev-1.13.0`, aliases `jev-latest` / `jev-preview`) — $42 per Btok,
+  //   i.e. $0.042 per 1M INPUT tokens. "Charged per input token. Output tokens are free."
+  //
+  // ONE row, and that is the whole catalog entry for this vendor:
+  //   - No output row. The vendor charges nothing for output, so a priced output name would
+  //     bill a customer for something no invoice carries. Seeding a symmetric output line
+  //     "like every other model" would be inventing a price, not recording one.
+  //   - No cached-input row: the vendor publishes no cache-hit dimension.
+  //   - No pricing regime: no peak/off-peak schedule, so one rate applies at every hour.
+  // The model segment carries the release (`jev-1.13`), not the alias — an alias moves to a
+  // new model without notice and the response reports the versioned id that answered, so a
+  // name keyed on `jev-latest` would silently reprice when the alias moves.
+  {
+    name: "typesafe-jev-1.13-tokens-input",
+    provider: "typesafe",
+    providerDomain: PROVIDER_DOMAINS.typesafe,
+    type: "Input tokens (Jev 1.13)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000042000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Advertising channels — one pass-through line per channel, see ADVERTISING_CHANNELS above.
   ...ADVERTISING_CHANNEL_COSTS,
 ];
@@ -2074,6 +2103,15 @@ export const SEED_PLATFORM_COSTS = [
   },
   {
     provider: "twilio",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // TypeSafe — direct vendor account, first-ever TypeSafe spend. Resolves the
+  // typesafe-jev-* price; without this row the name 500s `No platform cost configured for
+  // provider 'typesafe'`.
+  {
+    provider: "typesafe",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
