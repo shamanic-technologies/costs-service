@@ -156,6 +156,7 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `openai-gpt-6-astra-tokens-input` | 0.005 | 1M tokens | Input tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `openai-gpt-6-astra-tokens-cached-input` | 0.0005 | 1M tokens | Cached input tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `openai-gpt-6-astra-tokens-output` | 0.025 | 1M tokens | Output tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `typesafe-jev-1.13-tokens-input` | 0.000021 | 1M tokens | Input tokens (Jev 1.13) | typesafe | typesafe.ai | pay-as-you-go | monthly | marked-up |
 | `google-ads-spend` | 1 | USD cent | Google Ads platform spend | google-ads | ads.google.com | pay-as-you-go | monthly | pass-through |
 | `meta-ads-spend` | 1 | USD cent | Meta Ads platform spend | meta-ads | facebook.com | pay-as-you-go | monthly | pass-through |
 | `linkedin-ads-spend` | 1 | USD cent | LinkedIn Ads platform spend | linkedin-ads | linkedin.com | pay-as-you-go | monthly | pass-through |
@@ -242,6 +243,23 @@ exactly as written.
 > spend already declared against them keeps resolving. Consumers must move to the V4.1 Flash
 > names before that instant.
 
+### TypeSafe Jev (typesafe.ai)
+
+`typesafe-jev-1.13-tokens-input` is the **only** TypeSafe cost name, and that is the whole
+entry for the vendor. TypeSafe charges $0.042 per 1M input tokens ($42 per Btok) and charges
+nothing at all for output tokens, so there is no `-tokens-output` name to declare: a priced
+output row would bill a customer for something no invoice carries. There is no cache-hit
+dimension and no time-of-day schedule either, so the name carries no regime segment and
+`pricingRegime` reads `null`.
+
+The model segment is the release (`jev-1.13`), not an alias. `jev-latest` and `jev-preview`
+both point at `jev-1.13.0` today, but an alias moves to a new model without notice while the
+response reports the versioned id that answered — a name keyed on the alias would silently
+reprice. A new Jev release gets its own name.
+
+Consumers declare the exact input token count the response reports; output counts are not
+declared at all.
+
 ## Platform costs
 
 Each provider has an active platform cost config that determines which cost tier is used for billing. The `GET /v1/platform-prices/:name` endpoint resolves prices via the active platform cost — no fallbacks.
@@ -264,6 +282,7 @@ Each provider has an active platform cost config that determines which cost tier
 | serper-dev | pay-as-you-go | monthly |
 | stripe | pay-as-you-go | monthly |
 | twilio | pay-as-you-go | monthly |
+| typesafe | pay-as-you-go | monthly |
 | zai | pay-as-you-go | monthly |
 | google-ads | pay-as-you-go | monthly |
 | meta-ads | pay-as-you-go | monthly |

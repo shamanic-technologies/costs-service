@@ -30,6 +30,8 @@ const VENDOR_USD_PER_MTOK: Array<[name: string, usdPerMTok: number]> = [
   ["anthropic-haiku-4.5-tokens-output", 5],
   ["anthropic-sonnet-4.6-tokens-input", 3],
   ["anthropic-opus-4.6-tokens-input", 5],
+  // TypeSafe Jev 1.13 — input only ($0.042/MTok); the vendor charges nothing for output.
+  ["typesafe-jev-1.13-tokens-input", 0.042],
 ];
 
 /** Vendor dollars per 1M tokens -> the raw cents-per-token literal the seed carries. */
