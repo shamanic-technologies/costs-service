@@ -170,6 +170,7 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   anthropic: "anthropic.com",
   cloudflare: "cloudflare.com",
   deepseek: "deepseek.com",
+  explee: "explee.com",
   featured: "featured.com",
   firecrawl: "firecrawl.dev",
   google: "google.com",
@@ -180,6 +181,7 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   "scrape-do": "scrape.do",
   "serper-dev": "serper.dev",
   stripe: "stripe.com",
+  treg: "treg.to",
   twilio: "twilio.com",
   typesafe: "typesafe.ai",
   // Advertising platforms we route spend to. Each is its own provider: the plan we resolve a
@@ -509,6 +511,41 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0890000000"), // $0.00089 = 0.089¢ → 0.356¢
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2026-06-23T00:00:00Z"),
+  },
+  // Explee — credit-based B2B database (email finder), https://explee.com/pricing (read
+  // 2026-09-25 from the page's plan config). Starter plan: $49/month for 5,000 credits
+  // = 0.98¢/credit. Email find costs 1.5 credits (basic) or 5 credits (premium), charged only
+  // when an email is found. The consumer declares quantity = credits Explee consumed, so one
+  // price per credit covers both tiers — same shape as `apollo-credit`.
+  {
+    name: "explee-credit",
+    provider: "explee",
+    providerDomain: PROVIDER_DOMAINS.explee,
+    type: "Credit",
+    unit: "credit",
+    planTier: "starter",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.9800000000"), // $49 / 5,000 = 0.98¢
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2026-09-25T00:00:00Z"),
+  },
+  // treg.to — metered hub over 60+ data providers, prepaid balance, zero markup on the
+  // underlying provider's rate, a miss is free. The charge depends on which provider answered,
+  // so no fixed per-call price can represent it: every call returns its EXACT charge in integer
+  // micro-USD (response header `X-Treg-Cost-Micro`), and the consumer declares quantity = that
+  // integer. 1 micro-USD = $0.000001 = 0.0001¢. Enrichment is work we perform, so it carries
+  // the store markup like every other enrichment line (treg's own zero markup is on ITS side).
+  {
+    name: "treg-micro-usd",
+    provider: "treg",
+    providerDomain: PROVIDER_DOMAINS.treg,
+    type: "treg provider charge",
+    unit: "micro-USD",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0001000000"), // 1 µUSD = 0.0001¢
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2026-09-25T00:00:00Z"),
   },
   // Anthropic Opus 4.5: $5/MTok input, $25/MTok output
   // https://platform.claude.com/docs/en/about-claude/pricing
@@ -2004,6 +2041,20 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
 ];
 
 export const SEED_PLATFORM_COSTS = [
+  // Explee — Starter plan. Resolves explee-credit.
+  {
+    provider: "explee",
+    planTier: "starter",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2026-09-25T00:00:00Z"),
+  },
+  // treg.to — prepaid, metered per call. Resolves treg-micro-usd.
+  {
+    provider: "treg",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2026-09-25T00:00:00Z"),
+  },
   {
     provider: "apollo",
     planTier: "basic",
