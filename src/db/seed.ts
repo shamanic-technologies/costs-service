@@ -1520,6 +1520,39 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // St Lucia (+1 758). +1 is the North American Numbering Plan, not the United States:
+  // Twilio prices its "United States & Canada" row at $0.014/min under a bare `1`
+  // catch-all and gives every other NANP country its own prefixes and rate. St Lucia is
+  // 34-51x the US rate, so pricing it as the US loses ~$0.65 on every minute.
+  // Landline: $0.483/min ("St. Lucia", prefix 1758). Mobile: $0.7158/min ("St. Lucia -
+  // Mobile", 40 seven-digit prefixes 1758284..1758785 that the caller matches longest-
+  // prefix, exactly as Twilio does). Both read from Twilio's Pricing API
+  // (GET /v2/Voice/Countries/LC) on 2026-09-25.
+  // https://www.twilio.com/en-us/voice/pricing/lc
+  {
+    name: "twilio-voice-outbound-minute-lc-landline",
+    provider: "twilio",
+    providerDomain: PROVIDER_DOMAINS.twilio,
+    type: "Outbound voice minute (St Lucia, landline)",
+    unit: "minute",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("48.3000000000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "twilio-voice-outbound-minute-lc-mobile",
+    provider: "twilio",
+    providerDomain: PROVIDER_DOMAINS.twilio,
+    type: "Outbound voice minute (St Lucia, mobile)",
+    unit: "minute",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("71.5800000000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Cloudflare R2 — Class A operations (PUT, POST, COPY, LIST): $4.50 per million ops
   // Covers POST /upload in cloudflare-service (1 PUT per call).
   // https://developers.cloudflare.com/r2/pricing/
