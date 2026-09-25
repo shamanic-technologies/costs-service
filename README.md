@@ -41,6 +41,8 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `apify-clearpath-lead` | 7.5 | lead | ClearPath lead | apify | apify.com | starter | monthly | marked-up |
 | `apify-pipelinelabs-actor-start` | 0.005 | run | PipelineLabs actor start | apify | apify.com | starter | monthly | marked-up |
 | `apify-bounceverify-email` | 0.445 | email | BounceVerify email | apify | apify.com | starter | monthly | marked-up |
+| `explee-credit` | 4.9 | credit | Credit | explee | explee.com | starter | monthly | marked-up |
+| `treg-micro-usd` | 0.0005 | micro-USD | treg provider charge | treg | treg.to | pay-as-you-go | monthly | marked-up |
 | `anthropic-opus-4.5-tokens-input` | 0.0025 | 1M tokens | Input tokens (Opus 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-opus-4.5-tokens-output` | 0.0125 | 1M tokens | Output tokens (Opus 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-sonnet-4.5-tokens-input` | 0.0015 | 1M tokens | Input tokens (Sonnet 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
@@ -268,6 +270,8 @@ Each provider has an active platform cost config that determines which cost tier
 |---|---|---|
 | apollo | basic | monthly |
 | apify | starter | monthly |
+| explee | starter | monthly |
+| treg | pay-as-you-go | monthly |
 | anthropic | pay-as-you-go | monthly |
 | cloudflare | pay-as-you-go | monthly |
 | deepseek | pay-as-you-go | monthly |
