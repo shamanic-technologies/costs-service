@@ -27,6 +27,16 @@ const VOICE_ROWS = [
     type: "Outbound voice minute (France, mobile)",
     vendorCentsPerMinute: "16.0300000000",
   },
+  {
+    name: "twilio-voice-outbound-minute-lc-landline",
+    type: "Outbound voice minute (St Lucia, landline)",
+    vendorCentsPerMinute: "48.3000000000",
+  },
+  {
+    name: "twilio-voice-outbound-minute-lc-mobile",
+    type: "Outbound voice minute (St Lucia, mobile)",
+    vendorCentsPerMinute: "71.5800000000",
+  },
 ] as const;
 
 describe("Twilio outbound voice unit costs", () => {
@@ -58,14 +68,27 @@ describe("Twilio outbound voice unit costs", () => {
     });
   }
 
+  it("stores St Lucia at the vendor rate, 34-51x the US row, never at the US price", () => {
+    const us = SEED_PROVIDERS_COSTS.find((c) => c.name === "twilio-voice-outbound-minute-us")!;
+    const lcMobile = SEED_PROVIDERS_COSTS.find(
+      (c) => c.name === "twilio-voice-outbound-minute-lc-mobile",
+    )!;
+    const lcLandline = SEED_PROVIDERS_COSTS.find(
+      (c) => c.name === "twilio-voice-outbound-minute-lc-landline",
+    )!;
+    // Sibling anchor: US lists at $0.014/min, St Lucia at $0.7158 (mobile) / $0.483.
+    expect(Number(lcMobile.costPerUnitInUsdCents) / Number(us.costPerUnitInUsdCents)).toBeCloseTo(0.7158 / 0.014, 6);
+    expect(Number(lcLandline.costPerUnitInUsdCents) / Number(us.costPerUnitInUsdCents)).toBeCloseTo(0.483 / 0.014, 6);
+  });
+
   it("keeps the destination bands as distinct names rather than one blended rate", () => {
     const prices = VOICE_ROWS.map(
       (r) => SEED_PROVIDERS_COSTS.find((c) => c.name === r.name)!.costPerUnitInUsdCents,
     );
-    // Three destinations, three distinct prices. If a future edit collapses these onto one
+    // One distinct price per destination band. If a future edit collapses these onto one
     // number, the catalog has started quoting a rate Twilio never charges for at least two
     // of them — which is exactly what the per-destination naming exists to prevent.
-    expect(new Set(prices).size).toBe(3);
+    expect(new Set(prices).size).toBe(VOICE_ROWS.length);
   });
 
   it("does not declare an inbound or a destination-agnostic voice name", () => {

@@ -101,6 +101,8 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `twilio-voice-outbound-minute-us` | 7 | minute | Outbound voice minute (US) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
 | `twilio-voice-outbound-minute-fr-landline` | 9.35 | minute | Outbound voice minute (France, landline) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
 | `twilio-voice-outbound-minute-fr-mobile` | 80.15 | minute | Outbound voice minute (France, mobile) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
+| `twilio-voice-outbound-minute-lc-landline` | 241.5 | minute | Outbound voice minute (St Lucia, landline) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
+| `twilio-voice-outbound-minute-lc-mobile` | 357.9 | minute | Outbound voice minute (St Lucia, mobile) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
 | `cloudflare-r2-class-a-operation` | 0.00225 | operation | R2 Class A operation | cloudflare | cloudflare.com | pay-as-you-go | monthly | marked-up |
 | `cloudflare-r2-class-b-operation` | 0.00018 | operation | R2 Class B operation | cloudflare | cloudflare.com | pay-as-you-go | monthly | marked-up |
 | `deepseek-v4-flash-tokens-input` | 0.00007 | 1M tokens | Input tokens (DeepSeek V4 Flash) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
