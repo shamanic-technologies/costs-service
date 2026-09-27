@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { eq, lte, desc, and } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { providersCosts, platformCosts } from "../db/schema.js";
+import { providersCosts, platformCosts, providerCostVendorCosts } from "../db/schema.js";
+import { resolveVendorCostFromSeed } from "../db/vendor-costs.js";
 import { requireApiKey } from "../middleware/auth.js";
 import { PutProviderCostBodySchema } from "../schemas.js";
 import { getTraceIdentityHeaders, traceEvent } from "../lib/trace-event.js";
@@ -243,6 +244,21 @@ router.put("/v1/providers-costs/:name", requireApiKey, async (req, res) => {
         effectiveFrom: effectiveFrom ? new Date(effectiveFrom) : new Date(),
       })
       .returning();
+
+    // State the new version's vendor cost now, so an `/internal/vendor-costs` read never sees a
+    // version without one. A hand-PUT price is resolved against the seed's vendor rates like any
+    // other row: stated only if it reproduces one exactly, otherwise recorded as unknown.
+    const vendor = resolveVendorCostFromSeed({ ...inserted, createdAt: inserted.createdAt });
+    await db
+      .insert(providerCostVendorCosts)
+      .values({
+        providerCostId: inserted.id,
+        vendorCostPerUnitInUsdCents: vendor.vendorCostPerUnitInUsdCents,
+        markupMultiplier: vendor.markupMultiplier,
+        derivation: vendor.derivation,
+        unknownReason: vendor.unknownReason,
+      })
+      .onConflictDoNothing();
 
     traceEvent({
       runId: req.headers["x-run-id"] as string | undefined,

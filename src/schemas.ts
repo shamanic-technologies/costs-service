@@ -579,6 +579,96 @@ registry.registerPath({
   },
 });
 
+// --- Vendor cost per price version (STAFF-ONLY, service api key) ---
+//
+// The vendor cost reveals our margin. These reads require X-API-Key and nothing else; they are
+// never proxied by the public gateway, and no /v1/* response carries any of these fields.
+
+export const VendorCostVersionSchema = z
+  .object({
+    id: z.string().uuid().openapi({ description: "The providers_costs row (price version) id." }),
+    name: z.string(),
+    provider: z.string(),
+    planTier: z.string(),
+    billingCycle: z.string(),
+    unit: z.string(),
+    pricingBasis: z.enum(["marked-up", "pass-through"]),
+    pricingRegime: z.string().nullable(),
+    billedPricePerUnitInUsdCents: z.string().nullable().openapi({
+      description:
+        "The price this version charged per unit — byte-equal to what /v1/platform-prices/{name} served while it was in force. Null on a delisted version.",
+      example: "0.0005000000",
+    }),
+    vendorCostPerUnitInUsdCents: z.string().nullable().openapi({
+      description:
+        "What one unit REALLY cost us from the vendor at this version, before our markup, non-recoverable VAT included (DeepSeek: list price x 1.06). Stated only when a vendor rate on record reproduces the billed price exactly under the markup in force when the version was written. Null = unknown (see vendorCostUnknownReason); never the billed price, never billed / today's multiplier.",
+      example: "0.0001000000",
+    }),
+    vendorCostKnown: z.boolean(),
+    vendorCostUnknownReason: z
+      .enum(["no-billable-price", "no-vendor-rate-on-record", "ambiguous-vendor-rate", "not-yet-stated"])
+      .nullable(),
+    markupMultiplier: z.string().nullable().openapi({
+      description: "billed / vendor for this version (4 decimals), e.g. '6.0000' in the 6x era, '1.0000' for pass-through. Null when unknown.",
+      example: "5.0000",
+    }),
+    vendorCostDerivation: z.enum(["pass-through", "seed-vendor-rate", "seed-vendor-rate-pre-vat", "unknown"]),
+    effectiveFrom: z.string().datetime(),
+    createdAt: z.string().datetime().openapi({
+      description: "When this version was written. It was served from max(effectiveFrom, createdAt).",
+    }),
+  })
+  .openapi("VendorCostVersion");
+
+export const VendorCostVersionListSchema = z
+  .object({ versions: z.array(VendorCostVersionSchema) })
+  .openapi("VendorCostVersionList");
+
+export const VendorCostAtSchema = z
+  .object({ at: z.string().datetime(), version: VendorCostVersionSchema })
+  .openapi("VendorCostAt");
+
+registry.registerPath({
+  method: "get",
+  path: "/internal/vendor-costs",
+  operationId: "listVendorCosts",
+  summary: "Every price version of every cost name, with its vendor cost (service api key only)",
+  description:
+    "Bulk read for joins: match a recorded cost on name + billedPricePerUnitInUsdCents, using the version served at the record's time (served from max(effectiveFrom, createdAt)). No identity headers.",
+  security: [{ ApiKeyAuth: [] }],
+  request: {
+    query: z.object({
+      names: z.string().optional().openapi({ description: "Comma-separated cost names to restrict to." }),
+    }),
+  },
+  responses: {
+    200: { description: "All price versions", content: { "application/json": { schema: VendorCostVersionListSchema } } },
+    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
+    500: { description: "Internal server error", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/internal/vendor-costs/{name}",
+  operationId: "getVendorCostAt",
+  summary: "The price version of a cost name in force at an instant, with its vendor cost (service api key only)",
+  security: [{ ApiKeyAuth: [] }],
+  request: {
+    params: z.object({ name: CostNameParam }),
+    query: z.object({
+      at: z.string().datetime().optional().openapi({ description: "ISO-8601 instant; defaults to now." }),
+    }),
+  },
+  responses: {
+    200: { description: "Version in force at `at`", content: { "application/json": { schema: VendorCostAtSchema } } },
+    400: { description: "Invalid `at`", content: { "application/json": { schema: ErrorResponseSchema } } },
+    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
+    404: { description: "No version in force at `at`", content: { "application/json": { schema: ErrorResponseSchema } } },
+    500: { description: "Internal server error", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
+});
+
 registry.registerComponent("securitySchemes", "ApiKeyAuth", {
   type: "apiKey",
   in: "header",

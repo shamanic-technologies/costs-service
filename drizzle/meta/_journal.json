@@ -64,6 +64,13 @@
       "when": 1787504450379,
       "tag": "0008_military_human_fly",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790485874407,
+      "tag": "0009_vendor_costs",
+      "breakpoints": true
     }
   ]
 }
