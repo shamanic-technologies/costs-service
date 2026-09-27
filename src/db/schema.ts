@@ -1,4 +1,5 @@
-import { pgTable, uuid, text, timestamp, numeric, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, numeric, uniqueIndex, index, check, foreignKey } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const providersCosts = pgTable(
   "providers_costs",
@@ -58,6 +59,45 @@ export const providersCosts = pgTable(
 
 export type ProviderCost = typeof providersCosts.$inferSelect;
 export type NewProviderCost = typeof providersCosts.$inferInsert;
+
+/**
+ * What one unit of a `providers_costs` price version REALLY cost us from the vendor, before our
+ * markup — one row per price version, written once and never updated (see src/lib/vendor-cost.ts).
+ *
+ * A SEPARATE table rather than a column on `providers_costs` on purpose: every `/v1/providers-costs`
+ * read serializes the whole catalog row and those routes require no api key, so a column there
+ * would leak our margin. This table is read ONLY by the api-key-gated `/internal/vendor-costs`.
+ *
+ * NULL vendor cost = not stated, and `unknown_reason` says why. Never zero, never the billed price.
+ */
+export const providerCostVendorCosts = pgTable(
+  "provider_cost_vendor_costs",
+  {
+    providerCostId: uuid("provider_cost_id").primaryKey(),
+    vendorCostPerUnitInUsdCents: numeric("vendor_cost_per_unit_in_usd_cents", { precision: 18, scale: 10 }),
+    // billed ÷ vendor for this version (e.g. 5.0000, 1.0000 for pass-through, 4.7170 for a
+    // DeepSeek row billed 5x on the VAT-exclusive list price). NULL when the vendor cost is unknown.
+    markupMultiplier: numeric("markup_multiplier", { precision: 10, scale: 4 }),
+    derivation: text("derivation").notNull(),
+    unknownReason: text("unknown_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // Named explicitly: drizzle's generated name is 66 characters, Postgres truncates it to 63,
+    // and the CI drift check (`drizzle-kit push`) then sees a constraint to recreate forever.
+    foreignKey({
+      name: "provider_cost_vendor_costs_provider_cost_fk",
+      columns: [table.providerCostId],
+      foreignColumns: [providersCosts.id],
+    }).onDelete("cascade"),
+    check(
+      "provider_cost_vendor_costs_known_xor_reason",
+      sql`(${table.vendorCostPerUnitInUsdCents} IS NULL) = (${table.unknownReason} IS NOT NULL)`,
+    ),
+  ]
+);
+
+export type ProviderCostVendorCost = typeof providerCostVendorCosts.$inferSelect;
 
 export const platformCosts = pgTable(
   "platform_costs",

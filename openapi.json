@@ -422,6 +422,140 @@
           "planTier",
           "billingCycle"
         ]
+      },
+      "VendorCostVersionList": {
+        "type": "object",
+        "properties": {
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VendorCostVersion"
+            }
+          }
+        },
+        "required": [
+          "versions"
+        ]
+      },
+      "VendorCostVersion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The providers_costs row (price version) id."
+          },
+          "name": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "planTier": {
+            "type": "string"
+          },
+          "billingCycle": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "pricingBasis": {
+            "type": "string",
+            "enum": [
+              "marked-up",
+              "pass-through"
+            ]
+          },
+          "pricingRegime": {
+            "type": "string",
+            "nullable": true
+          },
+          "billedPricePerUnitInUsdCents": {
+            "type": "string",
+            "nullable": true,
+            "description": "The price this version charged per unit — byte-equal to what /v1/platform-prices/{name} served while it was in force. Null on a delisted version.",
+            "example": "0.0005000000"
+          },
+          "vendorCostPerUnitInUsdCents": {
+            "type": "string",
+            "nullable": true,
+            "description": "What one unit REALLY cost us from the vendor at this version, before our markup, non-recoverable VAT included (DeepSeek: list price x 1.06). Stated only when a vendor rate on record reproduces the billed price exactly under the markup in force when the version was written. Null = unknown (see vendorCostUnknownReason); never the billed price, never billed / today's multiplier.",
+            "example": "0.0001000000"
+          },
+          "vendorCostKnown": {
+            "type": "boolean"
+          },
+          "vendorCostUnknownReason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "no-billable-price",
+              "no-vendor-rate-on-record",
+              "ambiguous-vendor-rate",
+              "not-yet-stated",
+              null
+            ]
+          },
+          "markupMultiplier": {
+            "type": "string",
+            "nullable": true,
+            "description": "billed / vendor for this version (4 decimals), e.g. '6.0000' in the 6x era, '1.0000' for pass-through. Null when unknown.",
+            "example": "5.0000"
+          },
+          "vendorCostDerivation": {
+            "type": "string",
+            "enum": [
+              "pass-through",
+              "seed-vendor-rate",
+              "seed-vendor-rate-pre-vat",
+              "unknown"
+            ]
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this version was written. It was served from max(effectiveFrom, createdAt)."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "planTier",
+          "billingCycle",
+          "unit",
+          "pricingBasis",
+          "pricingRegime",
+          "billedPricePerUnitInUsdCents",
+          "vendorCostPerUnitInUsdCents",
+          "vendorCostKnown",
+          "vendorCostUnknownReason",
+          "markupMultiplier",
+          "vendorCostDerivation",
+          "effectiveFrom",
+          "createdAt"
+        ]
+      },
+      "VendorCostAt": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "$ref": "#/components/schemas/VendorCostVersion"
+          }
+        },
+        "required": [
+          "at",
+          "version"
+        ]
       }
     },
     "parameters": {
@@ -1337,6 +1471,141 @@
           },
           "404": {
             "description": "No platform cost configured for this provider",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/vendor-costs": {
+      "get": {
+        "operationId": "listVendorCosts",
+        "summary": "Every price version of every cost name, with its vendor cost (service api key only)",
+        "description": "Bulk read for joins: match a recorded cost on name + billedPricePerUnitInUsdCents, using the version served at the record's time (served from max(effectiveFrom, createdAt)). No identity headers.",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated cost names to restrict to."
+            },
+            "required": false,
+            "description": "Comma-separated cost names to restrict to.",
+            "name": "names",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All price versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorCostVersionList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/vendor-costs/{name}": {
+      "get": {
+        "operationId": "getVendorCostAt",
+        "summary": "The price version of a cost name in force at an instant, with its vendor cost (service api key only)",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CostName"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "ISO-8601 instant; defaults to now."
+            },
+            "required": false,
+            "description": "ISO-8601 instant; defaults to now.",
+            "name": "at",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Version in force at `at`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorCostAt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `at`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No version in force at `at`",
             "content": {
               "application/json": {
                 "schema": {
