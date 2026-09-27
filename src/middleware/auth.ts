@@ -9,7 +9,10 @@ export function requireApiKey(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-const IDENTITY_EXEMPT_PREFIXES = ["/health", "/openapi.json", "/v1/platform-prices"];
+// `/internal` is service-to-service (often org-less, e.g. a platform sweep in runs-service), so it
+// carries no org/user/run identity; it is gated by the service api key instead (requireApiKey on
+// the router). `/v1/platform-prices` is public on purpose.
+const IDENTITY_EXEMPT_PREFIXES = ["/health", "/openapi.json", "/v1/platform-prices", "/internal"];
 
 function isIdentityExempt(path: string): boolean {
   return IDENTITY_EXEMPT_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));

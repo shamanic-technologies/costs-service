@@ -7,10 +7,12 @@ import healthRoutes from "./routes/health.js";
 import providersCostsRoutes from "./routes/providers-costs.js";
 import platformCostsRoutes from "./routes/platform-costs.js";
 import platformPricesRoutes from "./routes/platform-prices.js";
+import internalVendorCostsRoutes from "./routes/internal-vendor-costs.js";
 import { requireIdentityHeaders } from "./middleware/auth.js";
 import { db, sql } from "./db/index.js";
 import { runMigrationsIfNeeded } from "./db/migrate.js";
 import { seedProvidersCosts, seedPlatformCosts } from "./db/seed.js";
+import { recordVendorCosts } from "./db/vendor-costs.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,6 +38,7 @@ app.use(healthRoutes);
 app.use(providersCostsRoutes);
 app.use(platformCostsRoutes);
 app.use(platformPricesRoutes);
+app.use(internalVendorCostsRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Not found" });
@@ -50,6 +53,11 @@ if (process.env.NODE_ENV !== "test") {
     })
     .then(() => {
       return seedPlatformCosts();
+    })
+    .then(() => {
+      // After the seed, in the same boot: a version the seed just appended is stated while the
+      // vendor rate it was computed from is the code running (see src/db/vendor-costs.ts).
+      return recordVendorCosts();
     })
     .then(() => {
       app.listen(Number(PORT), "::", () => {

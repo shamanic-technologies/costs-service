@@ -119,6 +119,14 @@ No default anywhere on the write side: the field is required on `SeedProviderCos
 
 **NEVER reintroduce `ON CONFLICT (...) DO UPDATE SET cost_per_unit_in_usd_cents` (or `plan_tier`).** Reusing an `effective_from` + DO UPDATE silently OVERWRITES the row and destroys history — that was the bug. Past reprices (featured pitch #134, google rename, etc.) already lost their history this way; the fix only protects future changes. A `pg_advisory_xact_lock` serializes concurrent boots so multi-replica deploys can't double-append. Regression: `tests/integration/seed-append-history.test.ts` (fails red under DO UPDATE — one row, old value gone).
 
+## Vendor cost per price version = staff-only, stated from evidence, written once
+
+`provider_cost_vendor_costs` holds, per `providers_costs` row, what one unit REALLY cost us from the vendor (before markup, non-recoverable VAT included). Served ONLY by `/internal/vendor-costs*` behind `requireApiKey` — it reveals our margin. It is a SEPARATE table on purpose: every `/v1/providers-costs*` read serializes the whole catalog row and needs no api key, so a column there would leak. Never add a vendor field to any `/v1/*` response. Regression: `tests/integration/internal-vendor-costs.test.ts` (401 without key, `/v1/*` byte-identical).
+
+- **Written at boot, right after the seed** (`recordVendorCosts`, `src/db/vendor-costs.ts`), and inline by `PUT /v1/providers-costs/:name`. Write-once: a row with a vendor-cost row is never revisited, because a seed vendor literal edited later drops the old one and re-deriving could only lose evidence.
+- **Stated only by exact reproduction** (`resolveVendorCost`, `src/lib/vendor-cost.ts`): billed = a vendor rate the seed records for that (name, plan, cycle) × a markup in force at the row's `created_at` (`MARKUP_ERAS`). DeepSeek rows written before VAT was priced (`CHINA_VAT_PRICED_FROM`) match on list × m and state list × 1.06. Anything else is `null` + a reason, never billed ÷ today's multiplier. First prod backfill: 490/536 stated, 46 unknown (Vercel-gateway DeepSeek, the 10x mis-seeded Fable/Astra rows, delisted Instantly, early Featured).
+- ⚠️ **Changing `COST_PROFIT_MULTIPLIER`/`COST_RISK_MULTIPLIER` = append a `MARKUP_ERAS` entry dated at the promote's merge** (`tests/unit/vendor-cost.test.ts` fails until the last era equals `COST_DEFAULT_MULTIPLIER`). And no per-cost `applyCostRiskMultiplier(x, override)` in the seed: the current seed's vendor rate is billed ÷ the default markup, asserted exact at boot.
+
 ## Cold-email infrastructure = DELISTED, not deleted (2026-08)
 
 Instantly subscriptions, MailForge, PrimeForge and the Claude Max seat moved OFF the
