@@ -139,6 +139,29 @@ describe("invertMarkup", () => {
   });
 });
 
+describe("invertMarkup", () => {
+  it("recovers a vendor rate a fractional markup rounded (2.5x on an odd last digit)", () => {
+    // 0.6333333333 x 2.5 = 1.58333333325 -> seed rounds half-up to 1.5833333333, which 2.5 does not divide.
+    expect(divideExactly("1.5833333333", 2.5)).toBeNull();
+    expect(invertMarkup("1.5833333333", 2.5)).toBe("0.6333333333");
+    expect(applyCostRiskMultiplier("0.6333333333", 2.5)).toBe("1.5833333333");
+  });
+
+  it("agrees with exact division on an integer markup and refuses a billed value no vendor rate produces", () => {
+    expect(invertMarkup("0.0006000000", 6)).toBe("0.0001000000");
+    expect(invertMarkup("0.0000000001", 6)).toBeNull();
+  });
+
+  it("reproduces every current marked-up seed row (the boot would throw otherwise)", () => {
+    for (const entry of SEED_PROVIDERS_COSTS) {
+      if (entry.pricingBasis !== "marked-up" || entry.costPerUnitInUsdCents === null) continue;
+      const vendor = invertMarkup(entry.costPerUnitInUsdCents, COST_DEFAULT_MULTIPLIER);
+      expect(vendor, entry.name).not.toBeNull();
+      expect(applyCostRiskMultiplier(vendor!, COST_DEFAULT_MULTIPLIER), entry.name).toBe(entry.costPerUnitInUsdCents);
+    }
+  });
+});
+
 describe("divideExactly", () => {
   it("returns the quotient only when it is exact at 10 decimals", () => {
     expect(divideExactly("0.0006000000", 6)).toBe("0.0001000000");
