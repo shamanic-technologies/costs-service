@@ -77,9 +77,9 @@ describe("/internal/vendor-costs — vendor cost per price version, service-auth
     const res = await request(app).get("/internal/vendor-costs").set(API_KEY);
     expect(res.status).toBe(200);
     const versions: any[] = res.body.versions;
-    expect(versions.length).toBe((await db.select().from(providersCosts)).length);
+    expect(versions.filter((v) => !v.reconstructed).length).toBe((await db.select().from(providersCosts)).length);
 
-    const byName = (n: string) => versions.filter((v) => v.name === n).at(-1);
+    const byName = (n: string) => versions.filter((v) => v.name === n && !v.reconstructed).at(-1);
     expect(byName("anthropic-haiku-4.5-tokens-input")).toMatchObject({
       billedPricePerUnitInUsdCents: "0.0005000000",
       vendorCostPerUnitInUsdCents: "0.0001000000", // $1/MTok
@@ -171,6 +171,70 @@ describe("/internal/vendor-costs — vendor cost per price version, service-auth
       vendorCostDerivation: "unknown",
       vendorCostUnknownReason: "no-vendor-rate-on-record",
     });
+  });
+
+  it("restates a production row recorded as unknown once a statement covers it (Instantly, what we paid)", async () => {
+    // The 2026-07-09 Instantly per-email version as production holds it: written before the
+    // statements existed, recorded unknown because the delisted seed carries no rate.
+    const at = new Date("2026-07-09T15:11:05Z");
+    const inst = await insertTestProviderCost({
+      name: "instantly-account-email-sent",
+      provider: "instantly",
+      planTier: "hypergrowth",
+      billingCycle: "monthly",
+      costPerUnitInUsdCents: "6.5481481480",
+      effectiveFrom: at,
+    });
+    await db.update(providersCosts).set({ createdAt: at }).where(eq(providersCosts.id, inst.id));
+    await db.insert(providerCostVendorCosts).values({
+      providerCostId: inst.id,
+      vendorCostPerUnitInUsdCents: null,
+      markupMultiplier: null,
+      derivation: "unknown",
+      unknownReason: "no-vendor-rate-on-record",
+    });
+
+    await recordVendorCosts();
+    const [restated] = await db.select().from(providerCostVendorCosts).where(eq(providerCostVendorCosts.providerCostId, inst.id));
+    expect(restated).toMatchObject({
+      vendorCostPerUnitInUsdCents: "2.7788644351",
+      derivation: "paid-allocation",
+      unknownReason: null,
+      markupMultiplier: "2.3564",
+    });
+
+    const res = await request(app).get("/internal/vendor-costs?names=instantly-account-email-sent").set(API_KEY);
+    const v = res.body.versions.find((x: any) => x.id === inst.id);
+    expect(v).toMatchObject({ vendorCostKnown: true, vendorCostDerivation: "paid-allocation", reconstructed: false });
+    expect(v.vendorCostNote).toMatch(/bank charges/);
+
+    // Idempotent: a second boot rewrites nothing.
+    await recordVendorCosts();
+    const [again] = await db.select().from(providerCostVendorCosts).where(eq(providerCostVendorCosts.providerCostId, inst.id));
+    expect(again.createdAt).toEqual(restated.createdAt);
+    expect(again.vendorCostPerUnitInUsdCents).toBe("2.7788644351");
+  });
+
+  it("lists the versions overwritten in place before v0.25.0, never writing them into the catalogue", async () => {
+    await recordVendorCosts();
+    const catalogBefore = (await db.select().from(providersCosts)).length;
+    const res = await request(app).get("/internal/vendor-costs?names=anthropic-sonnet-4.6-tokens-input,instantly-email-send").set(API_KEY);
+    const rec = res.body.versions.filter((v: any) => v.reconstructed);
+    expect(rec.find((v: any) => v.name === "anthropic-sonnet-4.6-tokens-input")).toMatchObject({
+      billedPricePerUnitInUsdCents: "0.0003000000",
+      vendorCostPerUnitInUsdCents: "0.0003000000",
+      vendorCostKnown: true,
+      markupMultiplier: null, // never read as a markup "in force now" (it has no successor row)
+      vendorCostDerivation: "seed-vendor-rate",
+      effectiveFrom: "2026-02-18T00:00:00.000Z",
+      createdAt: "2026-02-18T00:00:00.000Z",
+    });
+    expect(rec.find((v: any) => v.name === "instantly-email-send")).toMatchObject({
+      billedPricePerUnitInUsdCents: "0.9400000000",
+      vendorCostPerUnitInUsdCents: "6.8469579746",
+      vendorCostDerivation: "paid-allocation",
+    });
+    expect((await db.select().from(providersCosts)).length).toBe(catalogBefore);
   });
 
   it("is write-once and idempotent across boots", async () => {
