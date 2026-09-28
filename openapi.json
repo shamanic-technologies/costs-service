@@ -442,8 +442,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "format": "uuid",
-            "description": "The providers_costs row (price version) id."
+            "description": "The providers_costs row (price version) id — a uuid, or a synthetic 'reconstructed:<name>:<plan>:<billed>' id on a reconstructed version."
           },
           "name": {
             "type": "string"
@@ -458,7 +457,9 @@
             "type": "string"
           },
           "unit": {
-            "type": "string"
+            "type": "string",
+            "nullable": true,
+            "description": "Null only on a reconstructed version."
           },
           "pricingBasis": {
             "type": "string",
@@ -493,6 +494,7 @@
               "no-billable-price",
               "no-vendor-rate-on-record",
               "ambiguous-vendor-rate",
+              "vendor-rate-not-retained",
               "not-yet-stated",
               null
             ]
@@ -500,7 +502,7 @@
           "markupMultiplier": {
             "type": "string",
             "nullable": true,
-            "description": "billed / vendor for this version (4 decimals), e.g. '6.0000' in the 6x era, '1.0000' for pass-through. Null when unknown.",
+            "description": "billed / vendor for this version (4 decimals), e.g. '6.0000' in the 6x era, '1.0000' for pass-through. Null when unknown, or when the vendor cost is 0.",
             "example": "5.0000"
           },
           "vendorCostDerivation": {
@@ -509,8 +511,20 @@
               "pass-through",
               "seed-vendor-rate",
               "seed-vendor-rate-pre-vat",
+              "paid-allocation",
+              "vendor-list-price",
               "unknown"
-            ]
+            ],
+            "description": "How the vendor cost was stated. 'seed-vendor-rate' / '-pre-vat': a vendor rate the seed records reproduces the billed price. 'paid-allocation': what we actually paid (bank charges, prorated) divided by the units production recorded — the cold-email infrastructure and Featured lines, whose seed rate was a model. 'vendor-list-price': the vendor's list price, where the billed row itself was wrong (mis-seeded) or the unit is free. 'pass-through': billed = vendor."
+          },
+          "vendorCostNote": {
+            "type": "string",
+            "nullable": true,
+            "description": "Where a stated (non-seed) vendor cost comes from, or why it cannot be known, in words. Null for a plain seed reproduction."
+          },
+          "reconstructed": {
+            "type": "boolean",
+            "description": "True for a price version overwritten in place before v0.25.0 (2026-06-07) and therefore absent from the catalogue: listed so a cost row that froze its price can still be priced. Its id is synthetic, effectiveFrom = createdAt = the first day it was billed, and markupMultiplier is null (it prices old cost rows; it is not a markup in force)."
           },
           "effectiveFrom": {
             "type": "string",
@@ -537,6 +551,8 @@
           "vendorCostUnknownReason",
           "markupMultiplier",
           "vendorCostDerivation",
+          "vendorCostNote",
+          "reconstructed",
           "effectiveFrom",
           "createdAt"
         ]

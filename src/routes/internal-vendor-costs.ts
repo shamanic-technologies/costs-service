@@ -3,6 +3,11 @@ import { and, asc, desc, eq, inArray, lte } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { platformCosts, providerCostVendorCosts, providersCosts } from "../db/schema.js";
 import { requireApiKey } from "../middleware/auth.js";
+import {
+  RECONSTRUCTED_PRICE_VERSIONS,
+  findVendorCostStatement,
+  type ReconstructedPriceVersion,
+} from "../lib/vendor-cost-statements.js";
 
 /**
  * Vendor cost per price version — STAFF-ONLY, service-auth only.
@@ -38,8 +43,42 @@ function toVersion({ pc, v }: VersionRow) {
     vendorCostUnknownReason: v ? v.unknownReason : "not-yet-stated",
     markupMultiplier: v?.markupMultiplier ?? null,
     vendorCostDerivation: v ? v.derivation : "unknown",
+    // Where the statement came from, in words, when it is not a plain seed reproduction.
+    vendorCostNote: findVendorCostStatement(pc)?.note ?? null,
+    reconstructed: false,
     effectiveFrom: pc.effectiveFrom,
     createdAt: pc.createdAt,
+  };
+}
+
+/**
+ * A version overwritten in place before v0.25.0 (see vendor-cost-statements.ts). It is NOT in
+ * `providers_costs` and never will be; it is listed so a consumer pricing a cost row that froze
+ * its price by (name, billed unit price, date) finds it. `servedFrom` stands in for both dates.
+ */
+function toReconstructedVersion(r: ReconstructedPriceVersion) {
+  return {
+    id: `reconstructed:${r.name}:${r.planTier}:${r.billedPricePerUnitInUsdCents}`,
+    name: r.name,
+    provider: r.provider,
+    planTier: r.planTier,
+    billingCycle: r.billingCycle,
+    unit: null,
+    pricingBasis: "marked-up",
+    pricingRegime: null,
+    billedPricePerUnitInUsdCents: r.billedPricePerUnitInUsdCents,
+    vendorCostPerUnitInUsdCents: r.vendorCostPerUnitInUsdCents,
+    vendorCostKnown: true,
+    vendorCostUnknownReason: null,
+    // Null on purpose: a reconstructed version has no successor row to end it, so a reader of
+    // "the markups in force now" (the admin's store-markup card) would count a retired name's
+    // 2026-02 price as a current line. It exists to price old cost rows, not to state a markup.
+    markupMultiplier: null,
+    vendorCostDerivation: r.derivation,
+    vendorCostNote: r.note,
+    reconstructed: true,
+    effectiveFrom: r.servedFrom,
+    createdAt: r.servedFrom,
   };
 }
 
@@ -58,7 +97,8 @@ router.get("/internal/vendor-costs", async (req, res) => {
       .where(names && names.length > 0 ? inArray(providersCosts.name, names) : undefined)
       .orderBy(asc(providersCosts.name), asc(providersCosts.effectiveFrom), asc(providersCosts.createdAt));
 
-    res.json({ versions: rows.map(toVersion) });
+    const reconstructed = RECONSTRUCTED_PRICE_VERSIONS.filter((r) => !names || names.length === 0 || names.includes(r.name));
+    res.json({ versions: [...rows.map(toVersion), ...reconstructed.map(toReconstructedVersion)] });
   } catch (err) {
     console.error("[Costs Service] Error listing vendor costs:", err);
     res.status(500).json({ error: "Internal server error" });

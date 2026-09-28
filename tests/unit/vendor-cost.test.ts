@@ -186,9 +186,11 @@ describe("resolveVendorCost on historical price versions", () => {
     });
   });
 
-  it("never falls back to billed ÷ multiplier when no vendor rate on record reproduces it (the 10x mis-seeded Fable row)", () => {
+  it("never falls back to billed ÷ multiplier when no vendor rate on record reproduces it (a 10x mis-seeded row no statement covers)", () => {
+    // The real 2026-09-09 Fable rows are stated at the list price in vendor-cost-statements.ts; the
+    // same mis-scaled price written on any other day is covered by nothing and must stay unknown.
     const r = resolveVendorCost(
-      row({ name: "anthropic-fable-5.1-tokens-input", costPerUnitInUsdCents: "0.0006000000", createdAt: new Date("2026-09-09T11:10:23Z") }),
+      row({ name: "anthropic-fable-5.1-tokens-input", costPerUnitInUsdCents: "0.0006000000", createdAt: new Date("2026-09-10T11:10:23Z") }),
       rates,
     );
     expect(r.vendorCostPerUnitInUsdCents).toBeNull();

@@ -586,12 +586,12 @@ registry.registerPath({
 
 export const VendorCostVersionSchema = z
   .object({
-    id: z.string().uuid().openapi({ description: "The providers_costs row (price version) id." }),
+    id: z.string().openapi({ description: "The providers_costs row (price version) id — a uuid, or a synthetic 'reconstructed:<name>:<plan>:<billed>' id on a reconstructed version." }),
     name: z.string(),
     provider: z.string(),
     planTier: z.string(),
     billingCycle: z.string(),
-    unit: z.string(),
+    unit: z.string().nullable().openapi({ description: "Null only on a reconstructed version." }),
     pricingBasis: z.enum(["marked-up", "pass-through"]),
     pricingRegime: z.string().nullable(),
     billedPricePerUnitInUsdCents: z.string().nullable().openapi({
@@ -606,13 +606,23 @@ export const VendorCostVersionSchema = z
     }),
     vendorCostKnown: z.boolean(),
     vendorCostUnknownReason: z
-      .enum(["no-billable-price", "no-vendor-rate-on-record", "ambiguous-vendor-rate", "not-yet-stated"])
+      .enum(["no-billable-price", "no-vendor-rate-on-record", "ambiguous-vendor-rate", "vendor-rate-not-retained", "not-yet-stated"])
       .nullable(),
     markupMultiplier: z.string().nullable().openapi({
-      description: "billed / vendor for this version (4 decimals), e.g. '6.0000' in the 6x era, '1.0000' for pass-through. Null when unknown.",
+      description: "billed / vendor for this version (4 decimals), e.g. '6.0000' in the 6x era, '1.0000' for pass-through. Null when unknown, or when the vendor cost is 0.",
       example: "5.0000",
     }),
-    vendorCostDerivation: z.enum(["pass-through", "seed-vendor-rate", "seed-vendor-rate-pre-vat", "unknown"]),
+    vendorCostDerivation: z.enum(["pass-through", "seed-vendor-rate", "seed-vendor-rate-pre-vat", "paid-allocation", "vendor-list-price", "unknown"]).openapi({
+      description:
+        "How the vendor cost was stated. 'seed-vendor-rate' / '-pre-vat': a vendor rate the seed records reproduces the billed price. 'paid-allocation': what we actually paid (bank charges, prorated) divided by the units production recorded — the cold-email infrastructure and Featured lines, whose seed rate was a model. 'vendor-list-price': the vendor's list price, where the billed row itself was wrong (mis-seeded) or the unit is free. 'pass-through': billed = vendor.",
+    }),
+    vendorCostNote: z.string().nullable().openapi({
+      description: "Where a stated (non-seed) vendor cost comes from, or why it cannot be known, in words. Null for a plain seed reproduction.",
+    }),
+    reconstructed: z.boolean().openapi({
+      description:
+        "True for a price version overwritten in place before v0.25.0 (2026-06-07) and therefore absent from the catalogue: listed so a cost row that froze its price can still be priced. Its id is synthetic, effectiveFrom = createdAt = the first day it was billed, and markupMultiplier is null (it prices old cost rows; it is not a markup in force).",
+    }),
     effectiveFrom: z.string().datetime(),
     createdAt: z.string().datetime().openapi({
       description: "When this version was written. It was served from max(effectiveFrom, createdAt).",
