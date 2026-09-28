@@ -1,6 +1,8 @@
 import type postgres from "postgres";
 import { SEED_PROVIDERS_COSTS } from "./seed.js";
+import { findVendorCostStatement } from "../lib/vendor-cost-statements.js";
 import {
+  normalizeCents,
   resolveVendorCost,
   seedVendorRatesByKey,
   type CatalogRowForVendorCost,
@@ -19,10 +21,13 @@ export function resolveVendorCostFromSeed(row: CatalogRowForVendorCost): VendorC
  * database also backfills the whole history — every row carries its `created_at`, which is what
  * decides the markup it was written under (see MARKUP_ERAS).
  *
- * WRITE-ONCE: a row that already has a vendor-cost row is never revisited, known or unknown.
- * A vendor rate edited in the seed later drops the old literal, so re-deriving an old row from a
- * newer seed could only lose evidence, never add it. `ON CONFLICT DO NOTHING` + an advisory lock
- * keep concurrent boots from double-writing.
+ * WRITE-ONCE from the seed: a row that already has a vendor-cost row is never re-derived from the
+ * seed, known or unknown. A vendor rate edited in the seed later drops the old literal, so
+ * re-deriving an old row from a newer seed could only lose evidence, never add it.
+ * The ONE exception is a row covered by a statement in `vendor-cost-statements.ts` (what we
+ * actually paid, a vendor list price behind a mis-seeded row): that statement is newer evidence
+ * than whatever the row was given, so a row whose stored statement differs is rewritten to it.
+ * `ON CONFLICT DO NOTHING` + an advisory lock keep concurrent boots from double-writing.
  *
  * O(rows without a vendor cost): the whole catalog (hundreds of rows) on the first boot, the
  * handful of rows a deploy appends afterwards.
@@ -97,7 +102,60 @@ export async function recordVendorCosts(): Promise<void> {
         )}
         ON CONFLICT (provider_cost_id) DO NOTHING
       `;
+
       return values.length;
+    });
+
+    const restated = await directSql.begin(async (tx) => {
+      await tx.unsafe(`SELECT pg_advisory_xact_lock(911003)`);
+      const stored = await tx.unsafe<
+        {
+          id: string;
+          name: string;
+          provider: string;
+          plan_tier: string;
+          billing_cycle: string;
+          cost: string | null;
+          pricing_basis: string;
+          created_at: Date;
+          vendor: string | null;
+          derivation: string;
+          unknown_reason: string | null;
+        }[]
+      >(`
+        SELECT pc.id, pc.name, pc.provider, pc.plan_tier, pc.billing_cycle,
+               pc.cost_per_unit_in_usd_cents::text AS cost, pc.pricing_basis, pc.created_at,
+               v.vendor_cost_per_unit_in_usd_cents::text AS vendor, v.derivation, v.unknown_reason
+        FROM providers_costs pc
+        JOIN provider_cost_vendor_costs v ON v.provider_cost_id = pc.id
+      `);
+      let n = 0;
+      for (const row of stored) {
+        const catalogRow = {
+          name: row.name,
+          provider: row.provider,
+          planTier: row.plan_tier,
+          billingCycle: row.billing_cycle,
+          costPerUnitInUsdCents: row.cost,
+          pricingBasis: row.pricing_basis,
+          createdAt: new Date(row.created_at),
+        };
+        if (!findVendorCostStatement(catalogRow)) continue;
+        const r = resolveVendorCost(catalogRow, rates);
+        const sameVendor =
+          (r.vendorCostPerUnitInUsdCents === null && row.vendor === null) ||
+          (r.vendorCostPerUnitInUsdCents !== null && row.vendor !== null &&
+            normalizeCents(r.vendorCostPerUnitInUsdCents) === normalizeCents(row.vendor));
+        if (sameVendor && r.derivation === row.derivation && r.unknownReason === row.unknown_reason) continue;
+        await tx.unsafe(
+          `UPDATE provider_cost_vendor_costs
+           SET vendor_cost_per_unit_in_usd_cents = $2, markup_multiplier = $3, derivation = $4, unknown_reason = $5
+           WHERE provider_cost_id = $1`,
+          [row.id, r.vendorCostPerUnitInUsdCents, r.markupMultiplier, r.derivation, r.unknownReason],
+        );
+        n++;
+      }
+      return n;
     });
 
     const [{ missing }] = await directSql.unsafe<{ missing: number }[]>(`
@@ -109,7 +167,7 @@ export async function recordVendorCosts(): Promise<void> {
     if (missing > 0) {
       throw new Error(`[Costs Service] Vendor-cost verify failed: ${missing} price version(s) have no vendor-cost row. Aborting startup.`);
     }
-    console.log(`[Costs Service] Vendor costs recorded (${written} new price version(s) stated)`);
+    console.log(`[Costs Service] Vendor costs recorded (${written} new price version(s) stated, ${restated} restated from vendor-cost-statements)`);
   } finally {
     await directSql.end({ timeout: 5 });
   }

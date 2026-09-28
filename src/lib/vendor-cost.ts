@@ -19,6 +19,7 @@ import {
   withChinaVat,
   type SeedProviderCost,
 } from "../db/seed.js";
+import { findVendorCostStatement } from "./vendor-cost-statements.js";
 
 const SCALE = 10;
 const FACTOR_SCALE = 4; // same factor precision as the seed's scaleFixedDecimalCost
@@ -76,7 +77,7 @@ export function invertMarkup(billed: string, factor: number): string | null {
   return null;
 }
 
-/** billed ÷ vendor, rounded to 4 decimals (only ever called on an exact pair). */
+/** billed ÷ vendor, rounded to 4 decimals. */
 function markupOf(billed: string, vendor: string): string {
   const v = toScaled(vendor);
   if (v === 0n) return "1.0000";
@@ -155,12 +156,15 @@ export type VendorCostDerivation =
   | "pass-through"          // basis pass-through: the billed price IS the vendor rate
   | "seed-vendor-rate"      // billed = a vendor rate the seed states for this name × the markup in force when written
   | "seed-vendor-rate-pre-vat" // same, on a row billed before the vendor's non-recoverable VAT was priced in
+  | "paid-allocation"       // stated: bank charges allocated over the units recorded (vendor-cost-statements.ts)
+  | "vendor-list-price"     // stated: the vendor's list price, where the billed row itself was wrong or free
   | "unknown";
 
 export type VendorCostUnknownReason =
   | "no-billable-price"        // a delisted version: no price, nothing was charged against it
   | "no-vendor-rate-on-record" // no vendor rate we hold reproduces this billed price under the markup in force
-  | "ambiguous-vendor-rate";   // two different vendor rates reproduce it; we refuse to pick
+  | "ambiguous-vendor-rate"    // two different vendor rates reproduce it; we refuse to pick
+  | "vendor-rate-not-retained"; // stated: a retired provider path whose rate/invoice was never kept
 
 export interface VendorCostResolution {
   vendorCostPerUnitInUsdCents: string | null;
@@ -217,6 +221,20 @@ export function resolveVendorCost(
   if (row.costPerUnitInUsdCents === null) return unknown("no-billable-price");
 
   const billed = normalizeCents(row.costPerUnitInUsdCents);
+
+  // A statement from evidence the seed cannot carry (what we actually paid, a vendor list price
+  // behind a mis-seeded row) wins over the seed reproduction: see vendor-cost-statements.ts.
+  const statement = findVendorCostStatement(row);
+  if (statement) {
+    if (statement.derivation === "unknown") return unknown(statement.unknownReason!);
+    const vendor = normalizeCents(statement.vendorCostPerUnitInUsdCents!);
+    return {
+      vendorCostPerUnitInUsdCents: vendor,
+      markupMultiplier: toScaled(vendor) === 0n ? null : markupOf(billed, vendor),
+      derivation: statement.derivation === "seed-vendor-rate" ? "seed-vendor-rate" : statement.derivation,
+      unknownReason: null,
+    };
+  }
 
   if (row.pricingBasis === "pass-through") {
     return { vendorCostPerUnitInUsdCents: billed, markupMultiplier: "1.0000", derivation: "pass-through", unknownReason: null };
