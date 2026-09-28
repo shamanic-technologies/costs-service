@@ -86,11 +86,14 @@ describe("reconstructed pre-v0.25.0 versions", () => {
     }
   });
 
+<<<<<<< HEAD
   it("cover the BYOK serper queries billed at $0.001 before the markup (org cost rows, 2026-03-27 .. 05-03)", () => {
     const v = RECONSTRUCTED_PRICE_VERSIONS.find((r) => r.name === "serper-dev-query" && r.billedPricePerUnitInUsdCents === "0.1000000000");
     expect(v?.vendorCostPerUnitInUsdCents).toBe("0.1000000000");
   });
 
+=======
+>>>>>>> origin/main
   it("are unique per (name, plan, billed price)", () => {
     const keys = RECONSTRUCTED_PRICE_VERSIONS.map((r) => `${r.name}|${r.planTier}|${r.billedPricePerUnitInUsdCents}`);
     expect(new Set(keys).size).toBe(keys.length);
