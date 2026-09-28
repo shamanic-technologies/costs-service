@@ -1,0 +1,540 @@
+{
+ "charges": [
+  {
+   "pool": "instantly",
+   "settled": "2026-02-05",
+   "usd": "50.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-02-05",
+   "usd": "97.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-03-13",
+   "usd": "47.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-03-13",
+   "usd": "49.9900000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-03-13",
+   "usd": "97.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-04-13",
+   "usd": "97.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-04-23",
+   "usd": "50.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-05-13",
+   "usd": "97.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-05-25",
+   "usd": "53.4400000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-05-26",
+   "usd": "49.2100000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-06-13",
+   "usd": "93.7500000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-06-30",
+   "usd": "47.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-06-30",
+   "usd": "65.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-07-01",
+   "usd": "130.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-07-02",
+   "usd": "195.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-07-09",
+   "usd": "195.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-07-13",
+   "usd": "97.1000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-07-16",
+   "usd": "50.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-07-30",
+   "usd": "47.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-08-16",
+   "usd": "97.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "instantly",
+   "settled": "2026-08-19",
+   "usd": "450.0000000000",
+   "vendor": "INSTANTLY"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-01-30",
+   "usd": "11.4310748663",
+   "vendor": "Gandi"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-02-03",
+   "usd": "19.7666939177",
+   "vendor": "Gandi"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-02-10",
+   "usd": "11.2902081400",
+   "vendor": "Gandi"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-02-14",
+   "usd": "15.5402239258",
+   "vendor": "Gandi"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-02-26",
+   "usd": "15.5402239258",
+   "vendor": "Gandi"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-02-27",
+   "usd": "90.5806688521",
+   "vendor": "Gandi"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-04-26",
+   "usd": "80.8283434435",
+   "vendor": "Gandi"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-05-13",
+   "usd": "106.1154897500",
+   "vendor": "Gandi"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-06-03",
+   "usd": "89.6581693105",
+   "vendor": "Gandi"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-06-26",
+   "usd": "30.0000000000",
+   "vendor": "FORGE"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-06-26",
+   "usd": "70.0000000000",
+   "vendor": "FORGE"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-06-30",
+   "usd": "70.0000000000",
+   "vendor": "FORGE"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-06-30",
+   "usd": "90.0000000000",
+   "vendor": "FORGE"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-07-03",
+   "usd": "48.7200000000",
+   "vendor": "FORGE"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-07-03",
+   "usd": "72.0000000000",
+   "vendor": "FORGE"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-07-03",
+   "usd": "85.2600000000",
+   "vendor": "FORGE"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-07-03",
+   "usd": "97.4400000000",
+   "vendor": "FORGE"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-07-03",
+   "usd": "97.4400000000",
+   "vendor": "FORGE"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-07-03",
+   "usd": "126.0000000000",
+   "vendor": "FORGE"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-07-26",
+   "usd": "30.0000000000",
+   "vendor": "FORGE"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-07-30",
+   "usd": "225.0000000000",
+   "vendor": "FORGE"
+  },
+  {
+   "pool": "mailbox",
+   "settled": "2026-08-26",
+   "usd": "20.0000000000",
+   "vendor": "FORGE"
+  },
+  {
+   "pool": "featured",
+   "settled": "2026-05-10",
+   "usd": "99.0000000000",
+   "vendor": "FEATURED"
+  },
+  {
+   "pool": "featured",
+   "settled": "2026-06-09",
+   "usd": "99.0000000000",
+   "vendor": "CONNECTIVELY"
+  },
+  {
+   "pool": "featured",
+   "settled": "2026-07-03",
+   "usd": "19.8200000000",
+   "vendor": "CONNECTIVELY"
+  },
+  {
+   "pool": "featured",
+   "settled": "2026-07-09",
+   "usd": "198.0000000000",
+   "vendor": "CONNECTIVELY"
+  }
+ ],
+ "units": [
+  {
+   "periodStart": "2026-02-01",
+   "periodEnd": "2026-02-28",
+   "name": "instantly-email-send",
+   "billed": "0.9400000000",
+   "units": "1284"
+  },
+  {
+   "periodStart": "2026-03-01",
+   "periodEnd": "2026-03-31",
+   "name": "instantly-email-send",
+   "billed": "0.9400000000",
+   "units": "4534"
+  },
+  {
+   "periodStart": "2026-04-01",
+   "periodEnd": "2026-04-19",
+   "name": "instantly-email-send",
+   "billed": "0.9400000000",
+   "units": "1879"
+  },
+  {
+   "periodStart": "2026-04-20",
+   "periodEnd": "2026-04-30",
+   "name": "instantly-account-email-sent",
+   "billed": "1.6667000000",
+   "units": "5265"
+  },
+  {
+   "periodStart": "2026-04-20",
+   "periodEnd": "2026-04-30",
+   "name": "instantly-contact-uploaded",
+   "billed": "0.3880000000",
+   "units": "1905"
+  },
+  {
+   "periodStart": "2026-04-20",
+   "periodEnd": "2026-04-30",
+   "name": "instantly-domain-email-sent",
+   "billed": "0.1984000000",
+   "units": "5218"
+  },
+  {
+   "periodStart": "2026-05-01",
+   "periodEnd": "2026-05-31",
+   "name": "instantly-account-email-sent",
+   "billed": "1.6667000000",
+   "units": "653"
+  },
+  {
+   "periodStart": "2026-05-01",
+   "periodEnd": "2026-05-31",
+   "name": "instantly-account-email-sent",
+   "billed": "3.3334000000",
+   "units": "18533"
+  },
+  {
+   "periodStart": "2026-05-01",
+   "periodEnd": "2026-05-31",
+   "name": "instantly-contact-uploaded",
+   "billed": "0.3880000000",
+   "units": "263"
+  },
+  {
+   "periodStart": "2026-05-01",
+   "periodEnd": "2026-05-31",
+   "name": "instantly-contact-uploaded",
+   "billed": "0.7760000000",
+   "units": "28966"
+  },
+  {
+   "periodStart": "2026-05-01",
+   "periodEnd": "2026-05-31",
+   "name": "instantly-domain-email-sent",
+   "billed": "0.1984000000",
+   "units": "655"
+  },
+  {
+   "periodStart": "2026-05-01",
+   "periodEnd": "2026-05-31",
+   "name": "instantly-domain-email-sent",
+   "billed": "0.3968000000",
+   "units": "18505"
+  },
+  {
+   "periodStart": "2026-06-01",
+   "periodEnd": "2026-06-30",
+   "name": "featured-api-pitch-submit",
+   "billed": "1398.0000000000",
+   "units": "86"
+  },
+  {
+   "periodStart": "2026-06-01",
+   "periodEnd": "2026-06-30",
+   "name": "featured-api-pitch-submit",
+   "billed": "198.0000000000",
+   "units": "113"
+  },
+  {
+   "periodStart": "2026-06-01",
+   "periodEnd": "2026-06-30",
+   "name": "featured-api-pitch-submit",
+   "billed": "200.0000000000",
+   "units": "401"
+  },
+  {
+   "periodStart": "2026-06-01",
+   "periodEnd": "2026-06-30",
+   "name": "instantly-account-email-sent",
+   "billed": "0.1587301588",
+   "units": "25034"
+  },
+  {
+   "periodStart": "2026-06-01",
+   "periodEnd": "2026-06-30",
+   "name": "instantly-account-email-sent",
+   "billed": "1.4285714286",
+   "units": "5638"
+  },
+  {
+   "periodStart": "2026-06-01",
+   "periodEnd": "2026-06-30",
+   "name": "instantly-account-email-sent",
+   "billed": "3.3334000000",
+   "units": "3494"
+  },
+  {
+   "periodStart": "2026-06-01",
+   "periodEnd": "2026-06-30",
+   "name": "instantly-contact-uploaded",
+   "billed": "0.7760000000",
+   "units": "11761"
+  },
+  {
+   "periodStart": "2026-06-01",
+   "periodEnd": "2026-06-30",
+   "name": "instantly-domain-email-sent",
+   "billed": "0.0000000000",
+   "units": "25034"
+  },
+  {
+   "periodStart": "2026-06-01",
+   "periodEnd": "2026-06-30",
+   "name": "instantly-domain-email-sent",
+   "billed": "0.3968000000",
+   "units": "3494"
+  },
+  {
+   "periodStart": "2026-06-01",
+   "periodEnd": "2026-06-30",
+   "name": "instantly-domain-email-sent",
+   "billed": "0.5158730158",
+   "units": "5638"
+  },
+  {
+   "periodStart": "2026-07-01",
+   "periodEnd": "2026-07-31",
+   "name": "featured-api-pitch-submit",
+   "billed": "0.1000000000",
+   "units": "280"
+  },
+  {
+   "periodStart": "2026-07-01",
+   "periodEnd": "2026-07-31",
+   "name": "featured-api-pitch-submit",
+   "billed": "0.2000000000",
+   "units": "612"
+  },
+  {
+   "periodStart": "2026-07-01",
+   "periodEnd": "2026-07-31",
+   "name": "instantly-account-email-sent",
+   "billed": "1.4285714286",
+   "units": "224"
+  },
+  {
+   "periodStart": "2026-07-01",
+   "periodEnd": "2026-07-31",
+   "name": "instantly-account-email-sent",
+   "billed": "3.2740740740",
+   "units": "7133"
+  },
+  {
+   "periodStart": "2026-07-01",
+   "periodEnd": "2026-07-31",
+   "name": "instantly-account-email-sent",
+   "billed": "6.5481481480",
+   "units": "16824"
+  },
+  {
+   "periodStart": "2026-07-01",
+   "periodEnd": "2026-07-31",
+   "name": "instantly-contact-uploaded",
+   "billed": "0.7760000000",
+   "units": "2693"
+  },
+  {
+   "periodStart": "2026-07-01",
+   "periodEnd": "2026-07-31",
+   "name": "instantly-contact-uploaded",
+   "billed": "1.5520000000",
+   "units": "6340"
+  },
+  {
+   "periodStart": "2026-07-01",
+   "periodEnd": "2026-07-31",
+   "name": "instantly-domain-email-sent",
+   "billed": "0.0793650794",
+   "units": "7133"
+  },
+  {
+   "periodStart": "2026-07-01",
+   "periodEnd": "2026-07-31",
+   "name": "instantly-domain-email-sent",
+   "billed": "0.1587301588",
+   "units": "16814"
+  },
+  {
+   "periodStart": "2026-07-01",
+   "periodEnd": "2026-07-31",
+   "name": "instantly-domain-email-sent",
+   "billed": "0.5158730158",
+   "units": "224"
+  },
+  {
+   "periodStart": "2026-08-01",
+   "periodEnd": "2026-08-31",
+   "name": "featured-api-pitch-submit",
+   "billed": "0.2000000000",
+   "units": "99"
+  },
+  {
+   "periodStart": "2026-08-01",
+   "periodEnd": "2026-08-31",
+   "name": "instantly-account-email-sent",
+   "billed": "6.5481481480",
+   "units": "10229"
+  },
+  {
+   "periodStart": "2026-08-01",
+   "periodEnd": "2026-08-31",
+   "name": "instantly-contact-uploaded",
+   "billed": "1.5520000000",
+   "units": "3512"
+  },
+  {
+   "periodStart": "2026-08-01",
+   "periodEnd": "2026-08-31",
+   "name": "instantly-domain-email-sent",
+   "billed": "0.1587301588",
+   "units": "10229"
+  }
+ ]
+}
