@@ -3,7 +3,7 @@
  *
  * The catalog stores the price we CHARGE: vendor rate × the store markup for a marked-up line,
  * the vendor rate itself for a pass-through line, nothing for a delisted one. The markup has
- * moved several times (1× → 2× → 4× → 5× → 6× → 5×), so nobody downstream can recover a past
+ * moved several times (1× → 2× → 4× → 5× → 6× → 5× → 2.5×), so nobody downstream can recover a past
  * row's vendor cost by dividing by today's constant. This module states it per price VERSION,
  * from evidence, and says "unknown" (with a reason) whenever the evidence is missing — it never
  * falls back to the billed price, and never divides by a multiplier it cannot show was in force.
@@ -13,6 +13,7 @@
  * pricing page reads, nor on the identity-header-only `/v1/providers-costs` reads).
  */
 import {
+  applyCostRiskMultiplier,
   COST_DEFAULT_MULTIPLIER,
   CHINA_VAT_MULTIPLIER,
   withChinaVat,
@@ -52,6 +53,29 @@ export function divideExactly(value: string, factor: number): string | null {
   return fromScaled(numerator / factorScaled);
 }
 
+/**
+ * The ONE 10-decimal vendor rate the seed's own markup (`applyCostRiskMultiplier`, round-half-up
+ * at 10 decimals) turns into `billed` under `factor`, or `null` if none does.
+ *
+ * `divideExactly` is enough while every factor is an integer, but a fractional markup (2.5×)
+ * rounds: a vendor rate of 0.6333333333 is billed 1.5833333333, which 2.5 does not divide.
+ * This inverts the rounding instead of the multiplication, so it is still a REPRODUCTION —
+ * the candidate is accepted only if re-applying the markup gives `billed` back byte-equal —
+ * and for factor >= 1 at most one candidate can (vendor steps of 1e-10 move billed by >= 1e-10).
+ */
+export function invertMarkup(billed: string, factor: number): string | null {
+  if (factor < 1) throw new Error(`invertMarkup needs factor >= 1, got ${factor}`);
+  const target = normalizeCents(billed);
+  const factorScaled = BigInt(Math.round(factor * 10 ** FACTOR_SCALE));
+  const floor = (toScaled(target) * 10n ** BigInt(FACTOR_SCALE)) / factorScaled;
+  for (const candidate of [floor, floor + 1n]) {
+    if (candidate < 0n) continue;
+    const vendor = fromScaled(candidate);
+    if (applyCostRiskMultiplier(vendor, factor) === target) return vendor;
+  }
+  return null;
+}
+
 /** billed ÷ vendor, rounded to 4 decimals (only ever called on an exact pair). */
 function markupOf(billed: string, vendor: string): string {
   const v = toScaled(vendor);
@@ -83,7 +107,10 @@ export const MARKUP_ERAS: { from: Date; multipliers: number[]; label: string }[]
   { from: new Date("2026-07-09T15:05:07Z"), multipliers: [4], label: "4x (risk 2 x profit 2)" },
   { from: new Date("2026-08-23T17:13:51Z"), multipliers: [5], label: "5x (risk 2 x profit 2.5)" },
   { from: new Date("2026-08-30T09:41:26Z"), multipliers: [6], label: "6x (risk 2 x profit 3)" },
-  { from: new Date("2026-09-15T08:47:36Z"), multipliers: [COST_DEFAULT_MULTIPLIER], label: "current store markup" },
+  { from: new Date("2026-09-15T08:47:36Z"), multipliers: [5], label: "5x (risk 2 x profit 2.5)" },
+  // Any instant between the last 5x row and the first 2.5x row is exact: nothing reaches prod
+  // between this commit and the promote that carries it.
+  { from: new Date("2026-09-28T04:38:19Z"), multipliers: [COST_DEFAULT_MULTIPLIER], label: "current store markup (2.5x, risk 2 x profit 1.25)" },
 ];
 
 export function markupsInForceAt(writtenAt: Date): number[] {
@@ -106,14 +133,14 @@ const CHINA_VAT_PROVIDERS = new Set(["deepseek"]);
  * Vendor cost of one CURRENT seed version, stated at the moment the seed writes it.
  *
  * Every marked-up seed value is `applyCostRiskMultiplier(vendor)` with the default multiplier
- * (`tests/unit/vendor-cost.test.ts` forbids a per-cost override in seed.ts), so the division
- * below is exact by construction; the round trip is asserted anyway, and a value that does not
- * reproduce throws at boot rather than being stated wrong.
+ * (`tests/unit/vendor-cost.test.ts` forbids a per-cost override in seed.ts), so inverting that
+ * markup reproduces the vendor rate by construction; a value that does not reproduce throws at
+ * boot rather than being stated wrong.
  */
 export function seedVendorCost(entry: SeedProviderCost): string | null {
   if (entry.costPerUnitInUsdCents === null) return null;
   if (entry.pricingBasis === "pass-through") return normalizeCents(entry.costPerUnitInUsdCents);
-  const vendor = divideExactly(entry.costPerUnitInUsdCents, COST_DEFAULT_MULTIPLIER);
+  const vendor = invertMarkup(entry.costPerUnitInUsdCents, COST_DEFAULT_MULTIPLIER);
   if (vendor === null) {
     throw new Error(
       `Seed cost '${entry.name}' (${entry.costPerUnitInUsdCents}) is not an exact ${COST_DEFAULT_MULTIPLIER}x markup of a 10-decimal vendor rate.`
@@ -202,7 +229,7 @@ export function resolveVendorCost(
   const preVat = CHINA_VAT_PROVIDERS.has(row.provider) && row.createdAt < CHINA_VAT_PRICED_FROM;
   const matches = new Map<string, VendorCostDerivation>();
   for (const m of markupsInForceAt(row.createdAt)) {
-    const base = divideExactly(billed, m);
+    const base = invertMarkup(billed, m);
     if (base === null) continue;
     if (rates.has(base)) matches.set(base, "seed-vendor-rate");
     if (preVat) {

@@ -81,10 +81,10 @@ describe("/internal/vendor-costs — vendor cost per price version, service-auth
 
     const byName = (n: string) => versions.filter((v) => v.name === n).at(-1);
     expect(byName("anthropic-haiku-4.5-tokens-input")).toMatchObject({
-      billedPricePerUnitInUsdCents: "0.0005000000",
+      billedPricePerUnitInUsdCents: "0.0002500000",
       vendorCostPerUnitInUsdCents: "0.0001000000", // $1/MTok
       vendorCostKnown: true,
-      markupMultiplier: "5.0000",
+      markupMultiplier: "2.5000",
       vendorCostDerivation: "seed-vendor-rate",
       vendorCostUnknownReason: null,
     });
@@ -109,7 +109,7 @@ describe("/internal/vendor-costs — vendor cost per price version, service-auth
   });
 
   it("resolves the version in force on a PAST date, at the markup it was written under", async () => {
-    // A 6x-era row for Haiku, written and in force on 2026-09-01, superseded by the seeded 5x row.
+    // A 6x-era row for Haiku, written and in force on 2026-09-01, superseded by a 5x-era row.
     const name = "anthropic-haiku-4.5-tokens-input";
     await db.delete(providersCosts).where(eq(providersCosts.name, name));
     const old = await insertTestProviderCost({
@@ -189,7 +189,7 @@ describe("/internal/vendor-costs — vendor cost per price version, service-auth
       .put("/v1/providers-costs/anthropic-haiku-4.5-tokens-input")
       .set(getAuthHeaders())
       .send({
-        costPerUnitInUsdCents: "0.0005000000",
+        costPerUnitInUsdCents: "0.0002500000",
         pricingBasis: "marked-up",
         provider: "anthropic",
         type: "Input tokens",
@@ -200,6 +200,6 @@ describe("/internal/vendor-costs — vendor cost per price version, service-auth
     expect(put.status).toBe(200);
     expect(Object.keys(put.body).filter((k) => /vendor|markup/i.test(k))).toEqual([]);
     const [vendorRow] = await db.select().from(providerCostVendorCosts).where(eq(providerCostVendorCosts.providerCostId, put.body.id));
-    expect(vendorRow).toMatchObject({ vendorCostPerUnitInUsdCents: "0.0001000000", markupMultiplier: "5.0000" });
+    expect(vendorRow).toMatchObject({ vendorCostPerUnitInUsdCents: "0.0001000000", markupMultiplier: "2.5000" });
   });
 });
