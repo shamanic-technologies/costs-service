@@ -125,6 +125,8 @@ const PRE_MARKUP_VERSIONS: [string, string, string, string, string, string][] = 
   ["scrape-do-render-credit", "scrape-do", "hobby", "monthly", "0.0348000000", "2026-04-22"],
   ["scrape-do-render-super-credit", "scrape-do", "hobby", "monthly", "0.0928000000", "2026-04-22"],
   ["scrape-do-scrape-credit", "scrape-do", "hobby", "monthly", "0.0116000000", "2026-04-14"],
+  ["serper-dev-query", "serper", "pay-as-you-go", "monthly", "0.1000000000", "2026-03-27"],
+  ["serper-dev-search-query", "serper", "pay-as-you-go", "monthly", "0.1000000000", "2026-03-27"],
 ];
 
 export const RECONSTRUCTED_PRICE_VERSIONS: ReconstructedPriceVersion[] = [
