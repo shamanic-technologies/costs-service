@@ -9,12 +9,12 @@ import {
 } from "../../src/db/seed.js";
 
 describe("Cost risk multiplier", () => {
-  it("applies the default 5x multiplier (risk × profit) to seed costs with fixed decimal precision", () => {
+  it("applies the default 2.5x multiplier (risk × profit) to seed costs with fixed decimal precision", () => {
     expect(COST_RISK_MULTIPLIER).toBe(2);
-    expect(COST_PROFIT_MULTIPLIER).toBe(2.5);
-    expect(COST_DEFAULT_MULTIPLIER).toBe(5); // risk × profit
+    expect(COST_PROFIT_MULTIPLIER).toBe(1.25);
+    expect(COST_DEFAULT_MULTIPLIER).toBe(2.5); // risk × profit
     expect(applyCostRiskMultiplier("0.0000000000")).toBe("0.0000000000");
-    expect(applyCostRiskMultiplier("1.3300000000")).toBe("6.6500000000");
+    expect(applyCostRiskMultiplier("1.3300000000")).toBe("3.3250000000");
   });
 
   it("applies a per-cost override multiplier (1.2x) exactly to 10 decimals", () => {
@@ -77,7 +77,7 @@ describe("Twilio seed costs", () => {
   it("should include twilio-sms-segment at 6.65 cents on pay-as-you-go/monthly", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "twilio-sms-segment");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("6.6500000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("3.3250000000");
     expect(cost!.provider).toBe("twilio");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
@@ -87,7 +87,7 @@ describe("Twilio seed costs", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "twilio-whatsapp-message");
     expect(cost).toBeDefined();
     // raw 0.5¢ (US all-in per-message, Marketing category) × 5 default markup = 2.5¢
-    expect(cost!.costPerUnitInUsdCents).toBe("2.5000000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("1.2500000000");
     expect(cost!.provider).toBe("twilio");
     expect(cost!.type).toBe("WhatsApp message");
     expect(cost!.unit).toBe("message");
@@ -114,8 +114,8 @@ describe("Featured seed costs", () => {
 
     expect(opportunityFetch, "opportunity fetches are free/unlimited and should not be seeded").toBeUndefined();
     expect(pitchSubmit).toBeDefined();
-    // $1/2000 ($0.0005 = 0.05¢) base unit × 5 default markup = 0.25¢.
-    expect(pitchSubmit!.costPerUnitInUsdCents).toBe("0.2500000000");
+    // $1/2000 ($0.0005 = 0.05¢) base unit × 2.5 default markup = 0.125¢.
+    expect(pitchSubmit!.costPerUnitInUsdCents).toBe("0.1250000000");
     expect(pitchSubmit!.provider).toBe("featured");
     expect(pitchSubmit!.providerDomain).toBe("featured.com");
     expect(pitchSubmit!.type).toBe("API call (pitch submit)");
@@ -136,7 +136,7 @@ describe("Anthropic Sonnet 4.6 seed costs", () => {
   it("should include anthropic-sonnet-4.6-tokens-input at 0.0015 cents", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-sonnet-4.6-tokens-input");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0015000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0007500000");
     expect(cost!.provider).toBe("anthropic");
     expect(cost!.planTier).toBe("pay-as-you-go");
   });
@@ -144,7 +144,7 @@ describe("Anthropic Sonnet 4.6 seed costs", () => {
   it("should include anthropic-sonnet-4.6-tokens-output at 0.0075 cents", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-sonnet-4.6-tokens-output");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0075000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0037500000");
   });
 });
 
@@ -152,13 +152,13 @@ describe("Anthropic Opus 4.6 seed costs", () => {
   it("should include anthropic-opus-4.6-tokens-input at 0.0025 cents", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-opus-4.6-tokens-input");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0025000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0012500000");
   });
 
   it("should include anthropic-opus-4.6-tokens-output at 0.0125 cents", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "anthropic-opus-4.6-tokens-output");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0125000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0062500000");
   });
 
   it("should not contain legacy opus naming (anthropic-opus-4-6-*-token)", () => {
@@ -168,10 +168,10 @@ describe("Anthropic Opus 4.6 seed costs", () => {
 });
 
 describe("Apollo seed costs", () => {
-  it("should include unified apollo-credit at 11.8 cents (Basic $59/mo ÷ 2,500 credits × 5 markup)", () => {
+  it("should include unified apollo-credit at 5.9 cents (Basic $59/mo ÷ 2,500 credits × 2.5 markup)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "apollo-credit");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("11.8000000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("5.9000000000");
     expect(cost!.provider).toBe("apollo");
     expect(cost!.planTier).toBe("basic");
     expect(cost!.billingCycle).toBe("monthly");
@@ -189,7 +189,7 @@ describe("Google Flash Lite 3.1 seed costs", () => {
   it("should include google-flash-lite-3.1-tokens-input at 0.000125 cents ($0.25/MTok x markup)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-flash-lite-3.1-tokens-input");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0001250000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0000625000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
@@ -198,7 +198,7 @@ describe("Google Flash Lite 3.1 seed costs", () => {
   it("should include google-flash-lite-3.1-tokens-output at 0.00075 cents ($1.50/MTok x markup)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-flash-lite-3.1-tokens-output");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0007500000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0003750000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
@@ -206,19 +206,19 @@ describe("Google Flash Lite 3.1 seed costs", () => {
 });
 
 describe("Google Pro 3.1 seed costs", () => {
-  it("should include google-pro-3.1-tokens-input at 0.001 cents ($2.00/MTok, <=200k context × 5 markup)", () => {
+  it("should include google-pro-3.1-tokens-input at 0.0005 cents ($2.00/MTok, <=200k context × 2.5 markup)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-pro-3.1-tokens-input");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0010000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0005000000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
   });
 
-  it("should include google-pro-3.1-tokens-output at 0.006 cents ($12.00/MTok, <=200k context × 5 markup)", () => {
+  it("should include google-pro-3.1-tokens-output at 0.003 cents ($12.00/MTok, <=200k context × 2.5 markup)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-pro-3.1-tokens-output");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0060000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0030000000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
@@ -229,7 +229,7 @@ describe("Google Pro 2.5 seed costs", () => {
   it("should include google-pro-2.5-tokens-input at 0.000625 cents ($1.25/MTok, <=200k context x markup)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-pro-2.5-tokens-input");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0006250000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0003125000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
@@ -238,7 +238,7 @@ describe("Google Pro 2.5 seed costs", () => {
   it("should include google-pro-2.5-tokens-output at 0.005 cents ($10.00/MTok, <=200k context x markup)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-pro-2.5-tokens-output");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0050000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0025000000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
@@ -249,7 +249,7 @@ describe("Google Flash 2.5 seed costs", () => {
   it("should include google-flash-2.5-tokens-input at 0.00015 cents ($0.30/MTok x markup)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-flash-2.5-tokens-input");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0001500000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0000750000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
@@ -258,7 +258,7 @@ describe("Google Flash 2.5 seed costs", () => {
   it("should include google-flash-2.5-tokens-output at 0.00125 cents ($2.50/MTok x markup)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-flash-2.5-tokens-output");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0012500000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0006250000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
@@ -269,7 +269,7 @@ describe("Google Flash-Lite 2.5 seed costs", () => {
   it("should include google-flash-lite-2.5-tokens-input at 0.00005 cents ($0.10/MTok x markup)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-flash-lite-2.5-tokens-input");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0000500000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0000250000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
@@ -278,7 +278,7 @@ describe("Google Flash-Lite 2.5 seed costs", () => {
   it("should include google-flash-lite-2.5-tokens-output at 0.0002 cents ($0.40/MTok x markup)", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-flash-lite-2.5-tokens-output");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0002000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0001000000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
@@ -289,7 +289,7 @@ describe("Google Search seed costs", () => {
   it("should include google-search-query at 7 cents on pay-as-you-go/monthly", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "google-search-query");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("7.0000000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("3.5000000000");
     expect(cost!.provider).toBe("google");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
@@ -300,7 +300,7 @@ describe("Firecrawl extract seed costs", () => {
   it("should include firecrawl-extract-token at 0.2111111110 cents on hobby/monthly", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "firecrawl-extract-token");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.2111111110");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.1055555555");
     expect(cost!.provider).toBe("firecrawl");
     expect(cost!.planTier).toBe("hobby");
     expect(cost!.billingCycle).toBe("monthly");
@@ -311,7 +311,7 @@ describe("Scrape.do seed costs", () => {
   it("should include scrape-do-credit at 0.058 cents on hobby/monthly", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "scrape-do-credit");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.0580000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.0290000000");
     expect(cost!.provider).toBe("scrape-do");
     expect(cost!.planTier).toBe("hobby");
     expect(cost!.billingCycle).toBe("monthly");
@@ -340,7 +340,7 @@ describe("Serper seed costs", () => {
   it("should include serper-dev-query at 0.5 cents on pay-as-you-go/monthly", () => {
     const cost = SEED_PROVIDERS_COSTS.find((c) => c.name === "serper-dev-query");
     expect(cost).toBeDefined();
-    expect(cost!.costPerUnitInUsdCents).toBe("0.5000000000");
+    expect(cost!.costPerUnitInUsdCents).toBe("0.2500000000");
     expect(cost!.provider).toBe("serper-dev");
     expect(cost!.planTier).toBe("pay-as-you-go");
     expect(cost!.billingCycle).toBe("monthly");
