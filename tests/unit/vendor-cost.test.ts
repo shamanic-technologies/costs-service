@@ -103,6 +103,17 @@ describe("markup eras", () => {
     expect(markupsInForceAt(new Date("2026-09-16T00:00:00Z"))).toEqual([5]);
     expect(markupsInForceAt(new Date("2026-07-20T00:00:00Z"))).toEqual([4]);
   });
+
+  it("dates the 2.5x trial of 2026-09-28 and the return to 5x after it", () => {
+    expect(markupsInForceAt(new Date("2026-09-28T04:55:36Z"))).toEqual([2.5]);
+    expect(markupsInForceAt(new Date("2026-09-29T00:00:00Z"))).toEqual([5]);
+    // A trial-era row whose vendor rate 2.5 does not divide still resolves exactly.
+    const res = resolveVendorCost(
+      row({ name: "firecrawl-scrape-credit", costPerUnitInUsdCents: "1.5833333333", createdAt: new Date("2026-09-28T04:55:36Z") }),
+      rates,
+    );
+    expect(res).toMatchObject({ vendorCostPerUnitInUsdCents: "0.6333333333", markupMultiplier: "2.5000" });
+  });
 });
 
 describe("invertMarkup", () => {

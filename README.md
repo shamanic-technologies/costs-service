@@ -8,7 +8,7 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 
 Every line states its **basis**, and there are only two:
 
-- **`marked-up`** — work we perform (LLM tokens, embeddings, enrichment, search, creative generation). Price = the vendor rate × `COST_RISK_MULTIPLIER = 2` × `COST_PROFIT_MULTIPLIER = 1.25` = **2.5×** (risk covers cost under-estimation; profit is the store margin).
+- **`marked-up`** — work we perform (LLM tokens, embeddings, enrichment, search, creative generation). Price = the vendor rate × `COST_RISK_MULTIPLIER = 2` × `COST_PROFIT_MULTIPLIER = 2.5` = **5×** (risk covers cost under-estimation; profit is the store margin).
   The "vendor rate" is what the invoice says, which is not always what the price list says: DeepSeek adds 6% Chinese VAT on top of every top-up, and that VAT cannot be reclaimed through an EU VAT return, so it is part of the cost rather than a tax we advance. `withChinaVat` raises the published cell before the markup is taken. It is applied to DeepSeek only — Z.ai and Moonshot invoices carry no VAT line, and the test for adding it is an invoice, not the vendor's nationality.
 - **`pass-through`** — money we merely route: advertising-platform spend and payment-processing fees. Price **is** the vendor rate. A customer who brings their own creatives pays exactly what the underlying platform charges and nothing more.
 
@@ -34,133 +34,133 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 
 | Name | Cost (USD cents/unit) | Unit | Type | Provider | Domain | Plan | Billing | Basis |
 |---|---|---|---|---|---|---|---|---|
-| `apollo-credit` | 5.9 | credit | Credit | apollo | apollo.io | basic | monthly | marked-up |
-| `apify-ahrefs-result` | 1.25 | result | Ahrefs scrape result | apify | apify.com | starter | monthly | marked-up |
-| `apify-pipelinelabs-lead` | 0.25 | lead | PipelineLabs lead | apify | apify.com | starter | monthly | marked-up |
-| `apify-microworlds-lead` | 0.4 | lead | MicroWorlds lead | apify | apify.com | starter | monthly | marked-up |
-| `apify-clearpath-lead` | 3.75 | lead | ClearPath lead | apify | apify.com | starter | monthly | marked-up |
-| `apify-pipelinelabs-actor-start` | 0.0025 | run | PipelineLabs actor start | apify | apify.com | starter | monthly | marked-up |
-| `apify-bounceverify-email` | 0.2225 | email | BounceVerify email | apify | apify.com | starter | monthly | marked-up |
-| `explee-credit` | 2.45 | credit | Credit | explee | explee.com | starter | monthly | marked-up |
-| `treg-micro-usd` | 0.00025 | micro-USD | treg provider charge | treg | treg.to | pay-as-you-go | monthly | marked-up |
-| `anthropic-opus-4.5-tokens-input` | 0.00125 | 1M tokens | Input tokens (Opus 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
-| `anthropic-opus-4.5-tokens-output` | 0.00625 | 1M tokens | Output tokens (Opus 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
-| `anthropic-sonnet-4.5-tokens-input` | 0.00075 | 1M tokens | Input tokens (Sonnet 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
-| `anthropic-sonnet-4.5-tokens-output` | 0.00375 | 1M tokens | Output tokens (Sonnet 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
-| `anthropic-sonnet-4.6-tokens-input` | 0.00075 | 1M tokens | Input tokens (Sonnet 4.6) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
-| `anthropic-sonnet-4.6-tokens-output` | 0.00375 | 1M tokens | Output tokens (Sonnet 4.6) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
-| `anthropic-opus-4.6-tokens-input` | 0.00125 | 1M tokens | Input tokens (Opus 4.6) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
-| `anthropic-opus-4.6-tokens-output` | 0.00625 | 1M tokens | Output tokens (Opus 4.6) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
-| `anthropic-haiku-4.5-tokens-input` | 0.00025 | 1M tokens | Input tokens (Haiku 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
-| `anthropic-haiku-4.5-tokens-output` | 0.00125 | 1M tokens | Output tokens (Haiku 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
-| `anthropic-fable-5.1-tokens-input` | 0.0025 | 1M tokens | Input tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
-| `anthropic-fable-5.1-tokens-cached-input` | 0.0000625 | 1M tokens | Cached input tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
-| `anthropic-fable-5.1-tokens-output` | 0.0125 | 1M tokens | Output tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
-| `anthropic-web-search` | 2.5 | search | Web search | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
-| `featured-api-pitch-submit` | 0.125 | call | API call (pitch submit) | featured | featured.com | pay-as-you-go | monthly | marked-up |
-| `postmark-email-send` | 0.375 | email | Email send | postmark | postmarkapp.com | basic-10k | monthly | marked-up |
-| `postmark-email-send` | 0.4125 | email | Email send | postmark | postmarkapp.com | pro-10k | monthly | marked-up |
-| `postmark-email-send` | 0.45 | email | Email send | postmark | postmarkapp.com | platform-10k | monthly | marked-up |
-| `firecrawl-scrape-credit` | 1.5833333333 | credit | Scrape credit | firecrawl | firecrawl.dev | hobby | monthly | marked-up |
-| `firecrawl-map-credit` | 1.5833333333 | credit | Map credit | firecrawl | firecrawl.dev | hobby | monthly | marked-up |
-| `firecrawl-extract-token` | 0.1055555555 | token | Extract token | firecrawl | firecrawl.dev | hobby | monthly | marked-up |
-| `google-flash-3-tokens-input` | 0.000125 | 1M tokens | Input tokens (Gemini 3 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-3-tokens-output` | 0.00075 | 1M tokens | Output tokens (Gemini 3 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-3.5-tokens-input` | 0.000375 | 1M tokens | Input tokens (Gemini 3.5 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-3.5-tokens-output` | 0.00225 | 1M tokens | Output tokens (Gemini 3.5 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-3.6-tokens-input` | 0.000375 | 1M tokens | Input tokens (Gemini 3.6 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-3.6-tokens-output` | 0.001875 | 1M tokens | Output tokens (Gemini 3.6 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-3.7-tokens-input` | 0.000375 | 1M tokens | Input tokens (Gemini 3.7 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-3.7-tokens-output` | 0.001875 | 1M tokens | Output tokens (Gemini 3.7 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-3.8-tokens-input` | 0.000375 | 1M tokens | Input tokens (Gemini 3.8 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-3.8-tokens-output` | 0.001875 | 1M tokens | Output tokens (Gemini 3.8 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-lite-3.5-tokens-input` | 0.000075 | 1M tokens | Input tokens (Gemini 3.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-lite-3.5-tokens-output` | 0.000625 | 1M tokens | Output tokens (Gemini 3.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-image-3.1-tokens-input` | 0.000125 | 1M tokens | Input tokens (Gemini 3.1 Flash Image) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-image-3.1-tokens-output` | 0.015 | 1M tokens | Image output tokens (Gemini 3.1 Flash Image) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-2.5-tokens-input` | 0.000075 | 1M tokens | Input tokens (Gemini 2.5 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-2.5-tokens-output` | 0.000625 | 1M tokens | Output tokens (Gemini 2.5 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-lite-2.5-tokens-input` | 0.000025 | 1M tokens | Input tokens (Gemini 2.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-lite-2.5-tokens-output` | 0.0001 | 1M tokens | Output tokens (Gemini 2.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-lite-3.1-tokens-input` | 0.0000625 | 1M tokens | Input tokens (Gemini 3.1 Flash Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-flash-lite-3.1-tokens-output` | 0.000375 | 1M tokens | Output tokens (Gemini 3.1 Flash Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-pro-2.5-tokens-input` | 0.0003125 | 1M tokens | Input tokens (Gemini 2.5 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-pro-2.5-tokens-output` | 0.0025 | 1M tokens | Output tokens (Gemini 2.5 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-pro-3.1-tokens-input` | 0.0005 | 1M tokens | Input tokens (Gemini 3.1 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-pro-3.1-tokens-output` | 0.003 | 1M tokens | Output tokens (Gemini 3.1 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-embedding-001-tokens-input` | 0.0000375 | 1M tokens | Input tokens (Gemini Embedding 001) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `google-search-query` | 3.5 | query | Search query (grounding) | google | google.com | pay-as-you-go | monthly | marked-up |
-| `scrape-do-credit` | 0.029 | credit | Scrape credit | scrape-do | scrape.do | hobby | monthly | marked-up |
-| `serper-dev-query` | 0.25 | query | Search query | serper-dev | serper.dev | pay-as-you-go | monthly | marked-up |
+| `apollo-credit` | 11.8 | credit | Credit | apollo | apollo.io | basic | monthly | marked-up |
+| `apify-ahrefs-result` | 2.5 | result | Ahrefs scrape result | apify | apify.com | starter | monthly | marked-up |
+| `apify-pipelinelabs-lead` | 0.5 | lead | PipelineLabs lead | apify | apify.com | starter | monthly | marked-up |
+| `apify-microworlds-lead` | 0.8 | lead | MicroWorlds lead | apify | apify.com | starter | monthly | marked-up |
+| `apify-clearpath-lead` | 7.5 | lead | ClearPath lead | apify | apify.com | starter | monthly | marked-up |
+| `apify-pipelinelabs-actor-start` | 0.005 | run | PipelineLabs actor start | apify | apify.com | starter | monthly | marked-up |
+| `apify-bounceverify-email` | 0.445 | email | BounceVerify email | apify | apify.com | starter | monthly | marked-up |
+| `explee-credit` | 4.9 | credit | Credit | explee | explee.com | starter | monthly | marked-up |
+| `treg-micro-usd` | 0.0005 | micro-USD | treg provider charge | treg | treg.to | pay-as-you-go | monthly | marked-up |
+| `anthropic-opus-4.5-tokens-input` | 0.0025 | 1M tokens | Input tokens (Opus 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-opus-4.5-tokens-output` | 0.0125 | 1M tokens | Output tokens (Opus 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-sonnet-4.5-tokens-input` | 0.0015 | 1M tokens | Input tokens (Sonnet 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-sonnet-4.5-tokens-output` | 0.0075 | 1M tokens | Output tokens (Sonnet 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-sonnet-4.6-tokens-input` | 0.0015 | 1M tokens | Input tokens (Sonnet 4.6) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-sonnet-4.6-tokens-output` | 0.0075 | 1M tokens | Output tokens (Sonnet 4.6) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-opus-4.6-tokens-input` | 0.0025 | 1M tokens | Input tokens (Opus 4.6) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-opus-4.6-tokens-output` | 0.0125 | 1M tokens | Output tokens (Opus 4.6) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-haiku-4.5-tokens-input` | 0.0005 | 1M tokens | Input tokens (Haiku 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-haiku-4.5-tokens-output` | 0.0025 | 1M tokens | Output tokens (Haiku 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-fable-5.1-tokens-input` | 0.005 | 1M tokens | Input tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-fable-5.1-tokens-cached-input` | 0.000125 | 1M tokens | Cached input tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-fable-5.1-tokens-output` | 0.025 | 1M tokens | Output tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-web-search` | 5 | search | Web search | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `featured-api-pitch-submit` | 0.25 | call | API call (pitch submit) | featured | featured.com | pay-as-you-go | monthly | marked-up |
+| `postmark-email-send` | 0.75 | email | Email send | postmark | postmarkapp.com | basic-10k | monthly | marked-up |
+| `postmark-email-send` | 0.825 | email | Email send | postmark | postmarkapp.com | pro-10k | monthly | marked-up |
+| `postmark-email-send` | 0.9 | email | Email send | postmark | postmarkapp.com | platform-10k | monthly | marked-up |
+| `firecrawl-scrape-credit` | 3.1666666665 | credit | Scrape credit | firecrawl | firecrawl.dev | hobby | monthly | marked-up |
+| `firecrawl-map-credit` | 3.1666666665 | credit | Map credit | firecrawl | firecrawl.dev | hobby | monthly | marked-up |
+| `firecrawl-extract-token` | 0.211111111 | token | Extract token | firecrawl | firecrawl.dev | hobby | monthly | marked-up |
+| `google-flash-3-tokens-input` | 0.00025 | 1M tokens | Input tokens (Gemini 3 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3-tokens-output` | 0.0015 | 1M tokens | Output tokens (Gemini 3 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.5-tokens-input` | 0.00075 | 1M tokens | Input tokens (Gemini 3.5 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.5-tokens-output` | 0.0045 | 1M tokens | Output tokens (Gemini 3.5 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.6-tokens-input` | 0.00075 | 1M tokens | Input tokens (Gemini 3.6 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.6-tokens-output` | 0.00375 | 1M tokens | Output tokens (Gemini 3.6 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.7-tokens-input` | 0.00075 | 1M tokens | Input tokens (Gemini 3.7 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.7-tokens-output` | 0.00375 | 1M tokens | Output tokens (Gemini 3.7 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.8-tokens-input` | 0.00075 | 1M tokens | Input tokens (Gemini 3.8 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.8-tokens-output` | 0.00375 | 1M tokens | Output tokens (Gemini 3.8 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-lite-3.5-tokens-input` | 0.00015 | 1M tokens | Input tokens (Gemini 3.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-lite-3.5-tokens-output` | 0.00125 | 1M tokens | Output tokens (Gemini 3.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-image-3.1-tokens-input` | 0.00025 | 1M tokens | Input tokens (Gemini 3.1 Flash Image) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-image-3.1-tokens-output` | 0.03 | 1M tokens | Image output tokens (Gemini 3.1 Flash Image) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-2.5-tokens-input` | 0.00015 | 1M tokens | Input tokens (Gemini 2.5 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-2.5-tokens-output` | 0.00125 | 1M tokens | Output tokens (Gemini 2.5 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-lite-2.5-tokens-input` | 0.00005 | 1M tokens | Input tokens (Gemini 2.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-lite-2.5-tokens-output` | 0.0002 | 1M tokens | Output tokens (Gemini 2.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-lite-3.1-tokens-input` | 0.000125 | 1M tokens | Input tokens (Gemini 3.1 Flash Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-lite-3.1-tokens-output` | 0.00075 | 1M tokens | Output tokens (Gemini 3.1 Flash Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-pro-2.5-tokens-input` | 0.000625 | 1M tokens | Input tokens (Gemini 2.5 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-pro-2.5-tokens-output` | 0.005 | 1M tokens | Output tokens (Gemini 2.5 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-pro-3.1-tokens-input` | 0.001 | 1M tokens | Input tokens (Gemini 3.1 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-pro-3.1-tokens-output` | 0.006 | 1M tokens | Output tokens (Gemini 3.1 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-embedding-001-tokens-input` | 0.000075 | 1M tokens | Input tokens (Gemini Embedding 001) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-search-query` | 7 | query | Search query (grounding) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `scrape-do-credit` | 0.058 | credit | Scrape credit | scrape-do | scrape.do | hobby | monthly | marked-up |
+| `serper-dev-query` | 0.5 | query | Search query | serper-dev | serper.dev | pay-as-you-go | monthly | marked-up |
 | `stripe-processing-fee` | 1 | USD cent | Charge processing fee | stripe | stripe.com | pay-as-you-go | monthly | pass-through |
 | `stripe-refund-fee` | 1 | USD cent | Refund fee | stripe | stripe.com | pay-as-you-go | monthly | pass-through |
 | `stripe-dispute-fee` | 1 | USD cent | Dispute fee | stripe | stripe.com | pay-as-you-go | monthly | pass-through |
 | `stripe-payout-failure-fee` | 1 | USD cent | Payout failure fee | stripe | stripe.com | pay-as-you-go | monthly | pass-through |
-| `twilio-sms-segment` | 3.325 | segment | SMS message | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
-| `twilio-whatsapp-message` | 1.25 | message | WhatsApp message | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
-| `twilio-voice-outbound-minute-us` | 3.5 | minute | Outbound voice minute (US) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
-| `twilio-voice-outbound-minute-fr-landline` | 4.675 | minute | Outbound voice minute (France, landline) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
-| `twilio-voice-outbound-minute-fr-mobile` | 40.075 | minute | Outbound voice minute (France, mobile) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
-| `twilio-voice-outbound-minute-lc-landline` | 120.75 | minute | Outbound voice minute (St Lucia, landline) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
-| `twilio-voice-outbound-minute-lc-mobile` | 178.95 | minute | Outbound voice minute (St Lucia, mobile) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
-| `cloudflare-r2-class-a-operation` | 0.001125 | operation | R2 Class A operation | cloudflare | cloudflare.com | pay-as-you-go | monthly | marked-up |
-| `cloudflare-r2-class-b-operation` | 0.00009 | operation | R2 Class B operation | cloudflare | cloudflare.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-tokens-input` | 0.000035 | 1M tokens | Input tokens (DeepSeek V4 Flash) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-tokens-output` | 0.00007 | 1M tokens | Output tokens (DeepSeek V4 Flash) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-tokens-input` | 0.00010875 | 1M tokens | Input tokens (DeepSeek V4 Pro) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-tokens-output` | 0.0002175 | 1M tokens | Output tokens (DeepSeek V4 Pro) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-input` | 0.0000371 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-input` | 0.0001166 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-cached-input` | 0.000000742 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-cached-input` | 0.00000371 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-output` | 0.0000742 | 1M tokens | Output tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-peak-tokens-output` | 0.0003498 | 1M tokens | Output tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-input` | 0.0000371 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-input` | 0.0000583 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-cached-input` | 0.000000742 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-cached-input` | 0.000001855 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-output` | 0.0000742 | 1M tokens | Output tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-flash-off-peak-tokens-output` | 0.0001749 | 1M tokens | Output tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-input` | 0.000115275 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-input` | 0.0003498 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-cached-input` | 0.0000009608 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-cached-input` | 0.00001166 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-output` | 0.00023055 | 1M tokens | Output tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-peak-tokens-output` | 0.0010494 | 1M tokens | Output tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-input` | 0.000115275 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-input` | 0.0001749 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-cached-input` | 0.0000009608 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-cached-input` | 0.00000583 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-output` | 0.00023055 | 1M tokens | Output tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4-pro-off-peak-tokens-output` | 0.0005247 | 1M tokens | Output tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4.1-flash-peak-tokens-input` | 0.0000795 | 1M tokens | Input tokens (DeepSeek V4.1 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4.1-flash-peak-tokens-cached-input` | 0.00000159 | 1M tokens | Cached input tokens (DeepSeek V4.1 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4.1-flash-peak-tokens-output` | 0.000318 | 1M tokens | Output tokens (DeepSeek V4.1 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4.1-flash-off-peak-tokens-input` | 0.00003975 | 1M tokens | Input tokens (DeepSeek V4.1 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4.1-flash-off-peak-tokens-cached-input` | 0.000000795 | 1M tokens | Cached input tokens (DeepSeek V4.1 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `deepseek-v4.1-flash-off-peak-tokens-output` | 0.000159 | 1M tokens | Output tokens (DeepSeek V4.1 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
-| `zai-glm-4.7-flashx-tokens-input` | 0.0000175 | 1M tokens | Input tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-4.7-flashx-tokens-cached-input` | 0.0000025 | 1M tokens | Cached input tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-4.7-flashx-tokens-output` | 0.0001 | 1M tokens | Output tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.2-tokens-input` | 0.00035 | 1M tokens | Input tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.2-tokens-cached-input` | 0.000065 | 1M tokens | Cached input tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.2-tokens-output` | 0.0011 | 1M tokens | Output tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.3-tokens-input` | 0.00035 | 1M tokens | Input tokens (GLM-5.3) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.3-tokens-cached-input` | 0.000065 | 1M tokens | Cached input tokens (GLM-5.3) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.3-tokens-output` | 0.0011 | 1M tokens | Output tokens (GLM-5.3) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.3-flash-tokens-input` | 0.0000375 | 1M tokens | Input tokens (GLM-5.3-Flash) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.3-flash-tokens-cached-input` | 0.0000075 | 1M tokens | Cached input tokens (GLM-5.3-Flash) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `zai-glm-5.3-flash-tokens-output` | 0.000125 | 1M tokens | Output tokens (GLM-5.3-Flash) | zai | z.ai | pay-as-you-go | monthly | marked-up |
-| `moonshot-kimi-k2.6-tokens-input` | 0.0002375 | 1M tokens | Input tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
-| `moonshot-kimi-k2.6-tokens-cached-input` | 0.00004 | 1M tokens | Cached input tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
-| `moonshot-kimi-k2.6-tokens-output` | 0.001 | 1M tokens | Output tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
-| `moonshot-kimi-k3-tokens-input` | 0.00075 | 1M tokens | Input tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
-| `moonshot-kimi-k3-tokens-cached-input` | 0.000075 | 1M tokens | Cached input tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
-| `moonshot-kimi-k3-tokens-output` | 0.00375 | 1M tokens | Output tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
-| `openai-gpt-6-astra-tokens-input` | 0.0025 | 1M tokens | Input tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
-| `openai-gpt-6-astra-tokens-cached-input` | 0.00025 | 1M tokens | Cached input tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
-| `openai-gpt-6-astra-tokens-output` | 0.0125 | 1M tokens | Output tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
-| `typesafe-jev-1.13-tokens-input` | 0.0000105 | 1M tokens | Input tokens (Jev 1.13) | typesafe | typesafe.ai | pay-as-you-go | monthly | marked-up |
+| `twilio-sms-segment` | 6.65 | segment | SMS message | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
+| `twilio-whatsapp-message` | 2.5 | message | WhatsApp message | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
+| `twilio-voice-outbound-minute-us` | 7 | minute | Outbound voice minute (US) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
+| `twilio-voice-outbound-minute-fr-landline` | 9.35 | minute | Outbound voice minute (France, landline) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
+| `twilio-voice-outbound-minute-fr-mobile` | 80.15 | minute | Outbound voice minute (France, mobile) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
+| `twilio-voice-outbound-minute-lc-landline` | 241.5 | minute | Outbound voice minute (St Lucia, landline) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
+| `twilio-voice-outbound-minute-lc-mobile` | 357.9 | minute | Outbound voice minute (St Lucia, mobile) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
+| `cloudflare-r2-class-a-operation` | 0.00225 | operation | R2 Class A operation | cloudflare | cloudflare.com | pay-as-you-go | monthly | marked-up |
+| `cloudflare-r2-class-b-operation` | 0.00018 | operation | R2 Class B operation | cloudflare | cloudflare.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-tokens-input` | 0.00007 | 1M tokens | Input tokens (DeepSeek V4 Flash) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-tokens-output` | 0.00014 | 1M tokens | Output tokens (DeepSeek V4 Flash) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-tokens-input` | 0.0002175 | 1M tokens | Input tokens (DeepSeek V4 Pro) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-tokens-output` | 0.000435 | 1M tokens | Output tokens (DeepSeek V4 Pro) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-peak-tokens-input` | 0.0000742 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-peak-tokens-input` | 0.0002332 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-peak-tokens-cached-input` | 0.000001484 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-peak-tokens-cached-input` | 0.00000742 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-peak-tokens-output` | 0.0001484 | 1M tokens | Output tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-peak-tokens-output` | 0.0006996 | 1M tokens | Output tokens (DeepSeek V4 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-off-peak-tokens-input` | 0.0000742 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-off-peak-tokens-input` | 0.0001166 | 1M tokens | Input tokens (DeepSeek V4 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-off-peak-tokens-cached-input` | 0.000001484 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-off-peak-tokens-cached-input` | 0.00000371 | 1M tokens | Cached input tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-off-peak-tokens-output` | 0.0001484 | 1M tokens | Output tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-flash-off-peak-tokens-output` | 0.0003498 | 1M tokens | Output tokens (DeepSeek V4 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-peak-tokens-input` | 0.00023055 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-peak-tokens-input` | 0.0006996 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-peak-tokens-cached-input` | 0.0000019215 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-peak-tokens-cached-input` | 0.00002332 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-peak-tokens-output` | 0.0004611 | 1M tokens | Output tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-peak-tokens-output` | 0.0020988 | 1M tokens | Output tokens (DeepSeek V4 Pro, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-off-peak-tokens-input` | 0.00023055 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-off-peak-tokens-input` | 0.0003498 | 1M tokens | Input tokens (DeepSeek V4 Pro, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-off-peak-tokens-cached-input` | 0.0000019215 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-off-peak-tokens-cached-input` | 0.00001166 | 1M tokens | Cached input tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-off-peak-tokens-output` | 0.0004611 | 1M tokens | Output tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4-pro-off-peak-tokens-output` | 0.0010494 | 1M tokens | Output tokens (DeepSeek V4 Pro, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4.1-flash-peak-tokens-input` | 0.000159 | 1M tokens | Input tokens (DeepSeek V4.1 Flash, cache miss, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4.1-flash-peak-tokens-cached-input` | 0.00000318 | 1M tokens | Cached input tokens (DeepSeek V4.1 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4.1-flash-peak-tokens-output` | 0.000636 | 1M tokens | Output tokens (DeepSeek V4.1 Flash, peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4.1-flash-off-peak-tokens-input` | 0.0000795 | 1M tokens | Input tokens (DeepSeek V4.1 Flash, cache miss, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4.1-flash-off-peak-tokens-cached-input` | 0.00000159 | 1M tokens | Cached input tokens (DeepSeek V4.1 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `deepseek-v4.1-flash-off-peak-tokens-output` | 0.000318 | 1M tokens | Output tokens (DeepSeek V4.1 Flash, off-peak) | deepseek | deepseek.com | pay-as-you-go | monthly | marked-up |
+| `zai-glm-4.7-flashx-tokens-input` | 0.000035 | 1M tokens | Input tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `zai-glm-4.7-flashx-tokens-cached-input` | 0.000005 | 1M tokens | Cached input tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `zai-glm-4.7-flashx-tokens-output` | 0.0002 | 1M tokens | Output tokens (GLM-4.7-FlashX) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `zai-glm-5.2-tokens-input` | 0.0007 | 1M tokens | Input tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `zai-glm-5.2-tokens-cached-input` | 0.00013 | 1M tokens | Cached input tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `zai-glm-5.2-tokens-output` | 0.0022 | 1M tokens | Output tokens (GLM-5.2) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `zai-glm-5.3-tokens-input` | 0.0007 | 1M tokens | Input tokens (GLM-5.3) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `zai-glm-5.3-tokens-cached-input` | 0.00013 | 1M tokens | Cached input tokens (GLM-5.3) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `zai-glm-5.3-tokens-output` | 0.0022 | 1M tokens | Output tokens (GLM-5.3) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `zai-glm-5.3-flash-tokens-input` | 0.000075 | 1M tokens | Input tokens (GLM-5.3-Flash) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `zai-glm-5.3-flash-tokens-cached-input` | 0.000015 | 1M tokens | Cached input tokens (GLM-5.3-Flash) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `zai-glm-5.3-flash-tokens-output` | 0.00025 | 1M tokens | Output tokens (GLM-5.3-Flash) | zai | z.ai | pay-as-you-go | monthly | marked-up |
+| `moonshot-kimi-k2.6-tokens-input` | 0.000475 | 1M tokens | Input tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
+| `moonshot-kimi-k2.6-tokens-cached-input` | 0.00008 | 1M tokens | Cached input tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
+| `moonshot-kimi-k2.6-tokens-output` | 0.002 | 1M tokens | Output tokens (Kimi K2.6) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
+| `moonshot-kimi-k3-tokens-input` | 0.0015 | 1M tokens | Input tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
+| `moonshot-kimi-k3-tokens-cached-input` | 0.00015 | 1M tokens | Cached input tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
+| `moonshot-kimi-k3-tokens-output` | 0.0075 | 1M tokens | Output tokens (Kimi K3) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-astra-tokens-input` | 0.005 | 1M tokens | Input tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-astra-tokens-cached-input` | 0.0005 | 1M tokens | Cached input tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-astra-tokens-output` | 0.025 | 1M tokens | Output tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `typesafe-jev-1.13-tokens-input` | 0.000021 | 1M tokens | Input tokens (Jev 1.13) | typesafe | typesafe.ai | pay-as-you-go | monthly | marked-up |
 | `google-ads-spend` | 1 | USD cent | Google Ads platform spend | google-ads | ads.google.com | pay-as-you-go | monthly | pass-through |
 | `meta-ads-spend` | 1 | USD cent | Meta Ads platform spend | meta-ads | facebook.com | pay-as-you-go | monthly | pass-through |
 | `linkedin-ads-spend` | 1 | USD cent | LinkedIn Ads platform spend | linkedin-ads | linkedin.com | pay-as-you-go | monthly | pass-through |
@@ -377,7 +377,7 @@ What one unit of each price version REALLY cost us from the vendor, before our m
 | GET | `/internal/vendor-costs` | Yes | Every price version (all names, plans, dates) with `billedPricePerUnitInUsdCents`, `vendorCostPerUnitInUsdCents`, `vendorCostKnown`, `vendorCostUnknownReason`, `markupMultiplier`, `effectiveFrom`, `createdAt`. `?names=a,b` narrows it |
 | GET | `/internal/vendor-costs/:name?at=<ISO>` | Yes | The version `/v1/platform-prices/:name` served at instant `at` (default now), with its vendor cost |
 
-A version's vendor cost is stated only when a vendor rate the seed records reproduces its billed price EXACTLY under the markup in force when it was written (1x/2x overwrite era, 2x, 4x, 5x, 6x, 5x, 2.5x). A fractional markup rounds, so the reproduction inverts the seed's half-up rounding (`invertMarkup`) rather than dividing. Otherwise it is `null` with a reason (`no-billable-price`, `no-vendor-rate-on-record`, `ambiguous-vendor-rate`) and never the billed price.
+A version's vendor cost is stated only when a vendor rate the seed records reproduces its billed price EXACTLY under the markup in force when it was written (1x/2x overwrite era, 2x, 4x, 5x, 6x, 5x). Otherwise it is `null` with a reason (`no-billable-price`, `no-vendor-rate-on-record`, `ambiguous-vendor-rate`) and never the billed price.
 
 ### Other endpoints
 
