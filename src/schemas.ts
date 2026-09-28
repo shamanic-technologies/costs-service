@@ -606,18 +606,18 @@ export const VendorCostVersionSchema = z
     }),
     vendorCostKnown: z.boolean(),
     vendorCostUnknownReason: z
-      .enum(["no-billable-price", "no-vendor-rate-on-record", "ambiguous-vendor-rate", "vendor-rate-not-retained", "not-yet-stated"])
+      .enum(["no-billable-price", "no-vendor-rate-on-record", "ambiguous-vendor-rate", "not-yet-stated"])
       .nullable(),
     markupMultiplier: z.string().nullable().openapi({
       description: "billed / vendor for this version (4 decimals), e.g. '6.0000' in the 6x era, '1.0000' for pass-through. Null when unknown, or when the vendor cost is 0.",
       example: "5.0000",
     }),
-    vendorCostDerivation: z.enum(["pass-through", "seed-vendor-rate", "seed-vendor-rate-pre-vat", "paid-allocation", "vendor-list-price", "unknown"]).openapi({
+    vendorCostDerivation: z.enum(["pass-through", "seed-vendor-rate", "seed-vendor-rate-pre-vat", "unknown"]).openapi({
       description:
-        "How the vendor cost was stated. 'seed-vendor-rate' / '-pre-vat': a vendor rate the seed records reproduces the billed price. 'paid-allocation': what we actually paid (bank charges, prorated) divided by the units production recorded — the cold-email infrastructure and Featured lines, whose seed rate was a model. 'vendor-list-price': the vendor's list price, where the billed row itself was wrong (mis-seeded) or the unit is free. 'pass-through': billed = vendor.",
+        "How the vendor cost was stated. 'seed-vendor-rate' / '-pre-vat': a vendor rate the seed carried (today or in its history) reproduces the billed price under the markup in force when the version was written. 'pass-through': billed = vendor.",
     }),
     vendorCostNote: z.string().nullable().openapi({
-      description: "Where a stated (non-seed) vendor cost comes from, or why it cannot be known, in words. Null for a plain seed reproduction.",
+      description: "Why a reconstructed version exists, in words. Null on a catalogue version.",
     }),
     reconstructed: z.boolean().openapi({
       description:

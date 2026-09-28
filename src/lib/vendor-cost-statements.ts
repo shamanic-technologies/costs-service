@@ -1,172 +1,75 @@
 /**
- * Vendor costs STATED from evidence the seed cannot carry — STAFF-ONLY, like the rest of the
- * vendor-cost surface (served on `/internal/vendor-costs*` only).
+ * The vendor rate (price WITHOUT our markup) each cost line carried at the time, where the
+ * CURRENT seed no longer carries it — STAFF-ONLY, like the rest of the vendor-cost surface.
  *
- * `resolveVendorCost` states a price version's vendor cost only when a vendor rate the CURRENT
- * seed records reproduces the billed price under the markup in force. Two families of versions
- * can never pass that test, and production cost rows were billed at both:
- *
- *  1. VERSIONS WHOSE SEED RATE WAS NEVER WHAT WE PAID, or is no longer in the seed. The
- *     cold-email lines (`instantly-*`) and Featured were priced on a MODEL (a plan price ÷ an
- *     assumed volume) that has nothing to do with what the sending infrastructure actually cost,
- *     and the Instantly lines are delisted, so the seed holds no rate for them at all. Their
- *     vendor cost is stated below from what we actually PAID (bank charges) allocated over the
- *     units production actually recorded — see `docs/vendor-cost-paid-allocation.md` for the
- *     charges, the units, and the arithmetic, reproducible end to end.
- *
- *  2. VERSIONS THAT NO LONGER EXIST IN `providers_costs`. Before v0.25.0 (2026-06-07) the seed
- *     OVERWROTE prices in place, so every version served before the 2026-05-03 2x risk markup
- *     was replaced by its 2x value and the row that carried it is gone. runs-service still holds
- *     cost rows that froze those prices, and no catalogue row matches them. They are
- *     RECONSTRUCTED here — never written back into `providers_costs`, which would change the
- *     billed catalogue — and appended to `GET /internal/vendor-costs` so a consumer pricing a
- *     cost row by (name, billed unit price, date) finds them.
- *
- * Nothing here touches a billed price. Each statement names the rows it applies to by the
- * billed price AND a window on the row's `created_at`, so a later version that happens to land
- * on the same billed figure is never captured.
+ * `resolveVendorCost` states a version's vendor cost when a vendor rate the seed records
+ * reproduces the billed price under the markup in force when the version was written. It only
+ * knew the rates the CURRENT seed holds, so every version whose rate has since been edited out
+ * of the seed read "unknown" — the delisted Instantly lines, early Featured, the 10x mis-seeded
+ * Fable/Astra rows, the Vercel-gateway DeepSeek rows. Their rates are still in the seed's git
+ * history; they are listed here verbatim, so the same exact reproduction states them. Nothing is
+ * estimated and no other cost is added: vendor cost = billed / the markup of the day, and only
+ * where that quotient is a literal the seed actually carried.
  */
 import { normalizeCents } from "./vendor-cost.js";
 
-export type StatedDerivation =
-  /** Bank charges for the service, prorated over time and divided by the units recorded. */
-  | "paid-allocation"
-  /** The vendor's own list price for the unit (what the vendor charged, whatever we billed). */
-  | "vendor-list-price"
-  /** The seed's own literal for a version overwritten in place, served at 1x (no markup yet). */
-  | "seed-vendor-rate";
-
-export type StatedUnknownReason =
-  /** The provider path is retired and no invoice or rate for it was kept. */
-  "vendor-rate-not-retained";
-
-export interface VendorCostStatement {
-  name: string;
-  /** Plan tiers the statement covers; omitted = every tier of the name. */
-  planTiers?: string[];
-  billedPricePerUnitInUsdCents: string;
-  /** Applies to catalogue rows whose created_at is in [createdFrom, createdTo). */
-  createdFrom: Date;
-  createdTo: Date;
-  vendorCostPerUnitInUsdCents: string | null;
-  derivation: StatedDerivation | "unknown";
-  unknownReason?: StatedUnknownReason;
-  note: string;
-}
-
-const d = (iso: string) => new Date(iso);
-const FOREVER = d("2100-01-01T00:00:00Z");
-
-// The sending infrastructure behind the cold-email lines, allocated by what each line priced:
-//   - mailbox + domain infrastructure (Mailforge / Primeforge "FORGE", Gandi) -> the per-email
-//     ACCOUNT line, per email sent;
-//   - the Instantly subscription (sold by uploaded contacts)                   -> the CONTACT line;
-//   - the per-email DOMAIN line is stated at 0: its domain share is inside the account line's
-//     figure, and stating it twice would double-count the same charges.
-// Every figure is the month's charges (each prorated over the 30 days it pays for) divided by
-// the month's units, weighted over the months the version was billed in.
-const SENDING_INFRA_NOTE =
-  "What the sending infrastructure actually cost: bank charges for Instantly, Mailforge/Primeforge and Gandi, " +
-  "each prorated over the 30 days it pays for, divided by the units production recorded that month " +
-  "(docs/vendor-cost-paid-allocation.md).";
-const DOMAIN_FOLDED_NOTE =
-  "Stated 0: the domain and mailbox charges are allocated per email on instantly-account-email-sent, " +
-  "so the per-domain line carries none of them (docs/vendor-cost-paid-allocation.md).";
-const FEATURED_NOTE =
-  "What Featured/Connectively actually cost: the flat monthly subscription charges, prorated over the 30 days " +
-  "each pays for, divided by the pitches production submitted (docs/vendor-cost-paid-allocation.md).";
-
-export const VENDOR_COST_STATEMENTS: VendorCostStatement[] = [
-  // --- instantly-account-email-sent (versions of 2026-04-19 .. 2026-08-23) -------------------
-  { name: "instantly-account-email-sent", billedPricePerUnitInUsdCents: "3.3334000000", createdFrom: d("2026-04-19T00:00:00Z"), createdTo: d("2026-05-01T00:00:00Z"), vendorCostPerUnitInUsdCents: "0.6572392271", derivation: "paid-allocation", note: SENDING_INFRA_NOTE },
-  { name: "instantly-account-email-sent", billedPricePerUnitInUsdCents: "0.1587301588", createdFrom: d("2026-06-07T00:00:00Z"), createdTo: d("2026-06-08T00:00:00Z"), vendorCostPerUnitInUsdCents: "0.4231984164", derivation: "paid-allocation", note: SENDING_INFRA_NOTE },
-  { name: "instantly-account-email-sent", billedPricePerUnitInUsdCents: "1.4285714286", createdFrom: d("2026-06-26T00:00:00Z"), createdTo: d("2026-06-27T00:00:00Z"), vendorCostPerUnitInUsdCents: "0.5293825133", derivation: "paid-allocation", note: SENDING_INFRA_NOTE },
-  { name: "instantly-account-email-sent", billedPricePerUnitInUsdCents: "3.2740740740", createdFrom: d("2026-07-01T00:00:00Z"), createdTo: d("2026-07-02T00:00:00Z"), vendorCostPerUnitInUsdCents: "3.2019983098", derivation: "paid-allocation", note: SENDING_INFRA_NOTE },
-  { name: "instantly-account-email-sent", billedPricePerUnitInUsdCents: "6.5481481480", createdFrom: d("2026-07-09T00:00:00Z"), createdTo: d("2026-07-10T00:00:00Z"), vendorCostPerUnitInUsdCents: "2.7788644351", derivation: "paid-allocation", note: SENDING_INFRA_NOTE },
-
-  // --- instantly-domain-email-sent -------------------------------------------------------------
-  { name: "instantly-domain-email-sent", billedPricePerUnitInUsdCents: "0.3968000000", createdFrom: d("2026-04-19T00:00:00Z"), createdTo: d("2026-05-01T00:00:00Z"), vendorCostPerUnitInUsdCents: "0.0000000000", derivation: "paid-allocation", note: DOMAIN_FOLDED_NOTE },
-  { name: "instantly-domain-email-sent", billedPricePerUnitInUsdCents: "0.0000000000", createdFrom: d("2026-06-07T00:00:00Z"), createdTo: d("2026-06-08T00:00:00Z"), vendorCostPerUnitInUsdCents: "0.0000000000", derivation: "paid-allocation", note: DOMAIN_FOLDED_NOTE },
-  { name: "instantly-domain-email-sent", billedPricePerUnitInUsdCents: "0.5158730158", createdFrom: d("2026-06-26T00:00:00Z"), createdTo: d("2026-06-27T00:00:00Z"), vendorCostPerUnitInUsdCents: "0.0000000000", derivation: "paid-allocation", note: DOMAIN_FOLDED_NOTE },
-  { name: "instantly-domain-email-sent", billedPricePerUnitInUsdCents: "0.0793650794", createdFrom: d("2026-07-01T00:00:00Z"), createdTo: d("2026-07-02T00:00:00Z"), vendorCostPerUnitInUsdCents: "0.0000000000", derivation: "paid-allocation", note: DOMAIN_FOLDED_NOTE },
-  { name: "instantly-domain-email-sent", billedPricePerUnitInUsdCents: "0.1587301588", createdFrom: d("2026-07-09T00:00:00Z"), createdTo: d("2026-07-10T00:00:00Z"), vendorCostPerUnitInUsdCents: "0.0000000000", derivation: "paid-allocation", note: DOMAIN_FOLDED_NOTE },
-
-  // --- instantly-contact-uploaded (growth rows were never billed; same paid figure, plan-agnostic)
-  { name: "instantly-contact-uploaded", billedPricePerUnitInUsdCents: "0.7760000000", createdFrom: d("2026-04-19T00:00:00Z"), createdTo: d("2026-05-01T00:00:00Z"), vendorCostPerUnitInUsdCents: "1.2570362824", derivation: "paid-allocation", note: SENDING_INFRA_NOTE },
-  { name: "instantly-contact-uploaded", billedPricePerUnitInUsdCents: "9.4000000000", createdFrom: d("2026-04-19T00:00:00Z"), createdTo: d("2026-05-01T00:00:00Z"), vendorCostPerUnitInUsdCents: "1.2570362824", derivation: "paid-allocation", note: SENDING_INFRA_NOTE },
-  { name: "instantly-contact-uploaded", billedPricePerUnitInUsdCents: "1.5520000000", createdFrom: d("2026-07-09T00:00:00Z"), createdTo: d("2026-07-10T00:00:00Z"), vendorCostPerUnitInUsdCents: "7.5189025220", derivation: "paid-allocation", note: SENDING_INFRA_NOTE },
-  { name: "instantly-contact-uploaded", billedPricePerUnitInUsdCents: "18.8000000000", createdFrom: d("2026-07-09T00:00:00Z"), createdTo: d("2026-07-10T00:00:00Z"), vendorCostPerUnitInUsdCents: "7.5189025220", derivation: "paid-allocation", note: SENDING_INFRA_NOTE },
-
-  // --- featured-api-pitch-submit: every version pitches were actually billed at --------------
-  // (Later versions carry no billed pitch — Featured has not been used since 2026-08-05 — and
-  // keep the seed's statement.)
-  { name: "featured-api-pitch-submit", billedPricePerUnitInUsdCents: "198.0000000000", createdFrom: d("2026-05-13T00:00:00Z"), createdTo: d("2026-05-14T00:00:00Z"), vendorCostPerUnitInUsdCents: "16.5000000000", derivation: "paid-allocation", note: FEATURED_NOTE },
-  { name: "featured-api-pitch-submit", billedPricePerUnitInUsdCents: "1398.0000000000", createdFrom: d("2026-06-05T00:00:00Z"), createdTo: d("2026-06-06T00:00:00Z"), vendorCostPerUnitInUsdCents: "16.5000000000", derivation: "paid-allocation", note: FEATURED_NOTE },
-  { name: "featured-api-pitch-submit", billedPricePerUnitInUsdCents: "200.0000000000", createdFrom: d("2026-06-09T00:00:00Z"), createdTo: d("2026-06-10T00:00:00Z"), vendorCostPerUnitInUsdCents: "16.5000000000", derivation: "paid-allocation", note: FEATURED_NOTE },
-  { name: "featured-api-pitch-submit", billedPricePerUnitInUsdCents: "0.1000000000", createdFrom: d("2026-06-29T00:00:00Z"), createdTo: d("2026-06-30T00:00:00Z"), vendorCostPerUnitInUsdCents: "22.1254857997", derivation: "paid-allocation", note: FEATURED_NOTE },
-  { name: "featured-api-pitch-submit", billedPricePerUnitInUsdCents: "0.2000000000", createdFrom: d("2026-07-09T00:00:00Z"), createdTo: d("2026-07-10T00:00:00Z"), vendorCostPerUnitInUsdCents: "23.7789929340", derivation: "paid-allocation", note: FEATURED_NOTE },
-  // Opportunity fetches are free and unlimited on the plan.
-  { name: "featured-api-opportunity-fetch", billedPricePerUnitInUsdCents: "0.0000000000", createdFrom: d("2026-05-13T00:00:00Z"), createdTo: FOREVER, vendorCostPerUnitInUsdCents: "0.0000000000", derivation: "vendor-list-price", note: "Opportunity fetches are free and unlimited on the Featured plan." },
-
-  // --- Claude Fable 5.1 / GPT-6 Astra: the 2026-09-09 rows were stored 10x LOW (v0.55.0 -> v0.56.0).
-  // The billed row is wrong; what the vendor charged per token is its list price, as the corrected
-  // seed states it (asserted in tests/unit/vendor-cost-statements.test.ts).
-  ...([
-    ["anthropic-fable-5.1-tokens-input", "0.0006000000", "0.0010000000"],
-    ["anthropic-fable-5.1-tokens-cached-input", "0.0000150000", "0.0000250000"],
-    ["anthropic-fable-5.1-tokens-output", "0.0030000000", "0.0050000000"],
-    ["openai-gpt-6-astra-tokens-input", "0.0006000000", "0.0010000000"],
-    ["openai-gpt-6-astra-tokens-cached-input", "0.0000600000", "0.0001000000"],
-    ["openai-gpt-6-astra-tokens-output", "0.0030000000", "0.0050000000"],
-  ] as const).map(([name, billed, vendor]): VendorCostStatement => ({
-    name,
-    billedPricePerUnitInUsdCents: billed,
-    createdFrom: d("2026-09-09T11:00:00Z"),
-    createdTo: d("2026-09-09T11:15:00Z"),
-    vendorCostPerUnitInUsdCents: vendor,
-    derivation: "vendor-list-price",
-    note: "Seeded 10x low on 2026-09-09 and corrected in v0.56.0; the vendor charged its list price per token, as the corrected seed states.",
-  })),
-
-  // --- DeepSeek through the Vercel AI Gateway (retired in v0.46.0): no invoice kept, no rate on
-  // record for what the gateway charged, and no cost row was ever billed at these prices.
-  ...([
-    ["deepseek-v4-flash-tokens-input", "0.0001760000", "2026-08-14T10:00:00Z"],
-    ["deepseek-v4-flash-tokens-output", "0.0005280000", "2026-08-14T10:00:00Z"],
-    ["deepseek-v4-pro-tokens-input", "0.0006960000", "2026-08-15T10:00:00Z"],
-    ["deepseek-v4-pro-tokens-output", "0.0013920000", "2026-08-15T10:00:00Z"],
-  ] as const).map(([name, billed, from]): VendorCostStatement => ({
-    name,
-    planTiers: ["pay-as-you-go"],
-    billedPricePerUnitInUsdCents: billed,
-    createdFrom: d(from),
-    createdTo: new Date(d(from).getTime() + 3_600_000),
-    vendorCostPerUnitInUsdCents: null,
-    derivation: "unknown",
-    unknownReason: "vendor-rate-not-retained",
-    note: "Served for about a day through the Vercel AI Gateway, retired in v0.46.0: what the gateway charged per token was never recorded and no invoice was kept. No cost row was billed at this price.",
-  })),
-];
-
-/** The statement covering a catalogue row, or null. Throws if two cover it (a data bug). */
-export function findVendorCostStatement(row: {
+export interface HistoricalSeedVendorRate {
   name: string;
   planTier: string;
-  costPerUnitInUsdCents: string | null;
-  createdAt: Date;
-}): VendorCostStatement | null {
-  if (row.costPerUnitInUsdCents === null) return null;
-  const billed = normalizeCents(row.costPerUnitInUsdCents);
-  const hits = VENDOR_COST_STATEMENTS.filter(
-    (s) =>
-      s.name === row.name &&
-      (!s.planTiers || s.planTiers.includes(row.planTier)) &&
-      normalizeCents(s.billedPricePerUnitInUsdCents) === billed &&
-      s.createdFrom <= row.createdAt &&
-      row.createdAt < s.createdTo,
-  );
-  if (hits.length > 1) throw new Error(`Two vendor-cost statements cover '${row.name}' at ${billed}.`);
-  return hits[0] ?? null;
+  billingCycle: string;
+  /** The seed's vendor literal (cents per unit, before markup), byte-equal to git history. */
+  vendorCostPerUnitInUsdCents: string;
+}
+
+// [name, planTier, billingCycle, vendor literal]
+const HISTORICAL: [string, string, string, string][] = [
+  // Instantly (delisted 2026-08-23; each literal is one of the seed's successive infra models)
+  ...["growth|monthly", "hypergrowth|monthly"].flatMap((pc) => {
+    const [t, c] = pc.split("|");
+    return ["1.6667000000", "0.0793650794", "0.7142857143", "1.6370370370"].map(
+      (v): [string, string, string, string] => ["instantly-account-email-sent", t, c, v],
+    );
+  }),
+  ...["growth|yearly", "hypergrowth|monthly"].flatMap((pc) => {
+    const [t, c] = pc.split("|");
+    return ["0.1984000000", "0.0000000000", "0.2579365079", "0.0396825397"].map(
+      (v): [string, string, string, string] => ["instantly-domain-email-sent", t, c, v],
+    );
+  }),
+  ["instantly-contact-uploaded", "growth", "monthly", "4.7000000000"],
+  ["instantly-contact-uploaded", "hypergrowth", "monthly", "0.3880000000"],
+  // Featured, before the 2026-06-29 "$1/2000" rebill base
+  ["featured-api-pitch-submit", "premium", "monthly", "99.0000000000"],
+  ["featured-api-pitch-submit", "pay-as-you-go", "monthly", "699.0000000000"],
+  ["featured-api-pitch-submit", "pay-as-you-go", "monthly", "100.0000000000"],
+  ["featured-api-opportunity-fetch", "premium", "monthly", "0.0000000000"],
+  // Claude Fable 5.1 / GPT-6 Astra as first seeded on 2026-09-09 (10x low, corrected in v0.56.0)
+  ["anthropic-fable-5.1-tokens-input", "pay-as-you-go", "monthly", "0.0001000000"],
+  ["anthropic-fable-5.1-tokens-cached-input", "pay-as-you-go", "monthly", "0.0000025000"],
+  ["anthropic-fable-5.1-tokens-output", "pay-as-you-go", "monthly", "0.0005000000"],
+  ["openai-gpt-6-astra-tokens-input", "pay-as-you-go", "monthly", "0.0001000000"],
+  ["openai-gpt-6-astra-tokens-cached-input", "pay-as-you-go", "monthly", "0.0000100000"],
+  ["openai-gpt-6-astra-tokens-output", "pay-as-you-go", "monthly", "0.0005000000"],
+  // DeepSeek V4 through the Vercel AI Gateway (retired in v0.46.0)
+  ["deepseek-v4-flash-tokens-input", "pay-as-you-go", "monthly", "0.0000440000"],
+  ["deepseek-v4-flash-tokens-output", "pay-as-you-go", "monthly", "0.0001320000"],
+  ["deepseek-v4-pro-tokens-input", "pay-as-you-go", "monthly", "0.0001740000"],
+  ["deepseek-v4-pro-tokens-output", "pay-as-you-go", "monthly", "0.0003480000"],
+];
+
+export const HISTORICAL_SEED_VENDOR_RATES: HistoricalSeedVendorRate[] = HISTORICAL.map(
+  ([name, planTier, billingCycle, vendorCostPerUnitInUsdCents]) => ({ name, planTier, billingCycle, vendorCostPerUnitInUsdCents }),
+);
+
+/** Current seed rates plus the historical ones, keyed like `seedVendorRatesByKey`. */
+export function withHistoricalSeedRates(current: Map<string, Set<string>>): Map<string, Set<string>> {
+  const merged = new Map([...current].map(([k, v]) => [k, new Set(v)]));
+  for (const r of HISTORICAL_SEED_VENDOR_RATES) {
+    const key = `${r.name}|${r.planTier}|${r.billingCycle}`;
+    if (!merged.has(key)) merged.set(key, new Set());
+    merged.get(key)!.add(normalizeCents(r.vendorCostPerUnitInUsdCents));
+  }
+  return merged;
 }
 
 // --- Reconstructed versions (overwritten in place before v0.25.0) --------------------------------
@@ -180,9 +83,11 @@ export interface ReconstructedPriceVersion {
   /** First day a production cost row froze this price: the version was served by then. */
   servedFrom: Date;
   vendorCostPerUnitInUsdCents: string;
-  derivation: StatedDerivation;
+  derivation: "seed-vendor-rate";
   note: string;
 }
+
+const d = (iso: string) => new Date(iso);
 
 const PRE_MARKUP_NOTE =
   "Served before the 2026-05-03 risk markup, when the catalogue stored the vendor rate itself (1x); the row was " +
@@ -234,9 +139,21 @@ export const RECONSTRUCTED_PRICE_VERSIONS: ReconstructedPriceVersion[] = [
     derivation: "seed-vendor-rate",
     note: PRE_MARKUP_NOTE,
   })),
-  // The cold-email lines' pre-markup versions: stated from what we paid, like their successors.
-  { name: "instantly-email-send", provider: "instantly", planTier: "hypergrowth", billingCycle: "monthly", billedPricePerUnitInUsdCents: "0.9400000000", servedFrom: d("2026-02-10T00:00:00Z"), vendorCostPerUnitInUsdCents: "6.8469579746", derivation: "paid-allocation", note: "Single cold-email line until 2026-04-19: every sending-infrastructure charge (Instantly, Gandi) prorated per month, divided by the emails sent that month (docs/vendor-cost-paid-allocation.md)." },
-  { name: "instantly-account-email-sent", provider: "instantly", planTier: "hypergrowth", billingCycle: "monthly", billedPricePerUnitInUsdCents: "1.6667000000", servedFrom: d("2026-04-20T00:00:00Z"), vendorCostPerUnitInUsdCents: "0.3050234605", derivation: "paid-allocation", note: SENDING_INFRA_NOTE },
-  { name: "instantly-domain-email-sent", provider: "instantly", planTier: "hypergrowth", billingCycle: "monthly", billedPricePerUnitInUsdCents: "0.1984000000", servedFrom: d("2026-04-20T00:00:00Z"), vendorCostPerUnitInUsdCents: "0.0000000000", derivation: "paid-allocation", note: DOMAIN_FOLDED_NOTE },
-  { name: "instantly-contact-uploaded", provider: "instantly", planTier: "hypergrowth", billingCycle: "monthly", billedPricePerUnitInUsdCents: "0.3880000000", servedFrom: d("2026-04-20T00:00:00Z"), vendorCostPerUnitInUsdCents: "2.3216129950", derivation: "paid-allocation", note: SENDING_INFRA_NOTE },
+  // The cold-email lines' pre-markup versions, same rule: served at 1x, so vendor = billed.
+  ...([
+    ["instantly-email-send", "0.9400000000", "2026-02-10"],
+    ["instantly-account-email-sent", "1.6667000000", "2026-04-20"],
+    ["instantly-domain-email-sent", "0.1984000000", "2026-04-20"],
+    ["instantly-contact-uploaded", "0.3880000000", "2026-04-20"],
+  ] as const).map(([name, billed, from]): ReconstructedPriceVersion => ({
+    name,
+    provider: "instantly",
+    planTier: "hypergrowth",
+    billingCycle: "monthly",
+    billedPricePerUnitInUsdCents: billed,
+    servedFrom: d(`${from}T00:00:00Z`),
+    vendorCostPerUnitInUsdCents: billed,
+    derivation: "seed-vendor-rate",
+    note: PRE_MARKUP_NOTE,
+  })),
 ];
