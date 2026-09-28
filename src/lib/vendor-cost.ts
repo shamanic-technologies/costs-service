@@ -3,7 +3,7 @@
  *
  * The catalog stores the price we CHARGE: vendor rate × the store markup for a marked-up line,
  * the vendor rate itself for a pass-through line, nothing for a delisted one. The markup has
- * moved several times (1× → 2× → 4× → 5× → 6× → 5× → 2.5×), so nobody downstream can recover a past
+ * moved several times (1× → 2× → 4× → 5× → 6× → 5× → 2.5× → 5×), so nobody downstream can recover a past
  * row's vendor cost by dividing by today's constant. This module states it per price VERSION,
  * from evidence, and says "unknown" (with a reason) whenever the evidence is missing — it never
  * falls back to the billed price, and never divides by a multiplier it cannot show was in force.
@@ -108,9 +108,11 @@ export const MARKUP_ERAS: { from: Date; multipliers: number[]; label: string }[]
   { from: new Date("2026-08-23T17:13:51Z"), multipliers: [5], label: "5x (risk 2 x profit 2.5)" },
   { from: new Date("2026-08-30T09:41:26Z"), multipliers: [6], label: "6x (risk 2 x profit 3)" },
   { from: new Date("2026-09-15T08:47:36Z"), multipliers: [5], label: "5x (risk 2 x profit 2.5)" },
-  // Any instant between the last 5x row and the first 2.5x row is exact: nothing reaches prod
-  // between this commit and the promote that carries it.
-  { from: new Date("2026-09-28T04:38:19Z"), multipliers: [COST_DEFAULT_MULTIPLIER], label: "current store markup (2.5x, risk 2 x profit 1.25)" },
+  // The 2.5x trial (v0.62.0), live ~04:55Z -> the v0.63.0 revert. Its boundaries are any instant
+  // between the last row of one era and the first row of the next: nothing reached prod between
+  // the commit that dated them and the promote that carried it.
+  { from: new Date("2026-09-28T04:38:19Z"), multipliers: [2.5], label: "2.5x trial (risk 2 x profit 1.25)" },
+  { from: new Date("2026-09-28T04:58:28Z"), multipliers: [COST_DEFAULT_MULTIPLIER], label: "current store markup (5x, risk 2 x profit 2.5)" },
 ];
 
 export function markupsInForceAt(writtenAt: Date): number[] {
