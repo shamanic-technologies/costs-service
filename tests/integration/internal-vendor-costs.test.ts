@@ -173,9 +173,9 @@ describe("/internal/vendor-costs — vendor cost per price version, service-auth
     });
   });
 
-  it("restates a production row recorded as unknown once a statement covers it (Instantly, what we paid)", async () => {
-    // The 2026-07-09 Instantly per-email version as production holds it: written before the
-    // statements existed, recorded unknown because the delisted seed carries no rate.
+  it("states a production row recorded unknown from the seed rate it carried then (Instantly, 4x era)", async () => {
+    // The 2026-07-09 Instantly per-email version as production holds it: recorded unknown because
+    // the delisted seed no longer carries its rate (1.6370370370, in the seed's git history).
     const at = new Date("2026-07-09T15:11:05Z");
     const inst = await insertTestProviderCost({
       name: "instantly-account-email-sent",
@@ -197,22 +197,44 @@ describe("/internal/vendor-costs — vendor cost per price version, service-auth
     await recordVendorCosts();
     const [restated] = await db.select().from(providerCostVendorCosts).where(eq(providerCostVendorCosts.providerCostId, inst.id));
     expect(restated).toMatchObject({
-      vendorCostPerUnitInUsdCents: "2.7788644351",
-      derivation: "paid-allocation",
+      vendorCostPerUnitInUsdCents: "1.6370370370",
+      derivation: "seed-vendor-rate",
       unknownReason: null,
-      markupMultiplier: "2.3564",
+      markupMultiplier: "4.0000",
     });
 
     const res = await request(app).get("/internal/vendor-costs?names=instantly-account-email-sent").set(API_KEY);
     const v = res.body.versions.find((x: any) => x.id === inst.id);
-    expect(v).toMatchObject({ vendorCostKnown: true, vendorCostDerivation: "paid-allocation", reconstructed: false });
-    expect(v.vendorCostNote).toMatch(/bank charges/);
+    expect(v).toMatchObject({ vendorCostKnown: true, vendorCostDerivation: "seed-vendor-rate", reconstructed: false });
 
     // Idempotent: a second boot rewrites nothing.
     await recordVendorCosts();
     const [again] = await db.select().from(providerCostVendorCosts).where(eq(providerCostVendorCosts.providerCostId, inst.id));
     expect(again.createdAt).toEqual(restated.createdAt);
-    expect(again.vendorCostPerUnitInUsdCents).toBe("2.7788644351");
+    expect(again.vendorCostPerUnitInUsdCents).toBe("1.6370370370");
+  });
+
+  it("rewrites a row the reverted v0.64.0 bank-charge allocation wrote, to the seed rate of the day", async () => {
+    const at = new Date("2026-04-19T04:41:58Z");
+    const inst = await insertTestProviderCost({
+      name: "instantly-contact-uploaded",
+      provider: "instantly",
+      planTier: "hypergrowth",
+      billingCycle: "monthly",
+      costPerUnitInUsdCents: "0.7760000000",
+      effectiveFrom: at,
+    });
+    await db.update(providersCosts).set({ createdAt: at }).where(eq(providersCosts.id, inst.id));
+    await db.insert(providerCostVendorCosts).values({
+      providerCostId: inst.id,
+      vendorCostPerUnitInUsdCents: "1.2570362824",
+      markupMultiplier: "0.6173",
+      derivation: "paid-allocation",
+      unknownReason: null,
+    });
+    await recordVendorCosts();
+    const [row] = await db.select().from(providerCostVendorCosts).where(eq(providerCostVendorCosts.providerCostId, inst.id));
+    expect(row).toMatchObject({ vendorCostPerUnitInUsdCents: "0.3880000000", derivation: "seed-vendor-rate", markupMultiplier: "2.0000" });
   });
 
   it("lists the versions overwritten in place before v0.25.0, never writing them into the catalogue", async () => {
@@ -231,8 +253,8 @@ describe("/internal/vendor-costs — vendor cost per price version, service-auth
     });
     expect(rec.find((v: any) => v.name === "instantly-email-send")).toMatchObject({
       billedPricePerUnitInUsdCents: "0.9400000000",
-      vendorCostPerUnitInUsdCents: "6.8469579746",
-      vendorCostDerivation: "paid-allocation",
+      vendorCostPerUnitInUsdCents: "0.9400000000",
+      vendorCostDerivation: "seed-vendor-rate",
     });
     expect((await db.select().from(providersCosts)).length).toBe(catalogBefore);
   });
