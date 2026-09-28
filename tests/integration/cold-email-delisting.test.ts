@@ -128,13 +128,13 @@ describe("store markup after the cold-email spend moved to fixed costs", { timeo
     await closeDb();
   });
 
-  it("prices a marked-up line at the store markup (2.5x)", async () => {
-    // anthropic-web-search: $0.01/search vendor rate = 1 USD cent × 2.5.
+  it("prices a marked-up line at 5x the vendor rate", async () => {
+    // anthropic-web-search: $0.01/search vendor rate = 1 USD cent × 5.
     const res = await request(app).get("/v1/platform-prices/anthropic-web-search");
     expect(res.status).toBe(200);
     expect(res.body.pricingBasis).toBe("marked-up");
     expect(res.body.billable).toBe(true);
-    expect(res.body.pricePerUnitInUsdCents).toBe("2.5000000000");
+    expect(res.body.pricePerUnitInUsdCents).toBe("5.0000000000");
   });
 
   it("keeps every routed line at exactly the vendor rate", async () => {
