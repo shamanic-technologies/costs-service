@@ -3,11 +3,7 @@ import { and, asc, desc, eq, inArray, lte } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { platformCosts, providerCostVendorCosts, providersCosts } from "../db/schema.js";
 import { requireApiKey } from "../middleware/auth.js";
-import {
-  RECONSTRUCTED_PRICE_VERSIONS,
-  findVendorCostStatement,
-  type ReconstructedPriceVersion,
-} from "../lib/vendor-cost-statements.js";
+import { RECONSTRUCTED_PRICE_VERSIONS, type ReconstructedPriceVersion } from "../lib/vendor-cost-statements.js";
 
 /**
  * Vendor cost per price version — STAFF-ONLY, service-auth only.
@@ -43,8 +39,7 @@ function toVersion({ pc, v }: VersionRow) {
     vendorCostUnknownReason: v ? v.unknownReason : "not-yet-stated",
     markupMultiplier: v?.markupMultiplier ?? null,
     vendorCostDerivation: v ? v.derivation : "unknown",
-    // Where the statement came from, in words, when it is not a plain seed reproduction.
-    vendorCostNote: findVendorCostStatement(pc)?.note ?? null,
+    vendorCostNote: null,
     reconstructed: false,
     effectiveFrom: pc.effectiveFrom,
     createdAt: pc.createdAt,

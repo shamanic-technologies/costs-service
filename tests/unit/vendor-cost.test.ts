@@ -187,8 +187,8 @@ describe("resolveVendorCost on historical price versions", () => {
   });
 
   it("never falls back to billed ÷ multiplier when no vendor rate on record reproduces it (a 10x mis-seeded row no statement covers)", () => {
-    // The real 2026-09-09 Fable rows are stated at the list price in vendor-cost-statements.ts; the
-    // same mis-scaled price written on any other day is covered by nothing and must stay unknown.
+    // Against the CURRENT seed's rates only: the mis-scaled 2026-09-09 literal lives in
+    // HISTORICAL_SEED_VENDOR_RATES, which this test deliberately does not load.
     const r = resolveVendorCost(
       row({ name: "anthropic-fable-5.1-tokens-input", costPerUnitInUsdCents: "0.0006000000", createdAt: new Date("2026-09-10T11:10:23Z") }),
       rates,
