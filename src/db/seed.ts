@@ -29,11 +29,15 @@ export const COST_RISK_MULTIPLIER = 2;
  * A line's basis decides whether it moves at all — the 17 pass-through rows (advertising
  * spend, Stripe fees) are priced at the vendor rate and carry no markup to lower, and the
  * delisted cold-email lines have no billable price at all.
+ *
+ * Lowered 2.5 → 1.25 (default markup 5× → 2.5×): a store-margin cut, same append-only
+ * mechanics. It lands on profit, not on risk, on purpose: risk still covers a vendor rate we
+ * under-estimated, and at 2.5× that 2× cushion is now nearly the whole markup.
  */
-export const COST_PROFIT_MULTIPLIER = 2.5;
+export const COST_PROFIT_MULTIPLIER = 1.25;
 
 /**
- * DEFAULT markup applied to EVERY marked-up seed cost: risk × profit (2 × 2.5 = 5× everywhere).
+ * DEFAULT markup applied to EVERY marked-up seed cost: risk × profit (2 × 1.25 = 2.5× everywhere).
  * The helper still accepts a per-cost override, but no cost currently uses one — all
  * rows fall back to this default.
  */
@@ -680,8 +684,8 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   //
   // Scale, the same one every other `unit: "1M tokens"` row uses: the stored figure is VENDOR
   // CENTS PER TOKEN, i.e. ($/MTok x 100 cents) / 1,000,000 tokens = $/MTok / 10,000, before
-  // applyCostRiskMultiplier. So $10/MTok -> 0.0010000000 raw -> 0.0050000000 stored at the 5x
-  // markup, which is exactly 10x Haiku 4.5's $1/MTok row (0.0001000000 -> 0.0005000000). The
+  // applyCostRiskMultiplier. So $10/MTok -> 0.0010000000 raw -> 0.0025000000 stored at the 2.5x
+  // markup, which is exactly 10x Haiku 4.5's $1/MTok row (0.0001000000 -> 0.0002500000). The
   // launch values shipped in #240 were a decade off (0.0001000000 for $10/MTok, i.e. $/MTok /
   // 100,000) and under-billed all six Fable 5.1 / GPT-6 Astra lines 10x.
   //

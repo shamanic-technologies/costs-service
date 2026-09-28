@@ -36,8 +36,8 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
 
   it("AC1: changing a provider cost appends a new dated row and preserves the old (no overwrite)", async () => {
     // Pre-seed the OLD price at the declared effective_from (mirrors prod's 2025-01-01 rows).
-    // anthropic-web-search is a marked-up line: the store markup went 6× → 5× on a profit
-    // cut, so its 6¢ row must be preserved as history and the 5¢ row appended — spend
+    // anthropic-web-search is a marked-up line: the store markup went 6× → 5× → 2.5× on profit
+    // cuts, so its 6¢ row must be preserved as history and the 2.5¢ row appended — spend
     // already declared still reads back at 6¢.
     await insertTestProviderCost({
       name: "anthropic-web-search",
@@ -51,7 +51,7 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
       effectiveFrom: new Date("2025-01-01T00:00:00Z"),
     });
 
-    await seedProvidersCosts(); // seed now carries 5.0000000000 (1¢ vendor × 5) → must APPEND
+    await seedProvidersCosts(); // seed now carries 2.5000000000 (1¢ vendor × 2.5) → must APPEND
 
     const rows = await db
       .select()
@@ -66,7 +66,7 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
       .orderBy(desc(providersCosts.effectiveFrom));
 
     expect(rows.length).toBe(2); // history preserved, not overwritten
-    expect(rows[0].costPerUnitInUsdCents).toBe("5.0000000000"); // newest = 5x markup
+    expect(rows[0].costPerUnitInUsdCents).toBe("2.5000000000"); // newest = 2.5x markup
     expect(rows[1].costPerUnitInUsdCents).toBe("6.0000000000"); // old value still queryable
     expect(rows[1].effectiveFrom.getTime()).toBeLessThan(rows[0].effectiveFrom.getTime());
   });
