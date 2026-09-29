@@ -56,6 +56,12 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `anthropic-fable-5.1-tokens-input` | 0.005 | 1M tokens | Input tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-fable-5.1-tokens-cached-input` | 0.000125 | 1M tokens | Cached input tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-fable-5.1-tokens-output` | 0.025 | 1M tokens | Output tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-sonnet-5.5-tokens-input` | 0.001 | 1M tokens | Input tokens (Sonnet 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-sonnet-5.5-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (Sonnet 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-sonnet-5.5-tokens-output` | 0.005 | 1M tokens | Output tokens (Sonnet 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-opus-5.5-tokens-input` | 0.002 | 1M tokens | Input tokens (Opus 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-opus-5.5-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (Opus 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-opus-5.5-tokens-output` | 0.01 | 1M tokens | Output tokens (Opus 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-web-search` | 5 | search | Web search | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `featured-api-pitch-submit` | 0.25 | call | API call (pitch submit) | featured | featured.com | pay-as-you-go | monthly | marked-up |
 | `postmark-email-send` | 0.75 | email | Email send | postmark | postmarkapp.com | basic-10k | monthly | marked-up |
@@ -160,6 +166,15 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `openai-gpt-6-astra-tokens-input` | 0.005 | 1M tokens | Input tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `openai-gpt-6-astra-tokens-cached-input` | 0.0005 | 1M tokens | Cached input tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `openai-gpt-6-astra-tokens-output` | 0.025 | 1M tokens | Output tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-sol-tokens-input` | 0.001 | 1M tokens | Input tokens (GPT-6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-sol-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (GPT-6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-sol-tokens-output` | 0.005 | 1M tokens | Output tokens (GPT-6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-sol-tokens-input` | 0.002 | 1M tokens | Input tokens (GPT-5.6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-sol-tokens-cached-input` | 0.0002 | 1M tokens | Cached input tokens (GPT-5.6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-sol-tokens-output` | 0.01 | 1M tokens | Output tokens (GPT-5.6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-terra-tokens-input` | 0.001 | 1M tokens | Input tokens (GPT-5.6 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-terra-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (GPT-5.6 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-terra-tokens-output` | 0.006 | 1M tokens | Output tokens (GPT-5.6 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `typesafe-jev-1.13-tokens-input` | 0.000021 | 1M tokens | Input tokens (Jev 1.13) | typesafe | typesafe.ai | pay-as-you-go | monthly | marked-up |
 | `google-ads-spend` | 1 | USD cent | Google Ads platform spend | google-ads | ads.google.com | pay-as-you-go | monthly | pass-through |
 | `meta-ads-spend` | 1 | USD cent | Meta Ads platform spend | meta-ads | facebook.com | pay-as-you-go | monthly | pass-through |

@@ -112,8 +112,10 @@ describe("OpenAI GPT-6 Astra unit costs (new direct vendor)", () => {
     }
   });
 
-  it("adds no other openai row — the long-context tier is not seeded", () => {
+  it("seeds no long-context openai row — the tier has no published threshold", () => {
     const rows = SEED_PROVIDERS_COSTS.filter((c) => c.provider === "openai").map((c) => c.name);
-    expect(rows.sort()).toEqual([...ASTRA_NAMES].sort());
+    expect(rows).toEqual(expect.arrayContaining([...ASTRA_NAMES]));
+    // Other OpenAI models (GPT-6 Sol, GPT-5.6 Sol/Terra, 2026-09-29) are short-context only too.
+    expect(rows.filter((n) => n.includes("long-context"))).toEqual([]);
   });
 });
