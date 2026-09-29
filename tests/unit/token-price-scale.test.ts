@@ -25,6 +25,22 @@ const VENDOR_USD_PER_MTOK: Array<[name: string, usdPerMTok: number]> = [
   ["openai-gpt-6-astra-tokens-input", 10],
   ["openai-gpt-6-astra-tokens-cached-input", 1],
   ["openai-gpt-6-astra-tokens-output", 50],
+  // Added 2026-09-29 (vendor pages read that day).
+  ["anthropic-sonnet-5.5-tokens-input", 2],
+  ["anthropic-sonnet-5.5-tokens-cached-input", 0.2],
+  ["anthropic-sonnet-5.5-tokens-output", 10],
+  ["anthropic-opus-5.5-tokens-input", 4],
+  ["anthropic-opus-5.5-tokens-cached-input", 0.2],
+  ["anthropic-opus-5.5-tokens-output", 20],
+  ["openai-gpt-6-sol-tokens-input", 2],
+  ["openai-gpt-6-sol-tokens-cached-input", 0.2],
+  ["openai-gpt-6-sol-tokens-output", 10],
+  ["openai-gpt-5.6-sol-tokens-input", 4],
+  ["openai-gpt-5.6-sol-tokens-cached-input", 0.4],
+  ["openai-gpt-5.6-sol-tokens-output", 20],
+  ["openai-gpt-5.6-terra-tokens-input", 2],
+  ["openai-gpt-5.6-terra-tokens-cached-input", 0.2],
+  ["openai-gpt-5.6-terra-tokens-output", 12],
   // Pre-existing anchors, unchanged — these define the scale.
   ["anthropic-haiku-4.5-tokens-input", 1],
   ["anthropic-haiku-4.5-tokens-output", 5],
@@ -67,6 +83,27 @@ describe("token price scale (regression: Fable 5.1 / GPT-6 Astra 10x under-price
       Number(stored("anthropic-haiku-4.5-tokens-output")) * 10,
       12,
     );
+    // Each 2026-09-29 model against the sibling whose vendor price is known: the stored ratio
+    // must equal the vendor ratio, so a decimal slip on any new row fails here.
+    const ratio = (a: string, b: string) => Number(stored(a)) / Number(stored(b));
+    const cases: Array<[string, string, number]> = [
+      ["anthropic-sonnet-5.5-tokens-input", "anthropic-fable-5.1-tokens-input", 2 / 10],
+      ["anthropic-sonnet-5.5-tokens-output", "anthropic-fable-5.1-tokens-output", 10 / 50],
+      ["anthropic-sonnet-5.5-tokens-cached-input", "anthropic-fable-5.1-tokens-cached-input", 0.2 / 0.25],
+      ["anthropic-opus-5.5-tokens-input", "anthropic-fable-5.1-tokens-input", 4 / 10],
+      ["anthropic-opus-5.5-tokens-output", "anthropic-fable-5.1-tokens-output", 20 / 50],
+      ["anthropic-opus-5.5-tokens-cached-input", "anthropic-fable-5.1-tokens-cached-input", 0.2 / 0.25],
+      ["openai-gpt-6-sol-tokens-input", "openai-gpt-6-astra-tokens-input", 2 / 10],
+      ["openai-gpt-6-sol-tokens-output", "openai-gpt-6-astra-tokens-output", 10 / 50],
+      ["openai-gpt-6-sol-tokens-cached-input", "openai-gpt-6-astra-tokens-cached-input", 0.2 / 1],
+      ["openai-gpt-5.6-sol-tokens-input", "openai-gpt-6-astra-tokens-input", 4 / 10],
+      ["openai-gpt-5.6-sol-tokens-output", "openai-gpt-6-astra-tokens-output", 20 / 50],
+      ["openai-gpt-5.6-sol-tokens-cached-input", "openai-gpt-6-astra-tokens-cached-input", 0.4 / 1],
+      ["openai-gpt-5.6-terra-tokens-input", "openai-gpt-6-astra-tokens-input", 2 / 10],
+      ["openai-gpt-5.6-terra-tokens-output", "openai-gpt-6-astra-tokens-output", 12 / 50],
+      ["openai-gpt-5.6-terra-tokens-cached-input", "openai-gpt-6-astra-tokens-cached-input", 0.2 / 1],
+    ];
+    for (const [a, b, r] of cases) expect(ratio(a, b), `${a} / ${b}`).toBeCloseTo(r, 9);
     // The bug: Fable 5.1's $10/MTok input sat at Haiku 4.5's $1/MTok number.
     expect(stored("anthropic-fable-5.1-tokens-input")).not.toBe(
       stored("anthropic-haiku-4.5-tokens-input"),
