@@ -25,13 +25,21 @@ import { CatalogueHistory, endOfDay } from "./catalogue-history.js";
 import {
   CATALOGUE_VENDOR_COST_PROVIDERS,
   EMAIL_SEND_COST_SHARES,
+  INCLUDED_AT_VENDOR,
+  LEGACY_COST_NAMES,
   PASS_THROUGH_MULTIPLIER,
   PAY_AS_YOU_GO_VENDORS,
   PROPOSED_MULTIPLIER,
 } from "./price-lists.js";
 import { SUBSCRIPTIONS } from "./subscriptions.js";
 
-export type RealCostMethod = "email-send-price" | "pass-through" | "subscription" | "pay-as-you-go-ratio" | "catalogue-vendor-cost";
+export type RealCostMethod =
+  | "email-send-price"
+  | "pass-through"
+  | "subscription"
+  | "pay-as-you-go-ratio"
+  | "catalogue-vendor-cost"
+  | "included-at-vendor";
 
 export type RealCostFlag =
   | "no-email-sent-yet"
@@ -41,7 +49,9 @@ export type RealCostFlag =
   | "no-recorded-usage-yet"
   | "no-ledger-line"
   | "declared-catalogue-vendor-cost"
-  | "no-vendor-cost";
+  | "no-vendor-cost"
+  | "included-in-another-cost"
+  | "legacy-name-priced-as-successor";
 
 export type ProposedBasis = "real-cost-x2" | "real-cost-x1" | "current-price-kept" | "no-price";
 
@@ -141,7 +151,11 @@ export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
 
       const share = EMAIL_SEND_COST_SHARES[costName];
       const sub = subByProvider.get(version.provider);
-      if (share !== undefined) {
+      if (INCLUDED_AT_VENDOR[costName]) {
+        method = "included-at-vendor";
+        flag = "included-in-another-cost";
+        realCost = 0;
+      } else if (share !== undefined) {
         const price = inputs.emailPriceByDay.get(day) ?? null;
         if (price !== null) {
           method = "email-send-price";
@@ -225,6 +239,48 @@ export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
         });
       }
     }
+    // Email names and included units the catalogue never carried (instantly-email-send, apollo-search-credit).
+    const uncatalogued = (name: string) => catalogue.versionAt(name, at).reason === "not-in-catalogue";
+    for (const [costName, share] of Object.entries(EMAIL_SEND_COST_SHARES)) {
+      if (!uncatalogued(costName)) continue;
+      const price = inputs.emailPriceByDay.get(day) ?? null;
+      const realCost = price === null ? null : round10(price * share);
+      out.push(uncataloguedRow(day, costName, "instantly", price === null ? "catalogue-vendor-cost" : "email-send-price", price === null ? "no-email-sent-yet" : null, realCost));
+    }
+    for (const costName of Object.keys(INCLUDED_AT_VENDOR)) {
+      if (!uncatalogued(costName)) continue;
+      out.push(uncataloguedRow(day, costName, null, "included-at-vendor", "included-in-another-cost", 0));
+    }
+    // A legacy name is priced like its successor that day, every figure copied.
+    for (const [costName, { successor }] of Object.entries(LEGACY_COST_NAMES)) {
+      if (!uncatalogued(costName)) continue;
+      const row = out.find((r) => r.day === day && r.costName === successor);
+      if (row) out.push({ ...row, costName, flag: "legacy-name-priced-as-successor" });
+    }
   }
   return out;
+}
+
+function uncataloguedRow(
+  day: string,
+  costName: string,
+  provider: string | null,
+  method: RealCostMethod,
+  flag: RealCostFlag | null,
+  realCost: number | null,
+): RealCostDay {
+  return {
+    day,
+    costName,
+    provider,
+    method,
+    flag,
+    realCost,
+    ratio: null,
+    catalogueVendorCost: null,
+    cataloguePrice: null,
+    multiplier: PROPOSED_MULTIPLIER,
+    proposedPrice: realCost === null ? null : round10(realCost * PROPOSED_MULTIPLIER),
+    proposedBasis: realCost === null ? "no-price" : "real-cost-x2",
+  };
 }

@@ -28,11 +28,13 @@ function catalogue() {
     [
       v("anthropic-tokens", "anthropic", 0.0005, 0.0001),
       v("apollo-credit", "apollo", 11.8, 2.36),
-      v("apollo-search-credit", "apollo", 1, 0.2),
+      v("apollo-export-credit", "apollo", 1, 0.2),
       v("explee-credit", "explee", 5, 1),
       v("stripe-processing-fee", "stripe", 1, 1, { pricingBasis: "pass-through" }),
       v("instantly-account-email-sent", "instantly", null, null),
       v("zai-tokens", "zai", 0.001, 0.0002),
+      v("google-flash-3-tokens-input", "zai", 0.001, 0.0002),
+      v("instantly-contact-uploaded", "instantly", null, null),
       // repriced on 2026-01-02: the new version wins from that day
       v("zai-tokens", "zai", 0.002, 0.0004, { effectiveFrom: new Date("2026-01-02T00:00:00Z"), createdAt: new Date("2026-01-02T00:00:00Z") }),
     ],
@@ -47,7 +49,8 @@ describe("price lists — owner declarations (2026-10-01)", () => {
   });
 
   it("splits one email's price across the two names recorded per email", () => {
-    expect(Object.values(EMAIL_SEND_COST_SHARES).reduce((a, b) => a + b, 0)).toBe(1);
+    expect(EMAIL_SEND_COST_SHARES["instantly-account-email-sent"] + EMAIL_SEND_COST_SHARES["instantly-domain-email-sent"]).toBe(1);
+    expect(EMAIL_SEND_COST_SHARES["instantly-email-send"]).toBe(1);
   });
 
   it("never declares a subscription provider as pay-as-you-go", () => {
@@ -100,7 +103,7 @@ describe("real cost per unit and proposed price", () => {
 
   it("subscription credit: the real cost per credit; a non-credit name of the vendor keeps its vendor cost, flagged", () => {
     expect(at("2026-01-03", "apollo-credit")).toMatchObject({ method: "subscription", realCost: 2.9, proposedPrice: 5.8 });
-    expect(at("2026-01-03", "apollo-search-credit")).toMatchObject({ flag: "not-a-subscription-credit", realCost: 0.2, proposedPrice: 0.4 });
+    expect(at("2026-01-03", "apollo-export-credit")).toMatchObject({ flag: "not-a-subscription-credit", realCost: 0.2, proposedPrice: 0.4 });
   });
 
   it("subscription with no real cost per credit (Explee) keeps its current price, flagged", () => {
@@ -110,6 +113,13 @@ describe("real cost per unit and proposed price", () => {
   it("a subscription credit the catalogue never carried still gets its real cost per credit (apollo-enrichment-credit)", () => {
     expect(at("2026-01-03", "apollo-enrichment-credit")).toMatchObject({ method: "subscription", realCost: 2.9, proposedPrice: 5.8, cataloguePrice: null });
     expect(at("2026-01-01", "apollo-enrichment-credit")).toMatchObject({ realCost: null, proposedBasis: "no-price" });
+  });
+
+  it("prices every legacy name runs-service recorded: successor, pre-split email, units included at the vendor", () => {
+    expect(at("2026-01-01", "gemini-3-flash-tokens-input")).toMatchObject({ flag: "legacy-name-priced-as-successor", realCost: 0.0002, proposedPrice: 0.0004 });
+    expect(at("2026-01-03", "instantly-email-send")).toMatchObject({ method: "email-send-price", realCost: 3, proposedPrice: 6 });
+    expect(at("2026-01-03", "apollo-search-credit")).toMatchObject({ method: "included-at-vendor", flag: "included-in-another-cost", realCost: 0, proposedPrice: 0 });
+    expect(at("2026-01-03", "instantly-contact-uploaded")).toMatchObject({ method: "included-at-vendor", realCost: 0, proposedPrice: 0 });
   });
 
   it("Stripe (pass-through) is proposed at its real cost x1", () => {

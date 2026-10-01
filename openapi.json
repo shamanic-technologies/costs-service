@@ -1410,7 +1410,8 @@
               "pass-through",
               "subscription",
               "pay-as-you-go-ratio",
-              "catalogue-vendor-cost"
+              "catalogue-vendor-cost",
+              "included-at-vendor"
             ]
           },
           "flag": {
@@ -1425,6 +1426,8 @@
               "no-ledger-line",
               "declared-catalogue-vendor-cost",
               "no-vendor-cost",
+              "included-in-another-cost",
+              "legacy-name-priced-as-successor",
               null
             ],
             "description": "Why the item fell back to its catalogue vendor cost (or kept its price); null = its specific real cost applies"
