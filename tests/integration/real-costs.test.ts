@@ -206,11 +206,32 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ day: today, asOf: today, stale: false });
     const anthropic = res.body.items.find((i: { costName: string }) => i.costName === "anthropic-tokens");
-    // recorded 1,000,000 x 0.0001 = 100 cents; paid 300 cents -> ratio 3 -> real 0.0003 -> proposed 0.0006
-    expect(anthropic).toMatchObject({ method: "pay-as-you-go-ratio", ratio: 3, realCostPerUnitUsdCents: 0.0003, proposedPricePerUnitUsdCents: 0.0006, proposedBasis: "real-cost-x2" });
+    // An API is at its list cost x2, never at paid/recorded (owner rule 2026-10-01).
+    expect(anthropic).toMatchObject({ method: "api-list-cost", ratio: null, realCostPerUnitUsdCents: 0.0001, proposedPricePerUnitUsdCents: 0.0002, proposedBasis: "real-cost-x2" });
     const stripe = res.body.items.find((i: { costName: string }) => i.costName === "stripe-processing-fee");
     expect(stripe).toMatchObject({ method: "pass-through", multiplier: 1, proposedPricePerUnitUsdCents: 1, proposedBasis: "real-cost-x1" });
-    expect(res.body.payAsYouGo.find((p: { provider: string }) => p.provider === "anthropic")).toMatchObject({ netPaidUsdCents: 300, vendorCostRecordedUsdCents: 100, ratio: 3 });
+    // recorded 1,000,000 x 0.0001 = 100 cents at list; paid 300: the 200 beyond is internal, outside clients.
+    expect(res.body.payAsYouGo.find((p: { provider: string }) => p.provider === "anthropic")).toMatchObject({
+      netPaidUsdCents: 300,
+      vendorCostRecordedUsdCents: 100,
+      ratio: 3,
+      vendorCostRecordedAtListUsdCents: 100,
+      internalCostUsdCents: 200,
+    });
+
+    // The basis summary: fleet consumption replayed per pricing basis, the reader computes nothing.
+    const summary = await request(app).get("/internal/real-costs/basis-summary").set(API_KEY);
+    expect(summary.status).toBe(200);
+    const basis = (b: string) => summary.body.bases.find((x: { basis: string }) => x.basis === b);
+    // anthropic 1,000,000 tokens (list 0.0001, catalogue 0.0005) + twilio 2 minutes (list 2, catalogue 10)
+    expect(basis("api-list-cost")).toMatchObject({ realCostUsdCents: 104, amountCatalogueUsdCents: 520, amountProposedUsdCents: 208, consumedItemCount: 2 });
+    expect(basis("api-list-cost").providers).toEqual(expect.arrayContaining(["anthropic", "google", "twilio"]));
+    expect(basis("pass-through-x1")).toMatchObject({ providers: ["stripe"], realCostUsdCents: 30, amountCatalogueUsdCents: 30, amountProposedUsdCents: 30 });
+    expect(summary.body.totals).toMatchObject({ amount1UsdCents: 550, amount2UsdCents: 238, realCostUsdCents: 134 });
+    expect(summary.body.unpricedCostNames2).toEqual([]);
+    expect(summary.body.internalCost.byVendor.find((v: { provider: string }) => v.provider === "anthropic")).toMatchObject({ netPaidUsdCents: 300, internalCostUsdCents: 200 });
+    const sum = summary.body.bases.reduce((t: number, b: { realCostUsdCents: number }) => t + b.realCostUsdCents, 0);
+    expect(sum).toBeCloseTo(summary.body.totals.realCostUsdCents, 6);
 
     const before = await db.select().from(realUnitCostsDaily);
     await refreshRealCosts();
@@ -230,7 +251,7 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
 
     const list = await request(app).get(`/internal/price-lists?source=proposed&date=${today}`).set(API_KEY);
     expect(list.status).toBe(200);
-    expect(list.body.items.find((i: { costName: string }) => i.costName === "anthropic-tokens").pricePerUnitUsdCents).toBe(0.0006);
+    expect(list.body.items.find((i: { costName: string }) => i.costName === "anthropic-tokens").pricePerUnitUsdCents).toBe(0.0002);
     expect((await request(app).get("/internal/price-lists?source=proposed&date=2025-06-01").set(API_KEY)).status).toBe(404);
     expect((await request(app).get("/internal/price-lists?source=nope&date=2026-01-01").set(API_KEY)).status).toBe(400);
 
@@ -242,9 +263,9 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
 
     const vsProposed = await request(app).get(`/internal/price-comparison?list1=catalogue:${today}&list2=proposed:${today}&orgId=${ORG}&brandId=brand-1&interval=day`).set(API_KEY);
     expect(vsProposed.status).toBe(200);
-    // anthropic 1,000,000 x 0.0006 = 600 + stripe 30 x 1 = 630 + twilio 2 x 3.2 = 636.4 (catalogue 550);
-    // real on Feb 2 (anthropic paid Feb 1, ratio 3) 1,000,000 x 0.0003 = 300 + stripe 30 + twilio 2 x 1.6 = 333.2
-    expect(vsProposed.body.totals).toMatchObject({ amount2UsdCents: 636.4, differenceUsdCents: 86.4, realCostUsdCents: 333.2, margin2UsdCents: 303.2 });
+    // APIs at list cost x2: anthropic 1,000,000 x 0.0002 = 200 + stripe 30 x 1 = 230 + twilio 2 x 4 = 238 (catalogue 550);
+    // real: 1,000,000 x 0.0001 = 100 + stripe 30 + twilio 2 x 2 = 134
+    expect(vsProposed.body.totals).toMatchObject({ amount2UsdCents: 238, differenceUsdCents: -312, realCostUsdCents: 134, margin2UsdCents: 104 });
     expect(vsProposed.body.perimeter).toEqual({ grain: "org-brand", orgId: ORG, brandId: "brand-1" });
     expect(vsProposed.body.byOrg).toBeNull();
   });
@@ -265,7 +286,7 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     // 6714 paid - 118.2 consumed - 1667 left = 4928.8 the vendor cannot explain (an earlier account)
     expect(tw.split.unexplained).toMatchObject({ usdCents: 4928.8, loadedOnUnits: false, flag: "unexplained-not-loaded-on-units" });
     const minute = res.body.items.find((i: { costName: string }) => i.costName === "twilio-voice-minute");
-    expect(minute).toMatchObject({ method: "pay-as-you-go-ratio", ratio: 0.8, realCostPerUnitUsdCents: 1.6, proposedPricePerUnitUsdCents: 3.2 });
+    expect(minute).toMatchObject({ method: "api-list-cost", ratio: null, realCostPerUnitUsdCents: 2, proposedPricePerUnitUsdCents: 4 });
     // A ledger-only vendor carries no split.
     expect(res.body.payAsYouGo.find((p: { provider: string }) => p.provider === "anthropic").split).toBeNull();
   });
@@ -299,10 +320,10 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     // 10000 paid - (1320 + 600 + 600 + 240 + 240 + 360 - 480) = 7120: January's pre-export money only
     expect(gc.split.unexplained).toMatchObject({ usdCents: 7120, flag: "unexplained-not-loaded-on-units" });
     expect(gc.split.unexplained.basis).toMatch(/before the billing export began/);
-    expect(res.body.items.find((i: { costName: string }) => i.costName === "google-tokens")).toMatchObject({ ratio: 2.4, realCostPerUnitUsdCents: 4.8, proposedPricePerUnitUsdCents: 9.6 });
-    // Before any Gemini figure covers a day, the item keeps its catalogue vendor cost, flagged.
+    // The ratio is served, informational: Gemini is priced at its list cost.
+    expect(res.body.items.find((i: { costName: string }) => i.costName === "google-tokens")).toMatchObject({ method: "api-list-cost", ratio: null, realCostPerUnitUsdCents: 2, proposedPricePerUnitUsdCents: 4 });
     const jan = await request(app).get("/internal/real-costs?day=2026-01-31").set(API_KEY);
-    expect(jan.body.items.find((i: { costName: string }) => i.costName === "google-tokens")).toMatchObject({ method: "catalogue-vendor-cost", flag: "no-metered-spend-yet", realCostPerUnitUsdCents: 2 });
+    expect(jan.body.items.find((i: { costName: string }) => i.costName === "google-tokens")).toMatchObject({ method: "api-list-cost", flag: null, realCostPerUnitUsdCents: 2 });
     expect(jan.body.payAsYouGo.find((p: { provider: string }) => p.provider === "google").split.unexplained.usdCents).toBe(10000);
     expect(res.body.rules.vatRule).toMatch(/EXCLUDING VAT/);
   });

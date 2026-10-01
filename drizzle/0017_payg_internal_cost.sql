@@ -1,0 +1,1 @@
+ALTER TABLE "payg_ratio_daily" ADD COLUMN "cumulative_vendor_recorded_all_usd_cents" numeric(24, 10) DEFAULT '0' NOT NULL;
