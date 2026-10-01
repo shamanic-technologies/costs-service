@@ -733,6 +733,122 @@ registry.registerPath({
   },
 });
 
+// --- Price of one cold email sent to a lead (staff-only, displayed, never billed) ---
+
+const RefreshAttemptSchema = z
+  .object({
+    status: z.enum(["running", "succeeded", "failed"]),
+    asOf: z.string().describe("UTC day the attempt computed for, YYYY-MM-DD"),
+    startedAt: z.string(),
+    finishedAt: z.string().nullable(),
+    error: z.string().nullable().describe("Why the attempt failed (upstream named), null otherwise"),
+  })
+  .openapi("EmailSendPriceRefreshAttempt");
+
+const EmailSendPriceDaySchema = z
+  .object({
+    day: z.string().describe("YYYY-MM-DD; dense, one point per calendar day from the first payment or send"),
+    spendUsd: z.number().describe("Net email-infrastructure spend booked that day (paid minus refunded), USD; negative on a refund-only day"),
+    emailsToLeads: z.number().int().describe("Emails sent to leads that UTC day"),
+    cumulativeSpendUsd: z.number(),
+    cumulativeEmailsToLeads: z.number().int(),
+    priceUsdCents: z.number().nullable().describe("cumulativeSpendUsd*100 / cumulativeEmailsToLeads (net); null before the first send"),
+    cumulativePaidUsd: z.number().describe("Gross: every payment since inception, refunds ignored"),
+    grossPriceUsdCents: z.number().nullable().describe("cumulativePaidUsd*100 / cumulativeEmailsToLeads"),
+    monthToDateSpendUsd: z.number(),
+    monthToDateEmailsToLeads: z.number().int(),
+    monthPriceUsdCents: z.number().nullable().describe("This calendar month alone (net), through this day; null when the month sent nothing yet or its net spend is negative"),
+  })
+  .openapi("EmailSendPriceDay");
+
+export const EmailSendPriceResponseSchema = z
+  .object({
+    formula: z.string(),
+    asOf: z.string().describe("Day of the latest point = the day `currentPriceUsdCents` is for"),
+    refreshedAt: z.string().describe("When the served series was computed"),
+    stale: z.boolean().describe("True when the served series was not computed today (UTC): the last refresh failed or has not run yet"),
+    lastRefresh: RefreshAttemptSchema.nullable().describe("The most recent attempt, failed ones included"),
+    currentPriceUsdCents: z.number().nullable().describe("US cents per email sent to a lead, since inception, on NET spend (paid minus refunded)"),
+    currentGrossPriceUsdCents: z.number().nullable().describe("Same on GROSS paid (refunds ignored), shown beside"),
+    currentMonthPriceUsdCents: z.number().nullable(),
+    totals: z.object({
+      spendUsd: z.number().describe("Net consumed since inception = paidUsd - refundedUsd: the numerator of the price"),
+      paidUsd: z.number().describe("Gross: every payment since inception"),
+      refundedUsd: z.number().describe("Money the vendors gave back since inception"),
+      emailsToLeads: z.number().int(),
+    }),
+    firstPaymentOn: z.string().nullable(),
+    firstSendOn: z.string().nullable(),
+    vendors: z.array(
+      z.object({
+        key: z.string().describe("Bank-ledger vendor key"),
+        label: z.string(),
+        what: z.string(),
+        firstPaidOn: z.string().nullable(),
+        lastPaidOn: z.string().nullable(),
+        payments: z.number().int(),
+        refunds: z.number().int(),
+        paidUsd: z.number(),
+        refundedUsd: z.number(),
+        netUsd: z.number(),
+      }),
+    ).describe("The vendors counted as email infrastructure, declared in costs-service"),
+    excludedVendors: z.array(z.object({ key: z.string(), reason: z.string() })),
+    monthly: z.array(
+      z.object({
+        month: z.string().describe("YYYY-MM"),
+        spendUsd: z.number().describe("Net that month"),
+        spendByVendorUsd: z.record(z.string(), z.number()).describe("Net per vendor key that month"),
+        paidUsd: z.number(),
+        refundedUsd: z.number(),
+        emailsToLeads: z.number().int(),
+        monthPriceUsdCents: z.number().nullable(),
+        cumulativeSpendUsd: z.number().describe("At the month's last point (month end, or today)"),
+        cumulativeEmailsToLeads: z.number().int(),
+        priceUsdCents: z.number().nullable(),
+        cumulativePaidUsd: z.number(),
+        grossPriceUsdCents: z.number().nullable(),
+      }),
+    ),
+    daily: z.array(EmailSendPriceDaySchema).describe("Oldest first, last point = asOf"),
+  })
+  .openapi("EmailSendPriceResponse");
+
+registry.registerPath({
+  method: "get",
+  path: "/internal/email-send-price",
+  operationId: "getEmailSendPrice",
+  summary: "Price of one cold email sent to a lead: infra spend since inception / emails to leads since inception, daily series (service api key only)",
+  description:
+    "Displayed figure only, no billed price reads it. Served from the last SUCCEEDED daily refresh; when a refresh fails the previous series stays served (`stale: true`, `lastRefresh.error` says why).",
+  security: [{ ApiKeyAuth: [] }],
+  responses: {
+    200: { description: "The stored series", content: { "application/json": { schema: EmailSendPriceResponseSchema } } },
+    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
+    503: {
+      description: "Never computed yet",
+      content: { "application/json": { schema: z.object({ error: z.string(), lastRefresh: RefreshAttemptSchema.nullable() }) } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/internal/email-send-price/refresh",
+  operationId: "refreshEmailSendPrice",
+  summary: "Recompute the email send price now from the bank ledger and instantly-service (idempotent per day)",
+  security: [{ ApiKeyAuth: [] }],
+  responses: {
+    200: {
+      description: "Refreshed",
+      content: { "application/json": { schema: z.object({ refreshId: z.string(), asOf: z.string(), days: z.number().int() }) } },
+    },
+    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
+    409: { description: "A refresh is already running", content: { "application/json": { schema: ErrorResponseSchema } } },
+    502: { description: "The bank ledger or instantly-service could not answer (named); nothing was written", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
+});
+
 registry.registerComponent("securitySchemes", "ApiKeyAuth", {
   type: "apiKey",
   in: "header",

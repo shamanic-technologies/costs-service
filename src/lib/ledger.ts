@@ -1,8 +1,10 @@
 import { z } from "zod";
 
 /**
- * Which of our accounts pays each catalogue provider — READ from Kevin's bank ledger
- * (admin.kevinlourd.com, `GET /api/v1/vendors`), never typed by hand here.
+ * Money facts READ from Kevin's bank ledger (admin.kevinlourd.com), never typed by hand here:
+ * which of our accounts pays each catalogue provider (`GET /api/v1/vendors`), and every payment
+ * to a named set of vendors with its USD figure (`GET /api/v1/vendor-payments`, the numerator of
+ * the email send price).
  *
  * The ledger already knows every payment and to whom it went. costs-service only joins its
  * own provider catalogue to the ledger's vendors; it stores nothing, caches nothing, and a
@@ -39,6 +41,58 @@ export type LedgerVendors = z.infer<typeof LedgerVendorsResponseSchema>;
 export class LedgerError extends Error {}
 
 export async function fetchLedgerVendors(): Promise<LedgerVendors> {
+  return (await ledgerRead("/api/v1/vendors", LedgerVendorsResponseSchema)).data;
+}
+
+// --- Payments to named vendors, with a USD figure per bank line ----------------------------
+
+const LedgerVendorPaymentSchema = z.object({
+  id: z.string(),
+  vendor: z.string(),
+  bookedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  direction: z.enum(["payment", "refund"]),
+  amount: z.number(),
+  currency: z.string(),
+  eurAmount: z.number(),
+  usdAmount: z.number(),
+  accountId: z.string(),
+});
+
+const LedgerVendorTotalsSchema = z.object({
+  key: z.string(),
+  firstPaidOn: z.string().nullable(),
+  lastPaidOn: z.string().nullable(),
+  payments: z.number().int(),
+  refunds: z.number().int(),
+  paidUsd: z.number(),
+  refundedUsd: z.number(),
+  netUsd: z.number(),
+});
+
+const LedgerVendorPaymentsResponseSchema = z.object({
+  generatedAt: z.string(),
+  since: z.string().nullable(),
+  vendors: z.array(LedgerVendorTotalsSchema),
+  payments: z.array(LedgerVendorPaymentSchema),
+});
+
+export type LedgerVendorPayment = z.infer<typeof LedgerVendorPaymentSchema>;
+export type LedgerVendorPayments = z.infer<typeof LedgerVendorPaymentsResponseSchema>;
+
+/**
+ * Every bank line to (payment) or from (refund) the named ledger vendor keys, since the first
+ * line the ledger holds. A key the ledger never paid is a 404 there and a `LedgerError` here —
+ * never an empty list that reads as "we spent nothing".
+ */
+export async function fetchLedgerVendorPayments(
+  keys: readonly string[],
+): Promise<{ url: string; body: unknown; data: LedgerVendorPayments }> {
+  const query = new URLSearchParams({ vendors: keys.join(",") });
+  return ledgerRead(`/api/v1/vendor-payments?${query.toString()}`, LedgerVendorPaymentsResponseSchema);
+}
+
+/** GET a ledger path; returns the raw body beside the validated one (the raw is kept as bronze). */
+async function ledgerRead<T>(pathAndQuery: string, schema: z.ZodType<T>): Promise<{ url: string; body: unknown; data: T }> {
   const baseUrl = process.env.LEDGER_API_URL;
   const apiKey = process.env.LEDGER_API_KEY;
   const missing = [!baseUrl && "LEDGER_API_URL", !apiKey && "LEDGER_API_KEY"].filter(Boolean);
@@ -46,7 +100,7 @@ export async function fetchLedgerVendors(): Promise<LedgerVendors> {
     throw new LedgerError(`Bank ledger not configured: ${missing.join(" and ")} missing from costs-service env`);
   }
 
-  const url = `${baseUrl!.replace(/\/+$/, "")}/api/v1/vendors`;
+  const url = `${baseUrl!.replace(/\/+$/, "")}${pathAndQuery}`;
   let res: Response;
   try {
     res = await fetch(url, {
@@ -68,11 +122,11 @@ export async function fetchLedgerVendors(): Promise<LedgerVendors> {
   } catch {
     throw new LedgerError(`Bank ledger answered ${url} with non-JSON: ${text.slice(0, 300)}`);
   }
-  const parsed = LedgerVendorsResponseSchema.safeParse(body);
+  const parsed = schema.safeParse(body);
   if (!parsed.success) {
     throw new LedgerError(`Bank ledger answered ${url} in an unexpected shape: ${parsed.error.message.slice(0, 500)}`);
   }
-  return parsed.data;
+  return { url, body, data: parsed.data };
 }
 
 // --- Matching a catalogue provider to the ledger's vendors ---------------------------------

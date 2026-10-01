@@ -9,6 +9,7 @@ import platformCostsRoutes from "../../src/routes/platform-costs.js";
 import platformPricesRoutes from "../../src/routes/platform-prices.js";
 import internalVendorCostsRoutes from "../../src/routes/internal-vendor-costs.js";
 import internalPaymentSourcesRoutes from "../../src/routes/internal-payment-sources.js";
+import internalEmailSendPriceRoutes from "../../src/routes/internal-email-send-price.js";
 import { requireIdentityHeaders } from "../../src/middleware/auth.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -33,6 +34,7 @@ export function createTestApp() {
   app.use(platformPricesRoutes);
   app.use(internalVendorCostsRoutes);
   app.use(internalPaymentSourcesRoutes);
+  app.use(internalEmailSendPriceRoutes);
   app.use((_req: express.Request, res: express.Response) => {
     res.status(404).json({ error: "Not found" });
   });
