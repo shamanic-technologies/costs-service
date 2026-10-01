@@ -679,6 +679,128 @@ registry.registerPath({
   },
 });
 
+// --- Payment sources: which of OUR accounts pays each provider (STAFF-ONLY, service api key) ---
+
+export const PaymentSourceSchema = z
+  .object({
+    key: z.string().openapi({ description: "Stable key, e.g. 'revolut_business'.", example: "revolut_business" }),
+    displayName: z.string().openapi({ example: "Revolut Business" }),
+    domain: z.string().openapi({ description: "Domain to feed a logo service (logo.dev).", example: "revolut.com" }),
+  })
+  .openapi("PaymentSource");
+
+export const PaymentSourceListSchema = z
+  .object({ sources: z.array(PaymentSourceSchema) })
+  .openapi("PaymentSourceList");
+
+export const PutPaymentSourceBodySchema = z
+  .object({
+    displayName: z.string().trim().min(1),
+    domain: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(/^[a-z0-9-]+(\.[a-z0-9-]+)+$/, "domain must be a bare hostname, e.g. 'revolut.com'"),
+  })
+  .strict()
+  .openapi("PutPaymentSourceBody");
+
+export const PAYMENT_SOURCE_KEY_PATTERN = /^[a-z][a-z0-9_]*$/;
+
+export const ProviderPaymentSourcesSchema = z
+  .object({
+    provider: z.string().openapi({ description: "Catalogue provider key (providers_costs.provider).", example: "openai" }),
+    providerDomain: z.string().nullable().openapi({ example: "openai.com" }),
+    sources: z.array(PaymentSourceSchema).openapi({ description: "Sources that pay this provider, sorted by key. Empty = not stated yet." }),
+  })
+  .openapi("ProviderPaymentSources");
+
+export const ProviderPaymentSourcesListSchema = z
+  .object({ providers: z.array(ProviderPaymentSourcesSchema) })
+  .openapi("ProviderPaymentSourcesList");
+
+export const PutProviderPaymentSourcesBodySchema = z
+  .object({
+    sources: z.array(z.string().min(1)).openapi({
+      description: "The full set of source keys that pay this provider (replaces the previous set). [] clears it.",
+      example: ["revolut_business", "qonto"],
+    }),
+  })
+  .strict()
+  .openapi("PutProviderPaymentSourcesBody");
+
+const PaymentSourceKeyParam = registry.registerParameter(
+  "PaymentSourceKey",
+  z.string().openapi({ param: { name: "key", in: "path" }, example: "revolut_business" }),
+);
+
+registry.registerPath({
+  method: "get",
+  path: "/internal/payment-sources",
+  operationId: "listPaymentSources",
+  summary: "The vocabulary of our own payment accounts that can pay a vendor (service api key only)",
+  security: [{ ApiKeyAuth: [] }],
+  responses: {
+    200: { description: "Every known payment source, sorted by key", content: { "application/json": { schema: PaymentSourceListSchema } } },
+    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
+    500: { description: "Internal server error", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
+});
+
+registry.registerPath({
+  method: "put",
+  path: "/internal/payment-sources/{key}",
+  operationId: "putPaymentSource",
+  summary: "Add a payment source to the vocabulary, or rename/re-domain an existing one (service api key only)",
+  description: "Idempotent upsert. The key must match ^[a-z][a-z0-9_]*$ and is never renamed.",
+  security: [{ ApiKeyAuth: [] }],
+  request: {
+    params: z.object({ key: PaymentSourceKeyParam }),
+    body: { content: { "application/json": { schema: PutPaymentSourceBodySchema } } },
+  },
+  responses: {
+    200: { description: "The stored source", content: { "application/json": { schema: PaymentSourceSchema } } },
+    400: { description: "Invalid key or body", content: { "application/json": { schema: ValidationErrorResponseSchema } } },
+    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
+    500: { description: "Internal server error", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/internal/provider-payment-sources",
+  operationId: "listProviderPaymentSources",
+  summary: "Every catalogue provider with the payment sources that pay it (service api key only)",
+  security: [{ ApiKeyAuth: [] }],
+  responses: {
+    200: {
+      description: "One entry per provider in the catalogue, sorted by provider; sources = [] when not stated",
+      content: { "application/json": { schema: ProviderPaymentSourcesListSchema } },
+    },
+    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
+    500: { description: "Internal server error", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
+});
+
+registry.registerPath({
+  method: "put",
+  path: "/internal/provider-payment-sources/{provider}",
+  operationId: "putProviderPaymentSources",
+  summary: "Set the payment sources that pay a provider (replaces the set; service api key only)",
+  security: [{ ApiKeyAuth: [] }],
+  request: {
+    params: z.object({ provider: ProviderParam }),
+    body: { content: { "application/json": { schema: PutProviderPaymentSourcesBodySchema } } },
+  },
+  responses: {
+    200: { description: "The provider with its new sources", content: { "application/json": { schema: ProviderPaymentSourcesSchema } } },
+    400: { description: "Invalid body or unknown source key(s)", content: { "application/json": { schema: ValidationErrorResponseSchema } } },
+    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
+    404: { description: "Provider not in the catalogue", content: { "application/json": { schema: ErrorResponseSchema } } },
+    500: { description: "Internal server error", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
+});
+
 registry.registerComponent("securitySchemes", "ApiKeyAuth", {
   type: "apiKey",
   in: "header",

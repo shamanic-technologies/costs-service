@@ -72,6 +72,10 @@
         "description": "Priority audience identifier chosen by campaign-service for cost attribution, injected by workflow-service (optional)",
         "example": "aud_abc123"
       },
+      "PaymentSourceKey": {
+        "type": "string",
+        "example": "revolut_business"
+      },
       "HealthResponse": {
         "type": "object",
         "properties": {
@@ -569,6 +573,124 @@
           "at",
           "version"
         ]
+      },
+      "PaymentSourceList": {
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentSource"
+            }
+          }
+        },
+        "required": [
+          "sources"
+        ]
+      },
+      "PaymentSource": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Stable key, e.g. 'revolut_business'.",
+            "example": "revolut_business"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Revolut Business"
+          },
+          "domain": {
+            "type": "string",
+            "description": "Domain to feed a logo service (logo.dev).",
+            "example": "revolut.com"
+          }
+        },
+        "required": [
+          "key",
+          "displayName",
+          "domain"
+        ]
+      },
+      "PutPaymentSourceBody": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "domain": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+(\\.[a-z0-9-]+)+$"
+          }
+        },
+        "required": [
+          "displayName",
+          "domain"
+        ],
+        "additionalProperties": false
+      },
+      "ProviderPaymentSourcesList": {
+        "type": "object",
+        "properties": {
+          "providers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderPaymentSources"
+            }
+          }
+        },
+        "required": [
+          "providers"
+        ]
+      },
+      "ProviderPaymentSources": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "description": "Catalogue provider key (providers_costs.provider).",
+            "example": "openai"
+          },
+          "providerDomain": {
+            "type": "string",
+            "nullable": true,
+            "example": "openai.com"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentSource"
+            },
+            "description": "Sources that pay this provider, sorted by key. Empty = not stated yet."
+          }
+        },
+        "required": [
+          "provider",
+          "providerDomain",
+          "sources"
+        ]
+      },
+      "PutProviderPaymentSourcesBody": {
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "The full set of source keys that pay this provider (replaces the previous set). [] clears it.",
+            "example": [
+              "revolut_business",
+              "qonto"
+            ]
+          }
+        },
+        "required": [
+          "sources"
+        ],
+        "additionalProperties": false
       }
     },
     "parameters": {
@@ -661,6 +783,14 @@
         "description": "Priority audience identifier chosen by campaign-service for cost attribution, injected by workflow-service (optional)",
         "name": "x-audience-id",
         "in": "header"
+      },
+      "PaymentSourceKey": {
+        "schema": {
+          "$ref": "#/components/schemas/PaymentSourceKey"
+        },
+        "required": true,
+        "name": "key",
+        "in": "path"
       }
     }
   },
@@ -1619,6 +1749,237 @@
           },
           "404": {
             "description": "No version in force at `at`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/payment-sources": {
+      "get": {
+        "operationId": "listPaymentSources",
+        "summary": "The vocabulary of our own payment accounts that can pay a vendor (service api key only)",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every known payment source, sorted by key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentSourceList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/payment-sources/{key}": {
+      "put": {
+        "operationId": "putPaymentSource",
+        "summary": "Add a payment source to the vocabulary, or rename/re-domain an existing one (service api key only)",
+        "description": "Idempotent upsert. The key must match ^[a-z][a-z0-9_]*$ and is never renamed.",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PaymentSourceKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutPaymentSourceBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The stored source",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentSource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid key or body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/provider-payment-sources": {
+      "get": {
+        "operationId": "listProviderPaymentSources",
+        "summary": "Every catalogue provider with the payment sources that pay it (service api key only)",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One entry per provider in the catalogue, sorted by provider; sources = [] when not stated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderPaymentSourcesList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/provider-payment-sources/{provider}": {
+      "put": {
+        "operationId": "putProviderPaymentSources",
+        "summary": "Set the payment sources that pay a provider (replaces the set; service api key only)",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Provider"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutProviderPaymentSourcesBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The provider with its new sources",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderPaymentSources"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body or unknown source key(s)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Provider not in the catalogue",
             "content": {
               "application/json": {
                 "schema": {
