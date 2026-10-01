@@ -322,6 +322,23 @@ export const paygVendorSpendDaily = pgTable(
   (table) => [primaryKey({ name: "payg_vendor_spend_daily_pk", columns: [table.day, table.vendor] })],
 );
 
+/**
+ * Silver: a pay-as-you-go vendor's money SPLIT by what it paid for, per day, as the vendor itself
+ * reports it (Twilio usage records): `metered` (the ratio's numerator), `rental` (a subscription),
+ * `other`, and on the refresh day the `unconsumed-balance` left prepaid. US cents.
+ */
+export const paygVendorPartsDaily = pgTable(
+  "payg_vendor_parts_daily",
+  {
+    day: date("day").notNull(),
+    provider: text("provider").notNull(),
+    part: text("part").notNull(),
+    usdCents: numeric("usd_cents", { precision: 24, scale: 10 }).notNull(),
+    basis: text("basis").notNull(),
+  },
+  (table) => [primaryKey({ name: "payg_vendor_parts_daily_pk", columns: [table.day, table.provider, table.part] })],
+);
+
 /** Silver: units consumed and money billed per day, org, cost name and key source (runs-service, since inception). */
 export const consumptionByOrgDaily = pgTable(
   "consumption_by_org_daily",
@@ -362,6 +379,9 @@ export const paygRatioDaily = pgTable(
     day: date("day").notNull(),
     provider: text("provider").notNull(),
     cumulativeNetPaidUsdCents: bigint("cumulative_net_paid_usd_cents", { mode: "number" }).notNull(),
+    /** The ratio's numerator: metered spend (= net paid unless the vendor's money is split, `numeratorBasis`). */
+    cumulativeMeteredUsdCents: numeric("cumulative_metered_usd_cents", { precision: 24, scale: 10 }).notNull().default("0"),
+    numeratorBasis: text("numerator_basis").notNull().default("ledger-net-paid"),
     cumulativeVendorRecordedUsdCents: numeric("cumulative_vendor_recorded_usd_cents", { precision: 24, scale: 10 }).notNull(),
     ratio: numeric("ratio", { precision: 18, scale: 10 }),
   },

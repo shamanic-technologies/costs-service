@@ -987,7 +987,7 @@ const RealCostItemSchema = z
     provider: z.string().nullable(),
     method: z.enum(["email-send-price", "pass-through", "subscription", "pay-as-you-go-ratio", "catalogue-vendor-cost", "included-at-vendor"]),
     flag: z
-      .enum(["no-email-sent-yet", "not-a-subscription-credit", "no-real-cost-per-credit", "no-payment-yet", "no-recorded-usage-yet", "no-ledger-line", "declared-catalogue-vendor-cost", "no-vendor-cost", "included-in-another-cost", "legacy-name-priced-as-successor"])
+      .enum(["no-email-sent-yet", "not-a-subscription-credit", "no-real-cost-per-credit", "no-payment-yet", "no-metered-spend-yet", "no-recorded-usage-yet", "no-ledger-line", "declared-catalogue-vendor-cost", "no-vendor-cost", "included-in-another-cost", "legacy-name-priced-as-successor"])
       .nullable()
       .describe("Why the item fell back to its catalogue vendor cost (or kept its price); null = its specific real cost applies"),
     realCostPerUnitUsdCents: z.number().nullable(),
@@ -1029,8 +1029,30 @@ registry.registerPath({
                 paidUsdCents: z.number(),
                 refundedUsdCents: z.number(),
                 netPaidUsdCents: z.number(),
+                numeratorBasis: z.string().describe("What the ratio's numerator counts: `ledger-net-paid`, or the vendor's own split (`twilio-usage-metered`)"),
+                meteredUsdCents: z.number().describe("The ratio's numerator: metered spend through the day"),
                 vendorCostRecordedUsdCents: z.number(),
-                ratio: z.number().nullable(),
+                ratio: z.number().nullable().describe("meteredUsdCents / vendorCostRecordedUsdCents"),
+                split: z
+                  .object({
+                    parts: z.array(
+                      z.object({
+                        part: z.string().describe("metered | rental | other | unconsumed-balance"),
+                        usdCents: z.number().nullable(),
+                        basis: z.string().nullable(),
+                        loadedOnUnits: z.boolean().describe("Only the metered part is loaded on units"),
+                        flag: z.string().nullable(),
+                      }),
+                    ),
+                    unexplained: z.object({
+                      usdCents: z.number().nullable().describe("Bank net paid - consumed per the vendor - balance left (refresh day only)"),
+                      basis: z.string(),
+                      loadedOnUnits: z.literal(false),
+                      flag: z.string(),
+                    }),
+                  })
+                  .nullable()
+                  .describe("Where the bank money went, for a vendor whose money is split; null when the numerator is the ledger net paid"),
               }),
             ),
             items: z.array(RealCostItemSchema),

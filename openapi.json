@@ -1422,6 +1422,7 @@
               "not-a-subscription-credit",
               "no-real-cost-per-credit",
               "no-payment-yet",
+              "no-metered-spend-yet",
               "no-recorded-usage-yet",
               "no-ledger-line",
               "declared-catalogue-vendor-cost",
@@ -2935,12 +2936,95 @@
                           "netPaidUsdCents": {
                             "type": "number"
                           },
+                          "numeratorBasis": {
+                            "type": "string",
+                            "description": "What the ratio's numerator counts: `ledger-net-paid`, or the vendor's own split (`twilio-usage-metered`)"
+                          },
+                          "meteredUsdCents": {
+                            "type": "number",
+                            "description": "The ratio's numerator: metered spend through the day"
+                          },
                           "vendorCostRecordedUsdCents": {
                             "type": "number"
                           },
                           "ratio": {
                             "type": "number",
-                            "nullable": true
+                            "nullable": true,
+                            "description": "meteredUsdCents / vendorCostRecordedUsdCents"
+                          },
+                          "split": {
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "parts": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "part": {
+                                      "type": "string",
+                                      "description": "metered | rental | other | unconsumed-balance"
+                                    },
+                                    "usdCents": {
+                                      "type": "number",
+                                      "nullable": true
+                                    },
+                                    "basis": {
+                                      "type": "string",
+                                      "nullable": true
+                                    },
+                                    "loadedOnUnits": {
+                                      "type": "boolean",
+                                      "description": "Only the metered part is loaded on units"
+                                    },
+                                    "flag": {
+                                      "type": "string",
+                                      "nullable": true
+                                    }
+                                  },
+                                  "required": [
+                                    "part",
+                                    "usdCents",
+                                    "basis",
+                                    "loadedOnUnits",
+                                    "flag"
+                                  ]
+                                }
+                              },
+                              "unexplained": {
+                                "type": "object",
+                                "properties": {
+                                  "usdCents": {
+                                    "type": "number",
+                                    "nullable": true,
+                                    "description": "Bank net paid - consumed per the vendor - balance left (refresh day only)"
+                                  },
+                                  "basis": {
+                                    "type": "string"
+                                  },
+                                  "loadedOnUnits": {
+                                    "type": "boolean",
+                                    "enum": [
+                                      false
+                                    ]
+                                  },
+                                  "flag": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "usdCents",
+                                  "basis",
+                                  "loadedOnUnits",
+                                  "flag"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "parts",
+                              "unexplained"
+                            ],
+                            "description": "Where the bank money went, for a vendor whose money is split; null when the numerator is the ledger net paid"
                           }
                         },
                         "required": [
@@ -2949,8 +3033,11 @@
                           "paidUsdCents",
                           "refundedUsdCents",
                           "netPaidUsdCents",
+                          "numeratorBasis",
+                          "meteredUsdCents",
                           "vendorCostRecordedUsdCents",
-                          "ratio"
+                          "ratio",
+                          "split"
                         ]
                       }
                     },

@@ -27,6 +27,8 @@ function catalogue() {
   return new CatalogueHistory(
     [
       v("anthropic-tokens", "anthropic", 0.0005, 0.0001),
+      v("twilio-voice-minute", "twilio", 10, 2),
+      v("google-tokens", "google", 10, 2),
       v("apollo-credit", "apollo", 11.8, 2.36),
       v("apollo-export-credit", "apollo", 1, 0.2),
       v("explee-credit", "explee", 5, 1),
@@ -38,7 +40,7 @@ function catalogue() {
       // repriced on 2026-01-02: the new version wins from that day
       v("zai-tokens", "zai", 0.002, 0.0004, { effectiveFrom: new Date("2026-01-02T00:00:00Z"), createdAt: new Date("2026-01-02T00:00:00Z") }),
     ],
-    ["anthropic", "apollo", "explee", "stripe", "instantly", "zai"].map(plan),
+    ["anthropic", "twilio", "google", "apollo", "explee", "stripe", "instantly", "zai"].map(plan),
   );
 }
 
@@ -65,6 +67,59 @@ describe("price lists — owner declarations (2026-10-01)", () => {
   });
 });
 
+describe("a vendor whose bank money pays more than the units our runs record", () => {
+  const c = catalogue();
+  // 10 minutes recorded at a vendor rate of 2 cents = 20 cents recorded.
+  const units = [{ day: "2026-01-02", costName: "twilio-voice-minute", quantity: 10 }];
+  // The bank topped the prepaid balance up by $67.15; Twilio says the minutes cost 14 cents.
+  const netPaid = new Map([["twilio", new Map([["2026-01-01", 6715]])]]);
+  const split = (twilio: Map<string, number>, google = { from: "2026-01-01", byDay: new Map<string, number>() }) =>
+    new Map([["twilio", { from: "2026-01-01", byDay: twilio }], ["google", google]]);
+
+  it("Twilio: the ratio's numerator is the metered usage Twilio priced, not the top-up (owner 2026-10-01, x21.4)", () => {
+    const ratios = paygRatios(DAYS, netPaid, units, c, NOW, split(new Map([["2026-01-02", 14]])));
+    expect(ratios.get("twilio")!.get("2026-01-03")).toEqual({
+      cumulativeNetPaidUsdCents: 6715,
+      cumulativeMeteredUsdCents: 14,
+      numeratorBasis: "twilio-usage-metered",
+      cumulativeVendorRecordedUsdCents: 20,
+      ratio: 0.7,
+    });
+    // Before any metered usage, the item falls back to its catalogue vendor cost, flagged.
+    expect(ratios.get("twilio")!.get("2026-01-01")!.ratio).toBeNull();
+  });
+
+  it("Google: only Gemini consumption from the first day the export covers, against usage recorded from that same day (x3.24 bug)", () => {
+    // 100 minutes-equivalent recorded on day 1 (before the export) and 10 on day 3 (covered): 20 cents covered.
+    const gUnits = [
+      { day: "2026-01-01", costName: "google-tokens", quantity: 100 },
+      { day: "2026-01-03", costName: "google-tokens", quantity: 10 },
+    ];
+    const gPaid = new Map([["google", new Map([["2026-01-01", 5000]])]]);
+    const ratios = paygRatios(DAYS, gPaid, gUnits, c, NOW, split(new Map(), { from: "2026-01-03", byDay: new Map([["2026-01-03", 30]]) }));
+    expect(ratios.get("google")!.get("2026-01-03")).toEqual({
+      cumulativeNetPaidUsdCents: 5000,
+      cumulativeMeteredUsdCents: 30,
+      numeratorBasis: "google-cloud-split-metered",
+      cumulativeVendorRecordedUsdCents: 20,
+      ratio: 1.5,
+    });
+    expect(ratios.get("google")!.get("2026-01-02")!.ratio).toBeNull();
+  });
+
+  it("fails loud when a vendor declares a split source that was not read", () => {
+    expect(() => paygRatios(DAYS, netPaid, units, c, NOW)).toThrow(/declares a metered spend source but none was read/);
+  });
+
+  it("declares Twilio's rental apart from its metered categories, top-level only", () => {
+    const tw = PAY_AS_YOU_GO_VENDORS.find((p) => p.provider === "twilio")!.meteredSpend!;
+    expect(tw.kind).toBe("twilio-usage");
+    expect(tw.rentalCategories).toEqual(["phonenumbers"]);
+    for (const m of tw.meteredCategories) expect(tw.rentalCategories).not.toContain(m);
+    for (const m of [...tw.meteredCategories, ...tw.rentalCategories]) expect(m, "a child category would count twice").not.toMatch(/-/);
+  });
+});
+
 describe("catalogue history", () => {
   it("serves the version in force at the day's end, never a future one", () => {
     const c = catalogue();
@@ -77,7 +132,8 @@ describe("catalogue history", () => {
 describe("real cost per unit and proposed price", () => {
   const c = catalogue();
   const netPaid = new Map([["anthropic", new Map([["2026-01-02", 300]])]]);
-  const ratios = paygRatios(DAYS, netPaid, [{ day: "2026-01-01", costName: "anthropic-tokens", quantity: 1_000_000 }], c, NOW);
+  const NO_SPLIT_USAGE = new Map(["twilio", "google"].map((p) => [p, { from: "2026-01-01", byDay: new Map<string, number>() }]));
+  const ratios = paygRatios(DAYS, netPaid, [{ day: "2026-01-01", costName: "anthropic-tokens", quantity: 1_000_000 }], c, NOW, NO_SPLIT_USAGE);
   const series = realCostSeries({
     days: DAYS,
     catalogue: c,
@@ -93,7 +149,13 @@ describe("real cost per unit and proposed price", () => {
 
   it("pay-as-you-go: catalogue vendor cost x (net paid / vendor cost recorded), x2", () => {
     // recorded 1,000,000 x 0.0001 = 100 cents; paid 300 cents on day 2 -> ratio 3
-    expect(ratios.get("anthropic")!.get("2026-01-02")).toEqual({ cumulativeNetPaidUsdCents: 300, cumulativeVendorRecordedUsdCents: 100, ratio: 3 });
+    expect(ratios.get("anthropic")!.get("2026-01-02")).toEqual({
+      cumulativeNetPaidUsdCents: 300,
+      cumulativeMeteredUsdCents: 300,
+      numeratorBasis: "ledger-net-paid",
+      cumulativeVendorRecordedUsdCents: 100,
+      ratio: 3,
+    });
     expect(at("2026-01-02", "anthropic-tokens")).toMatchObject({ method: "pay-as-you-go-ratio", ratio: 3, realCost: 0.0003, proposedPrice: 0.0006, proposedBasis: "real-cost-x2", flag: null });
   });
 

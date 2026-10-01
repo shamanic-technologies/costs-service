@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireApiKey } from "../middleware/auth.js";
 import { LedgerError } from "../lib/ledger.js";
 import { RunsServiceError } from "../lib/runs-service.js";
+import { TwilioUsageError } from "../lib/twilio-usage.js";
 import { endOfDay } from "../lib/catalogue-history.js";
 import { compare, compareByGroup, type ConsumptionRow, type Interval } from "../lib/price-comparison.js";
 import { replayRealCost } from "../lib/real-cost.js";
@@ -23,6 +24,7 @@ import {
   goldForCostName,
   goldOnDay,
   loadCatalogueHistory,
+  paygParts,
   paygRatiosOnDay,
   paygSpend,
   realCostPoints,
@@ -81,6 +83,59 @@ async function servedState() {
   return { lastSucceeded, lastRefresh };
 }
 
+type PartRow = Awaited<ReturnType<typeof paygParts>>[number];
+
+/** Every part a split vendor can report, in serving order. Only `metered` is loaded on units. */
+const PART_RULES: Record<string, { loadedOnUnits: boolean; flag: string | null }> = {
+  metered: { loadedOnUnits: true, flag: null },
+  rental: { loadedOnUnits: false, flag: "subscription-not-loaded-on-units" },
+  other: { loadedOnUnits: false, flag: "other-usage-not-loaded-on-units" },
+  "other-services": { loadedOnUnits: false, flag: "other-services-not-loaded-on-units" },
+  tax: { loadedOnUnits: false, flag: "tax-not-real-cost" },
+  adjustments: { loadedOnUnits: false, flag: "adjustment-not-loaded-on-units" },
+  prepaid: { loadedOnUnits: false, flag: "prepaid-counted-only-as-consumed" },
+  "unconsumed-balance": { loadedOnUnits: false, flag: "prepaid-not-consumed" },
+};
+const SNAPSHOT_PARTS = new Set(["unconsumed-balance"]);
+const PARTS_BY_BASIS: Record<string, string[]> = {
+  "twilio-usage-metered": ["metered", "rental", "other", "unconsumed-balance"],
+  "google-cloud-split-metered": ["metered", "other-services", "tax", "adjustments", "prepaid"],
+};
+
+const r2 = (x: number) => Math.round(x * 1e6) / 1e6;
+
+/**
+ * Where a split vendor's bank money went, through `day`: each part as the vendor reports it
+ * (cumulative), and the bank money no part explains (net paid - every part). Only the metered part
+ * is loaded on units (the ratio's numerator); every other part is served, flagged, never loaded. A
+ * snapshot part (Twilio's balance left) exists only on the refresh day, so on an earlier day it and
+ * the remainder are null.
+ */
+function vendorSplit(provider: string, basis: string, day: string, asOf: string, netPaid: number, parts: PartRow[]) {
+  const all = parts.filter((p) => p.provider === provider);
+  const names = PARTS_BY_BASIS[basis];
+  if (!names) throw new Error(`No part list for numerator basis '${basis}'`);
+  const unknown = [...new Set(all.map((p) => p.part))].filter((part) => !names.includes(part));
+  if (unknown.length > 0) throw new Error(`Unknown vendor part(s) for ${provider}: ${unknown.join(", ")}`);
+  let snapshotMissing = false;
+  const out = names.map((part) => {
+    const rows = SNAPSHOT_PARTS.has(part) ? all.filter((p) => p.part === part && p.day === day && day === asOf) : all.filter((p) => p.part === part && p.day <= day);
+    if (SNAPSHOT_PARTS.has(part) && rows.length === 0) snapshotMissing = true;
+    const usdCents = SNAPSHOT_PARTS.has(part) && rows.length === 0 ? null : r2(rows.reduce((t, p) => t + Number(p.usdCents), 0));
+    return { part, usdCents, basis: all.find((p) => p.part === part)?.basis ?? null, ...PART_RULES[part] };
+  });
+  const explained = out.reduce((t, p) => t + (p.usdCents ?? 0), 0);
+  return {
+    parts: out,
+    unexplained: {
+      usdCents: snapshotMissing ? null : r2(netPaid - explained),
+      basis: "bank net paid - every part above; never loaded on units",
+      loadedOnUnits: false as const,
+      flag: snapshotMissing ? "balance-known-only-on-refresh-day" : "unexplained-not-loaded-on-units",
+    },
+  };
+}
+
 const RULES = {
   since: REAL_COST_SINCE,
   proposedMultiplier: PROPOSED_MULTIPLIER,
@@ -110,7 +165,7 @@ router.get("/internal/real-costs", async (req, res) => {
       res.status(404).json({ error: `Real costs exist from ${REAL_COST_SINCE} through ${lastSucceeded.asOf}` });
       return;
     }
-    const [rows, ratios, spend] = await Promise.all([goldOnDay(day), paygRatiosOnDay(day), paygSpend()]);
+    const [rows, ratios, spend, parts] = await Promise.all([goldOnDay(day), paygRatiosOnDay(day), paygSpend(), paygParts()]);
     res.json({
       formula: "real cost per unit of every cost item; proposed price = real cost x2 for production tools, x1 for Stripe and media",
       rules: RULES,
@@ -129,8 +184,11 @@ router.get("/internal/real-costs", async (req, res) => {
           paidUsdCents: paid,
           refundedUsdCents: refunded,
           netPaidUsdCents: r.cumulativeNetPaidUsdCents,
+          numeratorBasis: r.numeratorBasis,
+          meteredUsdCents: Number(r.cumulativeMeteredUsdCents),
           vendorCostRecordedUsdCents: Number(r.cumulativeVendorRecordedUsdCents),
           ratio: num(r.ratio),
+          split: r.numeratorBasis === "ledger-net-paid" ? null : vendorSplit(r.provider, r.numeratorBasis, day, lastSucceeded.asOf, r.cumulativeNetPaidUsdCents, parts),
         };
       }),
       items: rows.map(item),
@@ -293,7 +351,7 @@ router.post("/internal/real-costs/refresh", async (_req, res) => {
       res.status(409).json({ error: err.message });
       return;
     }
-    if (err instanceof LedgerError || err instanceof RunsServiceError) {
+    if (err instanceof LedgerError || err instanceof RunsServiceError || err instanceof TwilioUsageError) {
       console.error("[Costs Service] Real cost refresh failed upstream:", err.message);
       res.status(502).json({ error: err.message });
       return;
