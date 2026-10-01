@@ -679,125 +679,57 @@ registry.registerPath({
   },
 });
 
-// --- Payment sources: which of OUR accounts pays each provider (STAFF-ONLY, service api key) ---
+// --- Paid from: which of OUR accounts pays each provider, read from the bank ledger (STAFF-ONLY, service api key) ---
 
-export const PaymentSourceSchema = z
+export const PaidFromAccountSchema = z
   .object({
-    key: z.string().openapi({ description: "Stable key, e.g. 'revolut_business'.", example: "revolut_business" }),
-    displayName: z.string().openapi({ example: "Revolut Business" }),
-    domain: z.string().openapi({ description: "Domain to feed a logo service (logo.dev).", example: "revolut.com" }),
+    accountId: z.string().openapi({ description: "The ledger's account id." }),
+    label: z.string().openapi({ example: "Revolut Business" }),
+    institutionDomain: z.string().nullable().openapi({ description: "Bank domain for a logo (logo.dev). Null when the ledger does not know the bank.", example: "revolut.com" }),
+    scope: z.enum(["personal", "business"]),
+    lastPaidOn: z.string().openapi({ description: "Date (YYYY-MM-DD) this account last paid this provider.", example: "2026-09-28" }),
   })
-  .openapi("PaymentSource");
-
-export const PaymentSourceListSchema = z
-  .object({ sources: z.array(PaymentSourceSchema) })
-  .openapi("PaymentSourceList");
-
-export const PutPaymentSourceBodySchema = z
-  .object({
-    displayName: z.string().trim().min(1),
-    domain: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .regex(/^[a-z0-9-]+(\.[a-z0-9-]+)+$/, "domain must be a bare hostname, e.g. 'revolut.com'"),
-  })
-  .strict()
-  .openapi("PutPaymentSourceBody");
-
-export const PAYMENT_SOURCE_KEY_PATTERN = /^[a-z][a-z0-9_]*$/;
+  .openapi("PaidFromAccount");
 
 export const ProviderPaymentSourcesSchema = z
   .object({
     provider: z.string().openapi({ description: "Catalogue provider key (providers_costs.provider).", example: "openai" }),
     providerDomain: z.string().nullable().openapi({ example: "openai.com" }),
-    sources: z.array(PaymentSourceSchema).openapi({ description: "Sources that pay this provider, sorted by key. Empty = not stated yet." }),
+    match: z.enum(["matched", "unmatched"]).openapi({
+      description: "'unmatched' = no vendor in the bank ledger could be tied to this provider (we cannot say who pays it), distinct from a matched provider.",
+    }),
+    ledgerVendors: z
+      .array(z.object({ key: z.string(), name: z.string() }))
+      .openapi({ description: "The ledger vendors joined to this provider (a vendor key starting with the provider's name or domain, longest name wins)." }),
+    lastPaidOn: z.string().nullable().openapi({ description: "Latest payment across every account (YYYY-MM-DD). Null when unmatched." }),
+    paidFrom: z.array(PaidFromAccountSchema).openapi({ description: "Accounts that paid this provider, most recent first. Empty when unmatched." }),
   })
   .openapi("ProviderPaymentSources");
 
 export const ProviderPaymentSourcesListSchema = z
-  .object({ providers: z.array(ProviderPaymentSourcesSchema) })
-  .openapi("ProviderPaymentSourcesList");
-
-export const PutProviderPaymentSourcesBodySchema = z
   .object({
-    sources: z.array(z.string().min(1)).openapi({
-      description: "The full set of source keys that pay this provider (replaces the previous set). [] clears it.",
-      example: ["revolut_business", "qonto"],
-    }),
+    ledgerGeneratedAt: z.string().openapi({ description: "When the bank ledger produced the answer (read live, never cached)." }),
+    providers: z.array(ProviderPaymentSourcesSchema),
   })
-  .strict()
-  .openapi("PutProviderPaymentSourcesBody");
-
-const PaymentSourceKeyParam = registry.registerParameter(
-  "PaymentSourceKey",
-  z.string().openapi({ param: { name: "key", in: "path" }, example: "revolut_business" }),
-);
-
-registry.registerPath({
-  method: "get",
-  path: "/internal/payment-sources",
-  operationId: "listPaymentSources",
-  summary: "The vocabulary of our own payment accounts that can pay a vendor (service api key only)",
-  security: [{ ApiKeyAuth: [] }],
-  responses: {
-    200: { description: "Every known payment source, sorted by key", content: { "application/json": { schema: PaymentSourceListSchema } } },
-    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
-    500: { description: "Internal server error", content: { "application/json": { schema: ErrorResponseSchema } } },
-  },
-});
-
-registry.registerPath({
-  method: "put",
-  path: "/internal/payment-sources/{key}",
-  operationId: "putPaymentSource",
-  summary: "Add a payment source to the vocabulary, or rename/re-domain an existing one (service api key only)",
-  description: "Idempotent upsert. The key must match ^[a-z][a-z0-9_]*$ and is never renamed.",
-  security: [{ ApiKeyAuth: [] }],
-  request: {
-    params: z.object({ key: PaymentSourceKeyParam }),
-    body: { content: { "application/json": { schema: PutPaymentSourceBodySchema } } },
-  },
-  responses: {
-    200: { description: "The stored source", content: { "application/json": { schema: PaymentSourceSchema } } },
-    400: { description: "Invalid key or body", content: { "application/json": { schema: ValidationErrorResponseSchema } } },
-    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
-    500: { description: "Internal server error", content: { "application/json": { schema: ErrorResponseSchema } } },
-  },
-});
+  .openapi("ProviderPaymentSourcesList");
 
 registry.registerPath({
   method: "get",
   path: "/internal/provider-payment-sources",
   operationId: "listProviderPaymentSources",
-  summary: "Every catalogue provider with the payment sources that pay it (service api key only)",
+  summary: "Every catalogue provider with the accounts that pay it, read live from the bank ledger (service api key only)",
   security: [{ ApiKeyAuth: [] }],
   responses: {
     200: {
-      description: "One entry per provider in the catalogue, sorted by provider; sources = [] when not stated",
+      description: "One entry per provider in the catalogue, sorted by provider",
       content: { "application/json": { schema: ProviderPaymentSourcesListSchema } },
     },
     401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
     500: { description: "Internal server error", content: { "application/json": { schema: ErrorResponseSchema } } },
-  },
-});
-
-registry.registerPath({
-  method: "put",
-  path: "/internal/provider-payment-sources/{provider}",
-  operationId: "putProviderPaymentSources",
-  summary: "Set the payment sources that pay a provider (replaces the set; service api key only)",
-  security: [{ ApiKeyAuth: [] }],
-  request: {
-    params: z.object({ provider: ProviderParam }),
-    body: { content: { "application/json": { schema: PutProviderPaymentSourcesBodySchema } } },
-  },
-  responses: {
-    200: { description: "The provider with its new sources", content: { "application/json": { schema: ProviderPaymentSourcesSchema } } },
-    400: { description: "Invalid body or unknown source key(s)", content: { "application/json": { schema: ValidationErrorResponseSchema } } },
-    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
-    404: { description: "Provider not in the catalogue", content: { "application/json": { schema: ErrorResponseSchema } } },
-    500: { description: "Internal server error", content: { "application/json": { schema: ErrorResponseSchema } } },
+    502: {
+      description: "The bank ledger is not configured, unreachable, refused the key, or answered in an unknown shape (the error names which)",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
   },
 });
 

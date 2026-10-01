@@ -394,16 +394,15 @@ What one unit of each price version REALLY cost us from the vendor, before our m
 
 A version's vendor cost is stated only when a vendor rate the seed records reproduces its billed price EXACTLY under the markup in force when it was written (1x/2x overwrite era, 2x, 4x, 5x, 6x, 5x). Otherwise it is `null` with a reason (`no-billable-price`, `no-vendor-rate-on-record`, `ambiguous-vendor-rate`) and never the billed price.
 
-### Payment sources: which of our accounts pays each provider (staff-only, service api key)
+### Paid from: which of our accounts pays each provider (staff-only, service api key)
 
-Which of OUR OWN payment accounts pays each vendor, for the staff Monitoring > Cost table. `x-api-key` required, no identity headers. The vocabulary is closed and starts with `revolut_business`, `revolut_personal`, `stripe`, `qonto` (migration `0010`); staff grow it with the PUT below. Nothing is seeded per provider: `sources: []` means not stated yet.
+Read LIVE from Kevin's bank ledger (admin.kevinlourd.com `GET /api/v1/vendors`, Bearer `LEDGER_API_KEY` against base `LEDGER_API_URL`), for the staff Monitoring > Providers table. Nothing is stored or cached here. `x-api-key` required, no identity headers.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/internal/payment-sources` | Yes | The vocabulary: `{ sources: [{ key, displayName, domain }] }` (`domain` feeds logo.dev) |
-| PUT | `/internal/payment-sources/:key` | Yes | Add or update a source. Body `{ displayName, domain }`; key matches `^[a-z][a-z0-9_]*$` |
-| GET | `/internal/provider-payment-sources` | Yes | Every catalogue provider: `{ providers: [{ provider, providerDomain, sources: [{ key, displayName, domain }] }] }` |
-| PUT | `/internal/provider-payment-sources/:provider` | Yes | Replace a provider's set. Body `{ sources: ["revolut_business", "qonto"] }` (`[]` clears). Unknown key = 400 naming the known keys; provider absent from the catalogue = 404 |
+| GET | `/internal/provider-payment-sources` | Yes | `{ ledgerGeneratedAt, providers: [{ provider, providerDomain, match: "matched" \| "unmatched", ledgerVendors: [{ key, name }], lastPaidOn, paidFrom: [{ accountId, label, institutionDomain, scope: "personal" \| "business", lastPaidOn }] }] }`. Ledger unconfigured / unreachable / refusing / unknown shape = **502** naming the cause, never an empty list |
+
+Matching: a ledger vendor key belongs to the catalogue provider whose name (`google-ads`), domain (`instantly.ai`) or domain label (`instantly`) it STARTS WITH word for word; longest name wins (`google ads` -> `google-ads`, not `google`); a tie attaches it to neither. No alias list: a provider nothing fits is `unmatched`.
 
 ### Other endpoints
 

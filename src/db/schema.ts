@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, numeric, uniqueIndex, index, check, foreignKey, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, numeric, uniqueIndex, index, check, foreignKey } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const providersCosts = pgTable(
@@ -119,45 +119,3 @@ export const platformCosts = pgTable(
 export type PlatformCost = typeof platformCosts.$inferSelect;
 export type NewPlatformCost = typeof platformCosts.$inferInsert;
 
-/**
- * The closed vocabulary of OUR OWN payment accounts that pay a vendor (Revolut Business, Qonto,
- * Stripe...). Staff grow it through `PUT /internal/payment-sources/:key`; a provider can only be
- * linked to a key that exists here, so an unknown source is refused loudly rather than stored.
- * `domain` is what the dashboard feeds to a logo service. Staff-only: served under `/internal`.
- */
-export const paymentSources = pgTable(
-  "payment_sources",
-  {
-    key: text("key").primaryKey(),
-    displayName: text("display_name").notNull(),
-    domain: text("domain").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [check("payment_sources_key_format", sql`${table.key} ~ '^[a-z][a-z0-9_]*$'`)]
-);
-
-export type PaymentSource = typeof paymentSources.$inferSelect;
-
-/**
- * Which of our payment sources pays each provider. A provider may be paid from several (e.g.
- * moved from Qonto to Revolut Business). No row = not stated yet — never guessed, never seeded.
- * `provider` is the catalogue's provider key (`providers_costs.provider`); not a foreign key
- * because that column is not unique (one row per price version).
- */
-export const providerPaymentSources = pgTable(
-  "provider_payment_sources",
-  {
-    provider: text("provider").notNull(),
-    sourceKey: text("source_key").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    primaryKey({ name: "provider_payment_sources_pk", columns: [table.provider, table.sourceKey] }),
-    foreignKey({
-      name: "provider_payment_sources_source_fk",
-      columns: [table.sourceKey],
-      foreignColumns: [paymentSources.key],
-    }).onDelete("restrict"),
-  ]
-);
