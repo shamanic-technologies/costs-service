@@ -6,6 +6,7 @@ import {
   emailSendPriceDaily,
   emailSendPriceRefreshes,
   paygRatioDaily,
+  paygVendorPartsDaily,
   paygVendorSpendDaily,
   platformCosts,
   providerCostVendorCosts,
@@ -17,11 +18,12 @@ import {
   subscriptionCostRefreshes,
 } from "./schema.js";
 import { addDays, spendPerDayAndVendor } from "../lib/email-send-price.js";
-import { fetchLedgerVendorPayments, fetchLedgerVendors } from "../lib/ledger.js";
+import { fetchGoogleCloudSplit, fetchLedgerVendorPayments, fetchLedgerVendors, type GoogleCloudSplit } from "../lib/ledger.js";
 import { fetchGroupedConsumption } from "../lib/runs-service.js";
+import { fetchTwilioUsage } from "../lib/twilio-usage.js";
 import { CatalogueHistory } from "../lib/catalogue-history.js";
-import { PAY_AS_YOU_GO_VENDORS, REAL_COST_SINCE, matchesPrefix } from "../lib/price-lists.js";
-import { paygRatios, realCostSeries, type GoldPoint, type PlatformUnits } from "../lib/real-cost.js";
+import { PAY_AS_YOU_GO_VENDORS, REAL_COST_SINCE, matchesPrefix, type PayAsYouGoVendor } from "../lib/price-lists.js";
+import { paygRatios, realCostSeries, type GoldPoint, type MeteredSpend, type PlatformUnits } from "../lib/real-cost.js";
 import type { ConsumptionRow } from "../lib/price-comparison.js";
 import { utcDay } from "./email-send-price.js";
 
@@ -94,6 +96,103 @@ export function resolvePaygLedgerVendors(ledgerKeys: string[]): Map<string, stri
   return vendorToProvider;
 }
 
+export type VendorPart = { day: string; provider: string; part: string; usdCents: number; basis: string };
+
+const round6 = (x: number) => Math.round(x * 1e6) / 1e6;
+
+export type VendorSplitRead = { parts: VendorPart[]; raw: unknown; url: string; from: string };
+
+/**
+ * A vendor's money split by what it paid for, as the vendor itself reports it. Returns the parts
+ * (silver), the raw read (bronze) and the first day the split covers. The `metered` part is the
+ * ratio's numerator; every other part is served apart and never loaded on a unit.
+ */
+export async function readVendorParts(v: PayAsYouGoVendor, asOf: string): Promise<VendorSplitRead> {
+  const src = v.meteredSpend!;
+  if (src.kind === "google-cloud-split") {
+    const read = await fetchGoogleCloudSplit(REAL_COST_SINCE.slice(0, 7));
+    return { ...googleCloudParts(read.data, v.provider, src.meteredServices, asOf), raw: read.body, url: read.url };
+  }
+  const usage = await fetchTwilioUsage([...src.meteredCategories, ...src.rentalCategories, "totalprice"], REAL_COST_SINCE, asOf);
+  const byDay = new Map<string, { metered: number; rental: number; total: number }>();
+  for (const u of usage.daily) {
+    const d = byDay.get(u.day) ?? { metered: 0, rental: 0, total: 0 };
+    if (src.meteredCategories.includes(u.category)) d.metered += u.usdCents;
+    else if (src.rentalCategories.includes(u.category)) d.rental += u.usdCents;
+    else d.total += u.usdCents;
+    byDay.set(u.day, d);
+  }
+  const parts: VendorPart[] = [];
+  const basis = "Twilio usage records";
+  for (const [day, d] of [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const other = round6(d.total - d.metered - d.rental);
+    if (other < -0.01) throw new Error(`Twilio usage on ${day}: categories sum above its total price (${d.metered + d.rental} > ${d.total} cents)`);
+    if (d.metered) parts.push({ day, provider: v.provider, part: "metered", usdCents: round6(d.metered), basis: `${basis}: ${src.meteredCategories.join(", ")}` });
+    if (d.rental) parts.push({ day, provider: v.provider, part: "rental", usdCents: round6(d.rental), basis: `${basis}: ${src.rentalCategories.join(", ")}` });
+    if (other > 0) parts.push({ day, provider: v.provider, part: "other", usdCents: other, basis: `${basis}: totalprice minus the categories above` });
+  }
+  parts.push({ day: asOf, provider: v.provider, part: "unconsumed-balance", usdCents: usage.balanceUsdCents, basis: "Twilio balance, prepaid and not consumed yet" });
+  return { parts, raw: usage.raw, url: "twilio usage records + balance", from: REAL_COST_SINCE };
+}
+
+/**
+ * Google Cloud parts, per day, in US cents. A month's export figures (consumption per service, tax,
+ * adjustments + rounding) are spread evenly over the days the export covers for it, clipped to
+ * [2026-01-01, asOf]; a prepaid top-up lands on the day it was charged. EUR is converted at the bank
+ * ledger's own rate on that month's Google Cloud bank lines (or the latest earlier month that has
+ * one). The split covers days from the first export day; months without an export add no part, so
+ * their bank money stays visible as unexplained (net paid - every part).
+ */
+export function googleCloudParts(
+  split: GoogleCloudSplit,
+  provider: string,
+  meteredServices: readonly string[],
+  asOf: string,
+): { parts: VendorPart[]; from: string } {
+  const months = [...split.months].sort((a, b) => a.month.localeCompare(b.month));
+  const rates = new Map<string, { rate: number; from: string }>();
+  let last: { rate: number; from: string } | null = null;
+  for (const m of months) {
+    const lines = m.bank.payments.filter((p) => p.direction === "payment" && p.eurAmount > 0);
+    const eur = lines.reduce((t, p) => t + p.eurAmount, 0);
+    if (eur > 0) last = { rate: lines.reduce((t, p) => t + p.usdAmount, 0) / eur, from: m.month };
+    if (last) rates.set(m.month, last);
+  }
+  const acc = new Map<string, VendorPart>();
+  const add = (day: string, part: string, usdCents: number, basis: string) => {
+    if (day < REAL_COST_SINCE || day > asOf || usdCents === 0) return;
+    const k = `${day}|${part}`;
+    const p = acc.get(k) ?? { day, provider, part, usdCents: 0, basis };
+    p.usdCents += usdCents;
+    acc.set(k, p);
+  };
+  let from = null as string | null;
+  for (const m of months) {
+    const x = m.export;
+    if (!x) continue;
+    const r = rates.get(m.month);
+    if (!r) throw new Error(`Google Cloud ${m.month}: no bank line on or before it to convert EUR to USD`);
+    const fx = `EUR->USD ${r.rate.toFixed(4)} (ledger rate on ${r.from} Google Cloud bank lines)`;
+    const days: string[] = [];
+    for (let d = x.coveredFrom; d <= x.coveredTo && d <= asOf; d = addDays(d, 1)) days.push(d);
+    if (days.length === 0) continue;
+    if (from === null || days[0] < from) from = days[0];
+    const metered = x.consumption.filter((c) => meteredServices.includes(c.service)).reduce((t, c) => t + c.netEur, 0);
+    const others = x.consumption.filter((c) => !meteredServices.includes(c.service));
+    const spread = (part: string, eur: number, basis: string) => {
+      for (const d of days) add(d, part, (eur * 100 * r.rate) / days.length, `${basis}; ${fx}`);
+    };
+    spread("metered", metered, `GCP billing export, ${meteredServices.join(", ")} consumption`);
+    spread("other-services", others.reduce((t, c) => t + c.netEur, 0), "GCP billing export, every other service (Secret Manager, Cloud Run...)");
+    spread("tax", x.taxEur, "Invoice tax, declared recoverable (TAX_IS_REAL_COST = false)");
+    spread("adjustments", x.adjustmentsEur + x.roundingEur, "Invoice adjustments and rounding");
+    for (const p of x.prepayments) add(p.chargedOn, "prepaid", p.totalEur * 100 * r.rate, `Prepaid top-up, counted only as the export shows it consumed; ${fx}`);
+  }
+  if (from === null) throw new Error("Google Cloud: the billing export covers no day yet, so Gemini's consumption cannot be told apart");
+  const parts = [...acc.values()].map((p) => ({ ...p, usdCents: round6(p.usdCents) })).sort((a, b) => a.day.localeCompare(b.day) || a.part.localeCompare(b.part));
+  return { parts, from };
+}
+
 const silverRow = (d: { day: string; orgId: string | null; costName: string; costSource: string; quantity: string; billedCostInUsdCents: string; netBilledCostInUsdCents: string }) => ({
   day: d.day,
   orgId: d.orgId,
@@ -130,6 +229,16 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
       fetchGroupedConsumption(false),
       fetchGroupedConsumption(true),
     ]);
+    const splitVendors = PAY_AS_YOU_GO_VENDORS.filter((v) => v.meteredSpend);
+    const split = await Promise.all(splitVendors.map((v) => readVendorParts(v, asOf).then((r) => ({ provider: v.provider, ...r }))));
+    const parts = split.flatMap((x) => x.parts);
+    const metered = new Map<string, MeteredSpend>(split.map((x) => [x.provider, { from: x.from, byDay: new Map<string, number>() }]));
+    for (const p of parts) {
+      if (p.part !== "metered") continue;
+      const m = metered.get(p.provider)!.byDay;
+      m.set(p.day, (m.get(p.day) ?? 0) + p.usdCents);
+    }
+
     const unexpected = payments.data.payments.filter((p) => !vendorToProvider.has(p.vendor)).map((p) => p.vendor);
     if (unexpected.length > 0) throw new Error(`Bank ledger returned lines for vendors not asked for: ${[...new Set(unexpected)].join(", ")}`);
 
@@ -156,7 +265,7 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
     const days: string[] = [];
     for (let d = REAL_COST_SINCE; d <= asOf; d = addDays(d, 1)) days.push(d);
     const catalogue = await loadCatalogueHistory();
-    const ratios = paygRatios(days, netPaid, [...unitsByKey.values()], catalogue, now);
+    const ratios = paygRatios(days, netPaid, [...unitsByKey.values()], catalogue, now, metered);
 
     const [emailGold, subGold] = await Promise.all([
       db.select({ day: emailSendPriceDaily.day, price: emailSendPriceDaily.priceUsdCents }).from(emailSendPriceDaily),
@@ -178,6 +287,8 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
         day,
         provider,
         cumulativeNetPaidUsdCents: r.cumulativeNetPaidUsdCents,
+        cumulativeMeteredUsdCents: r.cumulativeMeteredUsdCents.toFixed(10),
+        numeratorBasis: r.numeratorBasis,
         cumulativeVendorRecordedUsdCents: r.cumulativeVendorRecordedUsdCents.toFixed(10),
         ratio: r.ratio === null ? null : r.ratio.toFixed(10),
       })),
@@ -191,6 +302,7 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
         { source: "bank-ledger-payments", url: payments.url, body: payments.body },
         { source: "runs-service-by-org", url: byOrg.url, body: byOrg.body },
         { source: "runs-service-by-brand", url: byBrand.url, body: byBrand.body },
+        ...split.map((x) => ({ source: `vendor-parts-${x.provider}`, url: x.url, body: x.raw })),
       ]) {
         await tx
           .insert(realCostRawReads)
@@ -201,6 +313,8 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
 
       await tx.delete(paygVendorSpendDaily);
       if (spend.length > 0) await tx.insert(paygVendorSpendDaily).values(spend);
+      await tx.delete(paygVendorPartsDaily);
+      if (parts.length > 0) await tx.insert(paygVendorPartsDaily).values(parts.map((p) => ({ ...p, usdCents: p.usdCents.toFixed(10) })));
       await tx.delete(consumptionByOrgDaily);
       for (let i = 0; i < byOrg.parsed.days.length; i += 1000) {
         await tx.insert(consumptionByOrgDaily).values(byOrg.parsed.days.slice(i, i + 1000).map(silverRow));
@@ -329,6 +443,10 @@ export async function realCostPoints(): Promise<GoldPoint[]> {
 
 export async function paygRatiosOnDay(day: string) {
   return db.select().from(paygRatioDaily).where(eq(paygRatioDaily.day, day)).orderBy(asc(paygRatioDaily.provider));
+}
+
+export async function paygParts() {
+  return db.select().from(paygVendorPartsDaily).orderBy(asc(paygVendorPartsDaily.day));
 }
 
 export async function paygSpend() {

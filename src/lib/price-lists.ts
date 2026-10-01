@@ -73,7 +73,45 @@ export type PayAsYouGoVendor = {
   ledgerVendors: readonly string[];
   ledgerVendorPrefix: string | null;
   excludedLedgerVendors: readonly { key: string; reason: string }[];
+  /** What the ratio's numerator counts as METERED spend (the work our runs record). Default: the ledger net paid. */
+  meteredSpend?: MeteredSpendSource;
 };
+
+/**
+ * Where a vendor's METERED spend is read when the bank line also pays for something else.
+ *
+ * `twilio-usage`: Twilio is prepaid. A bank line is a balance top-up; the balance then pays the
+ * metered usage our runs record AND the phone-number rental (a subscription), and what is left is
+ * not consumed yet. So the numerator is what Twilio's own usage records priced for the metered
+ * categories; the rental, any other category, the balance left and the bank money Twilio cannot
+ * explain (paid to an earlier Twilio account, 2026-03) are served apart, never loaded on a unit.
+ * Categories are Twilio's top-level ones (a child like `calls-outbound` would count twice).
+ */
+export type MeteredSpendSource =
+  | {
+      kind: "twilio-usage";
+      meteredCategories: readonly string[];
+      rentalCategories: readonly string[];
+    }
+  | {
+      /**
+       * Google Cloud: the bank's "google cloud" block also pays Secret Manager / Cloud Run, invoice tax,
+       * prepaid top-ups and, before the billing export began (2026-07-30), money no service line explains.
+       * Read from the bank ledger's split (`/api/v1/vendor-payments/google-cloud`, from the GCP billing
+       * export). The numerator is the consumption of `meteredServices` only, from the first day the export
+       * covers; the recorded vendor cost is counted from that same day so both sides span one window.
+       * Prepaid top-ups count only as the export shows them consumed (inside the services' consumption).
+       */
+      kind: "google-cloud-split";
+      meteredServices: readonly string[];
+    };
+
+/**
+ * Tax on a vendor invoice is NOT part of the real cost (owner 2026-10-01: tax counts only if not
+ * recoverable, and VAT/tax lines are declared recoverable). Served apart, flagged, never loaded.
+ * (DeepSeek's Chinese VAT is a different case: it is inside the catalogue vendor rate, `withChinaVat`.)
+ */
+export const TAX_IS_REAL_COST = false;
 
 export const PAY_AS_YOU_GO_VENDORS: readonly PayAsYouGoVendor[] = [
   {
@@ -86,6 +124,7 @@ export const PAY_AS_YOU_GO_VENDORS: readonly PayAsYouGoVendor[] = [
     provider: "google",
     ledgerVendors: [],
     ledgerVendorPrefix: "google cloud",
+    meteredSpend: { kind: "google-cloud-split", meteredServices: ["Gemini API"] },
     excludedLedgerVendors: [
       { key: "google one", reason: "Personal storage, not API usage" },
       { key: "google workspace", reason: "Mailboxes, not API usage" },
@@ -101,7 +140,13 @@ export const PAY_AS_YOU_GO_VENDORS: readonly PayAsYouGoVendor[] = [
     excludedLedgerVendors: [{ key: "openai chatgpt subscr", reason: "ChatGPT seat subscription, not API usage" }],
   },
   { provider: "moonshot", ledgerVendors: ["moonshot ai", "moonshot ai pte"], ledgerVendorPrefix: null, excludedLedgerVendors: [] },
-  { provider: "twilio", ledgerVendors: ["twilio com"], ledgerVendorPrefix: null, excludedLedgerVendors: [] },
+  {
+    provider: "twilio",
+    ledgerVendors: ["twilio com"],
+    ledgerVendorPrefix: null,
+    excludedLedgerVendors: [],
+    meteredSpend: { kind: "twilio-usage", meteredCategories: ["calls", "sms", "mms", "channels"], rentalCategories: ["phonenumbers"] },
+  },
   { provider: "treg", ledgerVendors: ["treg"], ledgerVendorPrefix: null, excludedLedgerVendors: [] },
 ];
 

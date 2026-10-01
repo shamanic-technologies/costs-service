@@ -10,8 +10,10 @@
  *   3. subscription credit   (src/lib/subscriptions.ts)  real = real cost per credit(D)
  *      subscription provider, not a credit             real = catalogue vendor cost(D), flagged
  *   4. declared pay-as-you-go vendor                     real = catalogue vendor cost(D) x ratio(D)
- *         ratio(D) = net paid to the vendor through D / vendor cost recorded for it through D
- *                    (both since 2026-01-01; recorded = platform-key units x catalogue vendor cost)
+ *         ratio(D) = metered spend through D / vendor cost recorded for it through D
+ *                    (both since 2026-01-01; recorded = platform-key units x catalogue vendor cost;
+ *                    metered = the ledger net paid, unless the vendor declares a `meteredSpend`
+ *                    source that splits the bank money: Twilio's usage records)
  *   5. anything else                                     real = catalogue vendor cost(D), flagged
  *
  * Whenever the specific figure does not exist yet on D (no payment, no usage, no email sent), the
@@ -46,6 +48,8 @@ export type RealCostFlag =
   | "not-a-subscription-credit"
   | "no-real-cost-per-credit"
   | "no-payment-yet"
+  /** A split vendor (Twilio, Google Cloud) whose split shows no metered spend yet on that day. */
+  | "no-metered-spend-yet"
   | "no-recorded-usage-yet"
   | "no-ledger-line"
   | "declared-catalogue-vendor-cost"
@@ -71,7 +75,19 @@ export type RealCostDay = {
   proposedBasis: ProposedBasis;
 };
 
-export type PaygRatioDay = { cumulativeNetPaidUsdCents: number; cumulativeVendorRecordedUsdCents: number; ratio: number | null };
+export type PaygNumeratorBasis = "ledger-net-paid" | "twilio-usage-metered" | "google-cloud-split-metered";
+
+/** A split vendor's metered spend per day (US cents), counted from `from` (the first day the split covers). */
+export type MeteredSpend = { from: string; byDay: Map<string, number> };
+
+export type PaygRatioDay = {
+  cumulativeNetPaidUsdCents: number;
+  /** The ratio's numerator: metered spend through D (= the ledger net paid unless the vendor splits it). */
+  cumulativeMeteredUsdCents: number;
+  numeratorBasis: PaygNumeratorBasis;
+  cumulativeVendorRecordedUsdCents: number;
+  ratio: number | null;
+};
 
 const round10 = (x: number) => Math.round(x * 1e10) / 1e10;
 
@@ -79,8 +95,10 @@ const round10 = (x: number) => Math.round(x * 1e10) / 1e10;
 export type PlatformUnits = { day: string; costName: string; quantity: number };
 
 /**
- * Per declared pay-as-you-go provider, dense over `days`: cumulative net paid (ledger, US cents)
- * and cumulative vendor cost recorded (platform units x catalogue vendor cost in force that day).
+ * Per declared pay-as-you-go provider, dense over `days`: cumulative net paid (ledger, US cents),
+ * cumulative metered spend (the numerator: `meteredByProviderDay` for a provider that declares a
+ * split source, else the net paid) and cumulative vendor cost recorded (platform units x catalogue
+ * vendor cost in force that day).
  */
 export function paygRatios(
   days: string[],
@@ -88,7 +106,14 @@ export function paygRatios(
   units: PlatformUnits[],
   catalogue: CatalogueHistory,
   now: Date,
+  metered: Map<string, MeteredSpend> = new Map(),
 ): Map<string, Map<string, PaygRatioDay>> {
+  const splitBasis = new Map(
+    PAY_AS_YOU_GO_VENDORS.filter((v) => v.meteredSpend).map((v) => [v.provider, `${v.meteredSpend!.kind}-metered` as PaygNumeratorBasis]),
+  );
+  for (const p of splitBasis.keys()) {
+    if (!metered.has(p)) throw new Error(`Pay-as-you-go vendor ${p} declares a metered spend source but none was read`);
+  }
   const providers = new Set(PAY_AS_YOU_GO_VENDORS.map((v) => v.provider));
   const vendorByProviderDay = new Map<string, Map<string, number>>();
   for (const u of units) {
@@ -100,16 +125,27 @@ export function paygRatios(
   }
   const out = new Map<string, Map<string, PaygRatioDay>>();
   for (const provider of providers) {
+    const basis = splitBasis.get(provider) ?? "ledger-net-paid";
+    const split = metered.get(provider);
+    const numerator = split ? split.byDay : netPaidByProviderDay.get(provider);
+    // A split numerator only covers days from `from`: the recorded side starts the same day.
+    const from = split?.from ?? days[0];
     let paid = 0;
+    let num = 0;
     let vendor = 0;
     const series = new Map<string, PaygRatioDay>();
     for (const day of days) {
       paid += netPaidByProviderDay.get(provider)?.get(day) ?? 0;
-      vendor += vendorByProviderDay.get(provider)?.get(day) ?? 0;
+      if (day >= from) {
+        num += numerator?.get(day) ?? 0;
+        vendor += vendorByProviderDay.get(provider)?.get(day) ?? 0;
+      }
       series.set(day, {
         cumulativeNetPaidUsdCents: paid,
+        cumulativeMeteredUsdCents: round10(num),
+        numeratorBasis: basis,
         cumulativeVendorRecordedUsdCents: round10(vendor),
-        ratio: paid > 0 && vendor > 0 ? round10(paid / vendor) : null,
+        ratio: num > 0 && vendor > 0 ? round10(num / vendor) : null,
       });
     }
     out.set(provider, series);
@@ -181,7 +217,8 @@ export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
           method = "pay-as-you-go-ratio";
           ratio = r.ratio;
           realCost = round10(vendorCost * r.ratio);
-        } else flag = !r || r.cumulativeNetPaidUsdCents <= 0 ? "no-payment-yet" : "no-recorded-usage-yet";
+        } else if (r && r.numeratorBasis !== "ledger-net-paid" && r.cumulativeMeteredUsdCents <= 0) flag = "no-metered-spend-yet";
+        else flag = !r || r.cumulativeMeteredUsdCents <= 0 ? "no-payment-yet" : "no-recorded-usage-yet";
       } else if (CATALOGUE_VENDOR_COST_PROVIDERS[version.provider]) {
         flag = "declared-catalogue-vendor-cost";
       } else {
