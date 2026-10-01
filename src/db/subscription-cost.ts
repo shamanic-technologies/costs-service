@@ -142,11 +142,15 @@ const HOUR_MS = 60 * 60 * 1000;
  * yet, so a failed attempt is retried within the hour. Started after `listen()`, never awaited.
  */
 export function startSubscriptionCostScheduler(intervalMs: number = HOUR_MS): NodeJS.Timeout {
+  // The first tick after boot always recomputes: a deploy can change the formula, and the
+  // day's stored series would otherwise keep the old one until tomorrow.
+  let booted = false;
   const tick = async () => {
     if (running) return;
     try {
-      if (await subscriptionCostsSucceededOn(utcDay(new Date()))) return;
+      if (booted && await subscriptionCostsSucceededOn(utcDay(new Date()))) return;
       const outcome = await refreshSubscriptionCosts();
+      booted = true;
       console.log(`[Costs Service] Subscription costs refreshed as of ${outcome.asOf} (${outcome.days} days)`);
     } catch (err) {
       console.error("[Costs Service] Subscription cost refresh FAILED, last series stays served:", err);
