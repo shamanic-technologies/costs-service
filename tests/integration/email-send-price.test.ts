@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from "vitest";
+import { declaredVat, UNKNOWN_VAT } from "../helpers/ledger-vat.js";
 import request from "supertest";
 import { createTestApp } from "../helpers/test-app.js";
 import { db } from "../../src/db/index.js";
@@ -14,7 +15,7 @@ import { refreshEmailSendPrice, utcDay } from "../../src/db/email-send-price.js"
 const API_KEY = { "x-api-key": "test-api-key" };
 
 function payment(vendor: string, bookedOn: string, usdAmount: number, direction: "payment" | "refund" = "payment") {
-  return { id: `acc:${vendor}:${bookedOn}:${usdAmount}`, vendor, bookedOn, direction, amount: usdAmount, currency: "USD", eurAmount: usdAmount * 0.9, usdAmount, accountId: "acc" };
+  return { id: `acc:${vendor}:${bookedOn}:${usdAmount}`, vendor, bookedOn, direction, amount: usdAmount, currency: "USD", eurAmount: usdAmount * 0.9, usdAmount, accountId: "acc", vat: declaredVat(usdAmount, 0, usdAmount * 0.9) };
 }
 
 const LEDGER = {
@@ -89,6 +90,26 @@ describe("/internal/email-send-price — price of one cold email sent to a lead"
     expect((await request(app).post("/internal/email-send-price/refresh")).status).toBe(401);
   });
 
+  it("prices the email EXCLUDING VAT, the VAT taken out served beside it (owner 2026-10-01)", async () => {
+    // Gandi bills 40 USD + 20% VAT = 48 USD at the bank: 40 is the cost, 8 the VAT.
+    const gandi = { ...payment("gandi order", "2026-02-10", 48), vat: declaredVat(48, 0.2, 48 * 0.9) };
+    stubUpstreams({ ledger: () => json({ ...LEDGER, payments: [gandi, ...LEDGER.payments.slice(1)] }), instantly: () => json(SENDS) });
+    expect((await request(app).post("/internal/email-send-price/refresh").set(API_KEY)).status).toBe(200);
+    const res = await request(app).get("/internal/email-send-price").set(API_KEY);
+    expect(res.body.totals).toMatchObject({ spendUsd: 197, paidUsd: 200, vatUsd: 8 });
+    expect(res.body.currentPriceUsdCents).toBeCloseTo(3.2833, 4);
+    expect(res.body.vendors.find((v: { key: string }) => v.key === "gandi order")).toMatchObject({ paidUsd: 40, vatUsd: 8, vatBasis: "declared 20%: Every line is a price x 1.2" });
+    expect(res.body.vatRule).toMatch(/EXCLUDING VAT/);
+  });
+
+  it("fails the refresh (502) on a line whose VAT the ledger cannot state, never reading it as 0%", async () => {
+    const unknown = { ...payment("forge", "2026-03-07", 10), vat: UNKNOWN_VAT };
+    stubUpstreams({ ledger: () => json({ ...LEDGER, payments: [...LEDGER.payments, unknown] }), instantly: () => json(SENDS) });
+    const res = await request(app).post("/internal/email-send-price/refresh").set(API_KEY);
+    expect(res.status).toBe(502);
+    expect(res.body.error).toMatch(/cannot state the VAT.*forge 2026-03-07/);
+  });
+
   it("answers 503, never a zero price, before the first refresh", async () => {
     const res = await request(app).get("/internal/email-send-price").set(API_KEY);
     expect(res.status).toBe(503);
@@ -110,7 +131,7 @@ describe("/internal/email-send-price — price of one cold email sent to a lead"
     const res = await request(app).get("/internal/email-send-price").set(API_KEY);
     expect(res.status).toBe(200);
     // net: (40 + 97 + 63 - 3) USD = 197 USD over 6000 emails = 3.2833 US cents; gross 200 USD = 3.3333 beside it
-    expect(res.body.totals).toEqual({ spendUsd: 197, paidUsd: 200, refundedUsd: 3, emailsToLeads: 6000 });
+    expect(res.body.totals).toEqual({ spendUsd: 197, paidUsd: 200, refundedUsd: 3, emailsToLeads: 6000, vatUsd: 0, vatBasis: "declared 0%: Bills excluding VAT (owner 2026-10-01)" });
     expect(res.body.currentPriceUsdCents).toBeCloseTo(3.2833, 4);
     expect(res.body.currentGrossPriceUsdCents).toBeCloseTo(3.3333, 4);
     expect(res.body.asOf).toBe(today);

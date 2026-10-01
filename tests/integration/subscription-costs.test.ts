@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from "vitest";
+import { declaredVat } from "../helpers/ledger-vat.js";
 import request from "supertest";
 import { createTestApp } from "../helpers/test-app.js";
 import { db } from "../../src/db/index.js";
@@ -15,7 +16,7 @@ import { utcDay } from "../../src/db/email-send-price.js";
 const API_KEY = { "x-api-key": "test-api-key" };
 
 function payment(vendor: string, bookedOn: string, usdAmount: number, direction: "payment" | "refund" = "payment") {
-  return { id: `acc:${vendor}:${bookedOn}:${usdAmount}`, vendor, bookedOn, direction, amount: usdAmount, currency: "USD", eurAmount: usdAmount * 0.9, usdAmount, accountId: "acc" };
+  return { id: `acc:${vendor}:${bookedOn}:${usdAmount}`, vendor, bookedOn, direction, amount: usdAmount, currency: "USD", eurAmount: usdAmount * 0.9, usdAmount, accountId: "acc", vat: declaredVat(usdAmount, 0, usdAmount * 0.9) };
 }
 
 const LEDGER = {
@@ -140,6 +141,21 @@ describe("/internal/subscription-costs — real cost per credit of each subscrip
 
     const raw = await db.select().from(subscriptionCostRawReads);
     expect(raw.map((r) => r.source).sort()).toEqual(["bank-ledger", "runs-service"]);
+  });
+
+  it("prices a credit EXCLUDING VAT, the VAT taken out served beside it (owner 2026-10-01)", async () => {
+    // Scrape.do declared 20% here: 36 USD at the bank = 30 cost + 6 VAT; the 12 USD refund = 10 + 2.
+    const withVat = LEDGER.payments.map((p) =>
+      p.vendor === "scrape do scrape" ? { ...p, usdAmount: p.usdAmount * 1.2, amount: p.usdAmount * 1.2, vat: declaredVat(p.usdAmount * 1.2, 0.2) } : p,
+    );
+    stubUpstreams({ ledger: () => json({ ...LEDGER, payments: withVat }), runs: () => json(CONSUMPTION) });
+    expect((await request(app).post("/internal/subscription-costs/refresh").set(API_KEY)).status).toBe(200);
+    const res = await request(app).get("/internal/subscription-costs").set(API_KEY);
+    const scrape = res.body.subscriptions.find((s: { key: string }) => s.ledgerVendors.some((v: { key: string }) => v.key === "scrape do scrape"));
+    expect(scrape).toMatchObject({ paidUsd: 30, refundedUsd: 10, netUsd: 20, vatUsd: 4, costPerCreditUsdCents: 0.1 });
+    expect(scrape.vatBasis).toMatch(/^declared 20%/);
+    expect(scrape.ledgerVendors[0]).toMatchObject({ netUsd: 20, vatUsd: 4 });
+    expect(res.body.vatRule).toMatch(/EXCLUDING VAT/);
   });
 
   it("is idempotent: a second refresh the same day writes the same series", async () => {

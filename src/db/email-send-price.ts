@@ -125,11 +125,15 @@ const HOUR_MS = 60 * 60 * 1000;
  * yet, so a failed attempt is retried within the hour. Started after `listen()`, never awaited.
  */
 export function startEmailSendPriceScheduler(intervalMs: number = HOUR_MS): NodeJS.Timeout {
+  // The first tick after boot always recomputes: a deploy can change the formula (2026-10-01:
+  // excluding VAT), and the day's stored series would otherwise keep the old one until tomorrow.
+  let booted = false;
   const tick = async () => {
     if (running) return;
     try {
-      if (await hasSucceededOn(utcDay(new Date()))) return;
+      if (booted && (await hasSucceededOn(utcDay(new Date())))) return;
       const outcome = await refreshEmailSendPrice();
+      booted = true;
       console.log(`[Costs Service] Email send price refreshed as of ${outcome.asOf} (${outcome.days} days)`);
     } catch (err) {
       console.error("[Costs Service] Email send price refresh FAILED, last series stays served:", err);
