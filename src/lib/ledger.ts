@@ -108,6 +108,19 @@ const GoogleCloudMonthSchema = z.object({
       invoiceEur: z.number(),
       prepayments: z.array(z.object({ chargedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), totalEur: z.number() })),
       prepaidEur: z.number(),
+      /**
+       * Per GCP project (admin PR KevinLourd/kevinlourd.com#301). `uncoveredEur` (#303): in a partial
+       * month, the project's consumption Google invoiced before the export began, inferred from the
+       * invoice tax; null when it cannot be inferred yet. `projectId: null` = account-level rows.
+       */
+      projects: z.array(
+        z.object({
+          projectId: z.string().nullable(),
+          consumption: z.array(z.object({ service: z.string(), netEur: z.number() })),
+          uncoveredEur: z.number().nullable(),
+        }),
+      ),
+      uncoveredEur: z.number().nullable(),
     })
     .nullable(),
   bank: z.object({
@@ -116,6 +129,9 @@ const GoogleCloudMonthSchema = z.object({
     prepaidEur: z.number(),
   }),
   explainedEur: z.number(),
+  /** What the export bills for this month that the bank has not collected yet (#303). */
+  outstandingEur: z.number(),
+  /** Bank money landing in this month that no export figure explains (#303: settled oldest invoice first). */
   unexplainedEur: z.number(),
   notes: z.array(z.string()),
 });

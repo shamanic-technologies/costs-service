@@ -2963,7 +2963,7 @@
                                   "properties": {
                                     "part": {
                                       "type": "string",
-                                      "description": "metered | rental | other | unconsumed-balance"
+                                      "description": "Twilio: metered | rental | other | unconsumed-balance. Google Cloud: metered | metered-uncovered | other-services | other-services-uncovered | tax | adjustments | prepaid | outstanding (negative: billed, not collected yet)"
                                     },
                                     "usdCents": {
                                       "type": "number",
@@ -2975,7 +2975,7 @@
                                     },
                                     "loadedOnUnits": {
                                       "type": "boolean",
-                                      "description": "Only the metered part is loaded on units"
+                                      "description": "Only metered parts (metered, metered-uncovered) are loaded on units"
                                     },
                                     "flag": {
                                       "type": "string",

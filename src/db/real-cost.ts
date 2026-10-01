@@ -111,7 +111,7 @@ export async function readVendorParts(v: PayAsYouGoVendor, asOf: string): Promis
   const src = v.meteredSpend!;
   if (src.kind === "google-cloud-split") {
     const read = await fetchGoogleCloudSplit(REAL_COST_SINCE.slice(0, 7));
-    return { ...googleCloudParts(read.data, v.provider, src.meteredServices, asOf), raw: read.body, url: read.url };
+    return { ...googleCloudParts(read.data, v.provider, src, asOf), raw: read.body, url: read.url };
   }
   const usage = await fetchTwilioUsage(src.account, [...src.meteredCategories, ...src.rentalCategories, "totalprice"], REAL_COST_SINCE, asOf);
   const byDay = new Map<string, { metered: number; rental: number; total: number }>();
@@ -135,18 +135,26 @@ export async function readVendorParts(v: PayAsYouGoVendor, asOf: string): Promis
   return { parts, raw: usage.raw, url: "twilio usage records + balance", from: REAL_COST_SINCE };
 }
 
+/** The parts a split vendor's metered spend is made of: the ratio's numerator sums exactly these. */
+export const COUNTED_PARTS: ReadonlySet<string> = new Set(["metered", "metered-uncovered"]);
+
 /**
- * Google Cloud parts, per day, in US cents. A month's export figures (consumption per service, tax,
- * adjustments + rounding) are spread evenly over the days the export covers for it, clipped to
- * [2026-01-01, asOf]; a prepaid top-up lands on the day it was charged. EUR is converted at the bank
- * ledger's own rate on that month's Google Cloud bank lines (or the latest earlier month that has
- * one). The split covers days from the first export day; months without an export add no part, so
- * their bank money stays visible as unexplained (net paid - every part).
+ * Google Cloud parts, per day, in US cents. A month's export figures are spread evenly over the days
+ * the export covers for it, clipped to [2026-01-01, asOf]: `metered` = `meteredServices` billed to
+ * `meteredProjects`; `other-services` = every other service or project; `tax`; `adjustments` (+
+ * rounding). In a month the export only half covers, each project's consumption before the export
+ * began (`projects[].uncoveredEur`) is spread over the month's days before `coveredFrom`: a metered
+ * project's as `metered-uncovered` (counted), any other project's as `other-services-uncovered`. A
+ * prepaid top-up lands on the day it was charged. What the export bills that the bank has not
+ * collected yet lands on `asOf` as a negative `outstanding`, so the remainder (net paid - every
+ * part) is only the bank money no export figure explains. EUR is converted at the bank ledger's own
+ * rate on that month's Google Cloud bank lines (or the latest earlier month that has one). The
+ * split covers days from the first day a counted part covers.
  */
 export function googleCloudParts(
   split: GoogleCloudSplit,
   provider: string,
-  meteredServices: readonly string[],
+  src: { meteredServices: readonly string[]; meteredProjects: readonly string[] },
   asOf: string,
 ): { parts: VendorPart[]; from: string } {
   const months = [...split.months].sort((a, b) => a.month.localeCompare(b.month));
@@ -158,6 +166,11 @@ export function googleCloudParts(
     if (eur > 0) last = { rate: lines.reduce((t, p) => t + p.usdAmount, 0) / eur, from: m.month };
     if (last) rates.set(m.month, last);
   }
+  const fxOf = (month: string) => {
+    const r = rates.get(month);
+    if (!r) throw new Error(`Google Cloud ${month}: no bank line on or before it to convert EUR to USD`);
+    return { rate: r.rate, fx: `EUR->USD ${r.rate.toFixed(4)} (ledger rate on ${r.from} Google Cloud bank lines)` };
+  };
   const acc = new Map<string, VendorPart>();
   const add = (day: string, part: string, usdCents: number, basis: string) => {
     if (day < REAL_COST_SINCE || day > asOf || usdCents === 0) return;
@@ -166,31 +179,60 @@ export function googleCloudParts(
     p.usdCents += usdCents;
     acc.set(k, p);
   };
-  let from = null as string | null;
+  const isMetered = (projectId: string | null) => projectId !== null && src.meteredProjects.includes(projectId);
+  const projectsLabel = src.meteredProjects.join(", ");
+  let outstanding = 0;
+  const outstandingFx = new Set<string>();
   for (const m of months) {
+    if (m.outstandingEur !== 0) {
+      const { rate, fx } = fxOf(m.month);
+      outstanding += m.outstandingEur * 100 * rate;
+      outstandingFx.add(`${m.month} ${fx}`);
+    }
     const x = m.export;
     if (!x) continue;
-    const r = rates.get(m.month);
-    if (!r) throw new Error(`Google Cloud ${m.month}: no bank line on or before it to convert EUR to USD`);
-    const fx = `EUR->USD ${r.rate.toFixed(4)} (ledger rate on ${r.from} Google Cloud bank lines)`;
-    const days: string[] = [];
-    for (let d = x.coveredFrom; d <= x.coveredTo && d <= asOf; d = addDays(d, 1)) days.push(d);
-    if (days.length === 0) continue;
-    if (from === null || days[0] < from) from = days[0];
-    const metered = x.consumption.filter((c) => meteredServices.includes(c.service)).reduce((t, c) => t + c.netEur, 0);
-    const others = x.consumption.filter((c) => !meteredServices.includes(c.service));
-    const spread = (part: string, eur: number, basis: string) => {
-      for (const d of days) add(d, part, (eur * 100 * r.rate) / days.length, `${basis}; ${fx}`);
+    const { rate, fx } = fxOf(m.month);
+    const daysFrom = (from: string, to: string) => {
+      const days: string[] = [];
+      for (let d = from < REAL_COST_SINCE ? REAL_COST_SINCE : from; d <= to && d <= asOf; d = addDays(d, 1)) days.push(d);
+      return days;
     };
-    spread("metered", metered, `GCP billing export, ${meteredServices.join(", ")} consumption`);
-    spread("other-services", others.reduce((t, c) => t + c.netEur, 0), "GCP billing export, every other service (Secret Manager, Cloud Run...)");
-    spread("tax", x.taxEur, "Invoice tax, declared recoverable (TAX_IS_REAL_COST = false)");
-    spread("adjustments", x.adjustmentsEur + x.roundingEur, "Invoice adjustments and rounding");
-    for (const p of x.prepayments) add(p.chargedOn, "prepaid", p.totalEur * 100 * r.rate, `Prepaid top-up, counted only as the export shows it consumed; ${fx}`);
+    const spread = (days: string[], part: string, eur: number, basis: string) => {
+      for (const d of days) add(d, part, (eur * 100 * rate) / days.length, `${basis}; ${fx}`);
+    };
+    const covered = daysFrom(x.coveredFrom, x.coveredTo);
+    const metered = x.projects
+      .filter((p) => isMetered(p.projectId))
+      .flatMap((p) => p.consumption)
+      .filter((c) => src.meteredServices.includes(c.service))
+      .reduce((t, c) => t + c.netEur, 0);
+    const consumption = x.consumption.reduce((t, c) => t + c.netEur, 0);
+    spread(covered, "metered", metered, `GCP billing export, ${src.meteredServices.join(", ")} consumption on ${projectsLabel}`);
+    spread(covered, "other-services", consumption - metered, "GCP billing export, every other service or project (Secret Manager, Cloud Run...)");
+    spread(covered, "tax", x.taxEur, "Invoice tax, declared recoverable (TAX_IS_REAL_COST = false)");
+    spread(covered, "adjustments", x.adjustmentsEur + x.roundingEur, "Invoice adjustments and rounding");
+    for (const p of x.prepayments) add(p.chargedOn, "prepaid", p.totalEur * 100 * rate, `Prepaid top-up, counted only as the export shows it consumed; ${fx}`);
+    // A half-covered month: what each project consumed before the export began, inferred from the invoice tax.
+    const before = x.partial ? daysFrom(`${m.month}-01`, addDays(x.coveredFrom, -1)) : [];
+    if (before.length > 0) {
+      const unknown = x.projects.filter((p) => isMetered(p.projectId) && p.uncoveredEur === null).map((p) => p.projectId);
+      if (unknown.length > 0) throw new Error(`Google Cloud ${m.month}: the ledger cannot infer ${unknown.join(", ")}'s consumption before ${x.coveredFrom} yet`);
+      // Another project's gap the ledger cannot infer yet stays in the remainder, visible.
+      const gap = (own: boolean) => x.projects.filter((p) => isMetered(p.projectId) === own).reduce((t, p) => t + (p.uncoveredEur ?? 0), 0);
+      const basis = `Consumption before the export began (${m.month}-01 to ${addDays(x.coveredFrom, -1)}), inferred by the ledger from the invoice tax (projects[].uncoveredEur)`;
+      spread(before, "metered-uncovered", gap(true), `${basis} on ${projectsLabel}, all of it ${src.meteredServices.join(", ")}`);
+      spread(before, "other-services-uncovered", gap(false), `${basis} on every other project`);
+    }
   }
-  if (from === null) throw new Error("Google Cloud: the billing export covers no day yet, so Gemini's consumption cannot be told apart");
+  if (outstanding !== 0) {
+    add(asOf, "outstanding", -outstanding, `Billed by the export, not collected by the bank yet (months[].outstandingEur), as of ${asOf}; ${[...outstandingFx].join("; ")}`);
+  }
   const parts = [...acc.values()].map((p) => ({ ...p, usdCents: round6(p.usdCents) })).sort((a, b) => a.day.localeCompare(b.day) || a.part.localeCompare(b.part));
-  return { parts, from };
+  const counted = parts.filter((p) => COUNTED_PARTS.has(p.part)).map((p) => p.day);
+  const exported = months.flatMap((m) => (m.export ? [m.export.coveredFrom] : []));
+  const from = [...counted, ...exported].sort()[0];
+  if (from === undefined) throw new Error("Google Cloud: the billing export covers no day yet, so Gemini's consumption cannot be told apart");
+  return { parts, from: from < REAL_COST_SINCE ? REAL_COST_SINCE : from };
 }
 
 const silverRow = (d: { day: string; orgId: string | null; costName: string; costSource: string; quantity: string; billedCostInUsdCents: string; netBilledCostInUsdCents: string }) => ({
@@ -234,7 +276,7 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
     const parts = split.flatMap((x) => x.parts);
     const metered = new Map<string, MeteredSpend>(split.map((x) => [x.provider, { from: x.from, byDay: new Map<string, number>() }]));
     for (const p of parts) {
-      if (p.part !== "metered") continue;
+      if (!COUNTED_PARTS.has(p.part)) continue;
       const m = metered.get(p.provider)!.byDay;
       m.set(p.day, (m.get(p.day) ?? 0) + p.usdCents);
     }

@@ -107,9 +107,14 @@ export type MeteredSpendSource =
        * export). The numerator is the consumption of `meteredServices` only, from the first day the export
        * covers; the recorded vendor cost is counted from that same day so both sides span one window.
        * Prepaid top-ups count only as the export shows them consumed (inside the services' consumption).
+       * Only `meteredServices` billed to `meteredProjects` count: another GCP project's spend (on any
+       * service) is not ours to load. In a month the export only half covers, a metered project's
+       * consumption before the export began (`projects[].uncoveredEur`, inferred by the ledger from the
+       * invoice tax) is counted as its own part, spread over those earlier days.
        */
       kind: "google-cloud-split";
       meteredServices: readonly string[];
+      meteredProjects: readonly string[];
     };
 
 /**
@@ -130,7 +135,8 @@ export const PAY_AS_YOU_GO_VENDORS: readonly PayAsYouGoVendor[] = [
     provider: "google",
     ledgerVendors: [],
     ledgerVendorPrefix: "google cloud",
-    meteredSpend: { kind: "google-cloud-split", meteredServices: ["Gemini API"] },
+    // The platform "google" key lived in MCP Factory until 2026-10-01 17:35 UTC, in Distribute from then.
+    meteredSpend: { kind: "google-cloud-split", meteredServices: ["Gemini API"], meteredProjects: ["mcp-factory-485906", "distribute-488803"] },
     excludedLedgerVendors: [
       { key: "google one", reason: "Personal storage, not API usage" },
       { key: "google workspace", reason: "Mailboxes, not API usage" },

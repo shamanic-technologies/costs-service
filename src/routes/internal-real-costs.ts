@@ -90,7 +90,10 @@ const PART_RULES: Record<string, { loadedOnUnits: boolean; flag: string | null }
   metered: { loadedOnUnits: true, flag: null },
   rental: { loadedOnUnits: false, flag: "subscription-not-loaded-on-units" },
   other: { loadedOnUnits: false, flag: "other-usage-not-loaded-on-units" },
+  "metered-uncovered": { loadedOnUnits: true, flag: "inferred-before-export" },
   "other-services": { loadedOnUnits: false, flag: "other-services-not-loaded-on-units" },
+  "other-services-uncovered": { loadedOnUnits: false, flag: "other-services-not-loaded-on-units" },
+  outstanding: { loadedOnUnits: false, flag: "billed-not-collected-yet" },
   tax: { loadedOnUnits: false, flag: "tax-not-real-cost" },
   adjustments: { loadedOnUnits: false, flag: "adjustment-not-loaded-on-units" },
   prepaid: { loadedOnUnits: false, flag: "prepaid-counted-only-as-consumed" },
@@ -99,7 +102,13 @@ const PART_RULES: Record<string, { loadedOnUnits: boolean; flag: string | null }
 const SNAPSHOT_PARTS = new Set(["unconsumed-balance"]);
 const PARTS_BY_BASIS: Record<string, string[]> = {
   "twilio-usage-metered": ["metered", "rental", "other", "unconsumed-balance"],
-  "google-cloud-split-metered": ["metered", "other-services", "tax", "adjustments", "prepaid"],
+  "google-cloud-split-metered": ["metered", "metered-uncovered", "other-services", "other-services-uncovered", "tax", "adjustments", "prepaid", "outstanding"],
+};
+
+/** What a split vendor's remainder is known to be made of, once every part is served. */
+const UNEXPLAINED_BASIS: Record<string, string> = {
+  "google-cloud-split-metered":
+    "bank net paid - every part above: bank money before the billing export began (no service line says what it paid) and exchange-rate cents; never loaded on units",
 };
 
 const r2 = (x: number) => Math.round(x * 1e6) / 1e6;
@@ -131,7 +140,7 @@ function vendorSplit(provider: string, basis: string, day: string, asOf: string,
     parts: out,
     unexplained: {
       usdCents: snapshotMissing ? null : r2(netPaid - explained),
-      basis: "bank net paid - every part above; never loaded on units",
+      basis: UNEXPLAINED_BASIS[basis] ?? "bank net paid - every part above; never loaded on units",
       loadedOnUnits: false as const,
       flag: snapshotMissing ? "balance-known-only-on-refresh-day" : "unexplained-not-loaded-on-units",
     },
