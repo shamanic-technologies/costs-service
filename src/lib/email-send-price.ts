@@ -28,20 +28,43 @@
  * cumulative sum cannot drift. A price over zero emails is `null`, never zero and never infinite.
  */
 
+import { LedgerError } from "./ledger.js";
+
 export type SpendLine = {
+  id: string;
   vendor: string;
   bookedOn: string; // YYYY-MM-DD
   direction: "payment" | "refund";
   usdAmount: number; // always positive; direction carries the sign
+  vat: {
+    source: "bank" | "declared" | "unknown";
+    rate: number | null;
+    evidence: string | null;
+    excludingVat: { usdAmount: number } | null;
+    vat: { usdAmount: number } | null;
+  };
 };
+
+/**
+ * A bank line whose VAT the ledger cannot state. Its cost excluding VAT is unknown, so no figure
+ * built on it is computed (never read as 0% or as a guessed rate): the refresh fails, naming the
+ * lines, and the previous series stays served, stale.
+ */
+export class UnknownVatError extends LedgerError {}
 
 export type SendDay = { day: string; toLeads: number };
 
 export type SilverSpendDay = {
   day: string;
   vendor: string;
+  /** Excluding VAT (owner 2026-10-01: VAT we are charged is recoverable, so it is not a cost). */
   paidUsdCents: number;
   refundedUsdCents: number;
+  /** The VAT taken out of the bank amounts above; paid + vatPaid = what the bank paid. */
+  vatPaidUsdCents: number;
+  vatRefundedUsdCents: number;
+  /** Where each VAT figure comes from: source, rate and evidence, as the ledger states them. */
+  vatBasis: string | null;
   payments: number;
   refunds: number;
 };
@@ -77,26 +100,68 @@ export function pricePerEmail(spendUsdCents: number, emails: number): number | n
   return Math.round((spendUsdCents / emails) * factor) / factor;
 }
 
-/** Silver: one row per (day, vendor) with any line, payments and refunds apart. Sorted by day, vendor. */
+/** One VAT basis as served: "declared 20%: <evidence>". */
+export function vatBasisOf(vat: SpendLine["vat"]): string {
+  const rate = vat.rate === null ? "rate not stated" : `${Math.round(vat.rate * 10000) / 100}%`;
+  return `${vat.source} ${rate}${vat.evidence ? `: ${vat.evidence}` : ""}`;
+}
+
+/** Every distinct basis in `bases`, joined; null when there is none. */
+export function joinVatBases(bases: (string | null)[]): string | null {
+  const all = [...new Set(bases.flatMap((b) => (b ? b.split(" | ") : [])))];
+  return all.length > 0 ? all.join(" | ") : null;
+}
+
+/**
+ * The VAT taken out of a set of silver rows: net (paid minus refunded) in US cents, and every basis
+ * it rests on. `null` basis on a row = written before the ledger served VAT.
+ */
+export function vatTakenOut(rows: SilverSpendDay[]): { vatUsdCents: number; vatBasis: string | null } {
+  return {
+    vatUsdCents: rows.reduce((t, r) => t + r.vatPaidUsdCents - r.vatRefundedUsdCents, 0),
+    vatBasis: joinVatBases(rows.map((r) => r.vatBasis)),
+  };
+}
+
+/**
+ * Silver: one row per (day, vendor) with any line, payments and refunds apart, EXCLUDING VAT, the
+ * VAT taken out beside it. Sorted by day, vendor. A line whose VAT is unknown fails loud.
+ */
 export function spendPerDayAndVendor(lines: SpendLine[]): SilverSpendDay[] {
-  const byKey = new Map<string, SilverSpendDay>();
+  const unknown = lines.filter((l) => l.vat.source === "unknown" || l.vat.excludingVat === null);
+  if (unknown.length > 0) {
+    throw new UnknownVatError(
+      `The bank ledger cannot state the VAT of ${unknown.length} line(s), so their cost excluding VAT is unknown: ${unknown
+        .slice(0, 10)
+        .map((l) => `${l.vendor} ${l.bookedOn} ${l.id}`)
+        .join(", ")}`,
+    );
+  }
+  const byKey = new Map<string, SilverSpendDay & { bases: Set<string> }>();
   for (const line of lines) {
     const k = `${line.bookedOn}|${line.vendor}`;
     let row = byKey.get(k);
     if (!row) {
-      row = { day: line.bookedOn, vendor: line.vendor, paidUsdCents: 0, refundedUsdCents: 0, payments: 0, refunds: 0 };
+      row = { day: line.bookedOn, vendor: line.vendor, paidUsdCents: 0, refundedUsdCents: 0, vatPaidUsdCents: 0, vatRefundedUsdCents: 0, vatBasis: null, payments: 0, refunds: 0, bases: new Set() };
       byKey.set(k, row);
     }
-    const cents = toUsdCents(Math.abs(line.usdAmount));
+    // VAT = the bank amount minus the amount excluding it, so the two always add back to the bank to the cent.
+    const gross = toUsdCents(Math.abs(line.usdAmount));
+    const cents = toUsdCents(Math.abs(line.vat.excludingVat!.usdAmount));
+    row.bases.add(vatBasisOf(line.vat));
     if (line.direction === "payment") {
       row.paidUsdCents += cents;
+      row.vatPaidUsdCents += gross - cents;
       row.payments += 1;
     } else {
       row.refundedUsdCents += cents;
+      row.vatRefundedUsdCents += gross - cents;
       row.refunds += 1;
     }
   }
-  return [...byKey.values()].sort((a, b) => a.day.localeCompare(b.day) || a.vendor.localeCompare(b.vendor));
+  return [...byKey.values()]
+    .map(({ bases, ...row }) => ({ ...row, vatBasis: [...bases].sort().join(" | ") }))
+    .sort((a, b) => a.day.localeCompare(b.day) || a.vendor.localeCompare(b.vendor));
 }
 
 /** Silver: emails to leads per day, zero days dropped (gold re-densifies). Duplicate days are an error. */
@@ -219,3 +284,13 @@ export function monthlyRollup(spend: SilverSpendDay[], series: GoldDay[], vendor
     grossPriceUsdCents: p.grossPriceUsdCents,
   }));
 }
+
+/** Owner rule 2026-10-01: every real cost is EXCLUDING VAT (the VAT we are charged is recoverable). */
+export const VAT_RULE =
+  "Every money figure is EXCLUDING VAT: the VAT a vendor charged is recoverable, so it is not a cost. vatUsd = the VAT taken out of what the bank paid (net of refunds), vatBasis = where the bank ledger read it (bank VAT field, or a declared rate per vendor with its evidence). A line whose VAT the ledger cannot state fails the refresh: it is never read as 0% or a guessed rate.";
+
+/** The VAT taken out, served beside a money figure: US dollars + its basis. */
+export const vatServed = (rows: SilverSpendDay[]) => {
+  const v = vatTakenOut(rows);
+  return { vatUsd: Math.round(v.vatUsdCents) / 100, vatBasis: v.vatBasis };
+};

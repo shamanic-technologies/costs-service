@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { declaredVat } from "../helpers/ledger-vat.js";
 import { costPerCredit, consumptionPerDay, subscriptionMonthly, subscriptionSeries, toMicros } from "../../src/lib/subscription-cost.js";
 import { spendPerDayAndVendor } from "../../src/lib/email-send-price.js";
 import { SUBSCRIPTIONS, SUBSCRIPTIONS_SINCE, allSubscriptionCostNames, allSubscriptionLedgerVendors, type Subscription } from "../../src/lib/subscriptions.js";
@@ -75,10 +76,10 @@ describe("subscription cost per credit — formula", () => {
 
   it("builds a dense series from 2026-01-01 on NET paid, gross beside, and leaves out customer-key units", () => {
     const spend = spendPerDayAndVendor([
-      { vendor: "postmarkapp com", bookedOn: "2026-01-19", direction: "payment", usdAmount: 15 },
-      { vendor: "postmarkapp com", bookedOn: "2026-02-19", direction: "payment", usdAmount: 15 },
-      { vendor: "postmarkapp com", bookedOn: "2026-02-20", direction: "refund", usdAmount: 10 },
-      { vendor: "apollo io", bookedOn: "2026-02-01", direction: "payment", usdAmount: 99 },
+      { id: "postmarkapp com:2026-01-19", vendor: "postmarkapp com", bookedOn: "2026-01-19", direction: "payment" as const, usdAmount: 15, vat: declaredVat(15) },
+      { id: "postmarkapp com:2026-02-19", vendor: "postmarkapp com", bookedOn: "2026-02-19", direction: "payment" as const, usdAmount: 15, vat: declaredVat(15) },
+      { id: "postmarkapp com:2026-02-20", vendor: "postmarkapp com", bookedOn: "2026-02-20", direction: "refund" as const, usdAmount: 10, vat: declaredVat(10) },
+      { id: "apollo io:2026-02-01", vendor: "apollo io", bookedOn: "2026-02-01", direction: "payment" as const, usdAmount: 99, vat: declaredVat(99) },
     ]);
     const units = consumptionPerDay([
       day("2026-01-20", "postmark-email-send", "500"),
@@ -103,7 +104,7 @@ describe("subscription cost per credit — formula", () => {
 
   it("counts customer-key units for a subscription whose org rows went through our key", () => {
     const serper: Subscription = sub("serper");
-    const spend = spendPerDayAndVendor([{ vendor: "paddle net serper", bookedOn: "2026-03-27", direction: "payment", usdAmount: 50 }]);
+    const spend = spendPerDayAndVendor([{ id: "paddle net serper:2026-03-27", vendor: "paddle net serper", bookedOn: "2026-03-27", direction: "payment" as const, usdAmount: 50, vat: declaredVat(50) }]);
     const units = consumptionPerDay([day("2026-03-28", "serper-dev-query", "50000", "org")]);
     const last = subscriptionSeries(serper, spend, units, "2026-01-01", "2026-04-01").pop()!;
     expect(last.costPerCreditUsdCents).toBe(0.1);

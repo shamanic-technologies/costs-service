@@ -695,6 +695,10 @@
           "formula": {
             "type": "string"
           },
+          "vatRule": {
+            "type": "string",
+            "description": "Every money figure is EXCLUDING VAT; how the VAT is read"
+          },
           "asOf": {
             "type": "string",
             "description": "Day of the latest point = the day `currentPriceUsdCents` is for"
@@ -741,13 +745,24 @@
               },
               "emailsToLeads": {
                 "type": "integer"
+              },
+              "vatUsd": {
+                "type": "number",
+                "description": "The VAT taken out of what the bank paid (net of refunds), excluding-VAT owner rule 2026-10-01"
+              },
+              "vatBasis": {
+                "type": "string",
+                "nullable": true,
+                "description": "Where the bank ledger read that VAT: source (bank | declared), rate, evidence"
               }
             },
             "required": [
               "spendUsd",
               "paidUsd",
               "refundedUsd",
-              "emailsToLeads"
+              "emailsToLeads",
+              "vatUsd",
+              "vatBasis"
             ]
           },
           "firstPaymentOn": {
@@ -795,6 +810,15 @@
                 },
                 "netUsd": {
                   "type": "number"
+                },
+                "vatUsd": {
+                  "type": "number",
+                  "description": "The VAT taken out of what the bank paid (net of refunds), excluding-VAT owner rule 2026-10-01"
+                },
+                "vatBasis": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Where the bank ledger read that VAT: source (bank | declared), rate, evidence"
                 }
               },
               "required": [
@@ -807,7 +831,9 @@
                 "refunds",
                 "paidUsd",
                 "refundedUsd",
-                "netUsd"
+                "netUsd",
+                "vatUsd",
+                "vatBasis"
               ]
             },
             "description": "The vendors counted as email infrastructure, declared in costs-service"
@@ -908,6 +934,7 @@
         },
         "required": [
           "formula",
+          "vatRule",
           "asOf",
           "refreshedAt",
           "stale",
@@ -1029,6 +1056,10 @@
           "formula": {
             "type": "string"
           },
+          "vatRule": {
+            "type": "string",
+            "description": "Every money figure is EXCLUDING VAT; how the VAT is read"
+          },
           "since": {
             "type": "string",
             "description": "2026-01-01: owner start date"
@@ -1056,6 +1087,7 @@
         },
         "required": [
           "formula",
+          "vatRule",
           "since",
           "asOf",
           "refreshedAt",
@@ -1116,6 +1148,15 @@
                 },
                 "netUsd": {
                   "type": "number"
+                },
+                "vatUsd": {
+                  "type": "number",
+                  "description": "The VAT taken out of what the bank paid (net of refunds), excluding-VAT owner rule 2026-10-01"
+                },
+                "vatBasis": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Where the bank ledger read that VAT: source (bank | declared), rate, evidence"
                 }
               },
               "required": [
@@ -1126,7 +1167,9 @@
                 "refunds",
                 "paidUsd",
                 "refundedUsd",
-                "netUsd"
+                "netUsd",
+                "vatUsd",
+                "vatBasis"
               ]
             }
           },
@@ -1151,6 +1194,15 @@
             "type": "number",
             "nullable": true,
             "description": "paidUsd - refundedUsd: the numerator"
+          },
+          "vatUsd": {
+            "type": "number",
+            "description": "The VAT taken out of what the bank paid (net of refunds), excluding-VAT owner rule 2026-10-01"
+          },
+          "vatBasis": {
+            "type": "string",
+            "nullable": true,
+            "description": "Where the bank ledger read that VAT: source (bank | declared), rate, evidence"
           },
           "creditDefinition": {
             "type": "string"
@@ -1326,6 +1378,8 @@
           "paidUsd",
           "refundedUsd",
           "netUsd",
+          "vatUsd",
+          "vatBasis",
           "creditDefinition",
           "orgKeyUnitsCounted",
           "orgKeyUnitsNote",
@@ -2928,13 +2982,24 @@
                             }
                           },
                           "paidUsdCents": {
-                            "type": "number"
+                            "type": "number",
+                            "description": "Excluding VAT"
                           },
                           "refundedUsdCents": {
                             "type": "number"
                           },
                           "netPaidUsdCents": {
-                            "type": "number"
+                            "type": "number",
+                            "description": "Excluding VAT"
+                          },
+                          "vatUsdCents": {
+                            "type": "number",
+                            "description": "The VAT taken out of what the bank paid (net of refunds)"
+                          },
+                          "vatBasis": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Where the bank ledger read that VAT: source, rate, evidence"
                           },
                           "numeratorBasis": {
                             "type": "string",
@@ -3033,6 +3098,8 @@
                           "paidUsdCents",
                           "refundedUsdCents",
                           "netPaidUsdCents",
+                          "vatUsdCents",
+                          "vatBasis",
                           "numeratorBasis",
                           "meteredUsdCents",
                           "vendorCostRecordedUsdCents",
