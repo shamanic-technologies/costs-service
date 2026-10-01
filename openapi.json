@@ -688,6 +688,340 @@
           "scope",
           "lastPaidOn"
         ]
+      },
+      "EmailSendPriceResponse": {
+        "type": "object",
+        "properties": {
+          "formula": {
+            "type": "string"
+          },
+          "asOf": {
+            "type": "string",
+            "description": "Day of the latest point = the day `currentPriceUsdCents` is for"
+          },
+          "refreshedAt": {
+            "type": "string",
+            "description": "When the served series was computed"
+          },
+          "stale": {
+            "type": "boolean",
+            "description": "True when the served series was not computed today (UTC): the last refresh failed or has not run yet"
+          },
+          "lastRefresh": {
+            "$ref": "#/components/schemas/EmailSendPriceRefreshAttempt"
+          },
+          "currentPriceUsdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "US cents per email sent to a lead, since inception, on NET spend (paid minus refunded)"
+          },
+          "currentGrossPriceUsdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "Same on GROSS paid (refunds ignored), shown beside"
+          },
+          "currentMonthPriceUsdCents": {
+            "type": "number",
+            "nullable": true
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "spendUsd": {
+                "type": "number",
+                "description": "Net consumed since inception = paidUsd - refundedUsd: the numerator of the price"
+              },
+              "paidUsd": {
+                "type": "number",
+                "description": "Gross: every payment since inception"
+              },
+              "refundedUsd": {
+                "type": "number",
+                "description": "Money the vendors gave back since inception"
+              },
+              "emailsToLeads": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "spendUsd",
+              "paidUsd",
+              "refundedUsd",
+              "emailsToLeads"
+            ]
+          },
+          "firstPaymentOn": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstSendOn": {
+            "type": "string",
+            "nullable": true
+          },
+          "vendors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "description": "Bank-ledger vendor key"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "what": {
+                  "type": "string"
+                },
+                "firstPaidOn": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "lastPaidOn": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "payments": {
+                  "type": "integer"
+                },
+                "refunds": {
+                  "type": "integer"
+                },
+                "paidUsd": {
+                  "type": "number"
+                },
+                "refundedUsd": {
+                  "type": "number"
+                },
+                "netUsd": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "key",
+                "label",
+                "what",
+                "firstPaidOn",
+                "lastPaidOn",
+                "payments",
+                "refunds",
+                "paidUsd",
+                "refundedUsd",
+                "netUsd"
+              ]
+            },
+            "description": "The vendors counted as email infrastructure, declared in costs-service"
+          },
+          "excludedVendors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "key",
+                "reason"
+              ]
+            }
+          },
+          "monthly": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "month": {
+                  "type": "string",
+                  "description": "YYYY-MM"
+                },
+                "spendUsd": {
+                  "type": "number",
+                  "description": "Net that month"
+                },
+                "spendByVendorUsd": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "description": "Net per vendor key that month"
+                },
+                "paidUsd": {
+                  "type": "number"
+                },
+                "refundedUsd": {
+                  "type": "number"
+                },
+                "emailsToLeads": {
+                  "type": "integer"
+                },
+                "monthPriceUsdCents": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "cumulativeSpendUsd": {
+                  "type": "number",
+                  "description": "At the month's last point (month end, or today)"
+                },
+                "cumulativeEmailsToLeads": {
+                  "type": "integer"
+                },
+                "priceUsdCents": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "cumulativePaidUsd": {
+                  "type": "number"
+                },
+                "grossPriceUsdCents": {
+                  "type": "number",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "month",
+                "spendUsd",
+                "spendByVendorUsd",
+                "paidUsd",
+                "refundedUsd",
+                "emailsToLeads",
+                "monthPriceUsdCents",
+                "cumulativeSpendUsd",
+                "cumulativeEmailsToLeads",
+                "priceUsdCents",
+                "cumulativePaidUsd",
+                "grossPriceUsdCents"
+              ]
+            }
+          },
+          "daily": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EmailSendPriceDay"
+            },
+            "description": "Oldest first, last point = asOf"
+          }
+        },
+        "required": [
+          "formula",
+          "asOf",
+          "refreshedAt",
+          "stale",
+          "lastRefresh",
+          "currentPriceUsdCents",
+          "currentGrossPriceUsdCents",
+          "currentMonthPriceUsdCents",
+          "totals",
+          "firstPaymentOn",
+          "firstSendOn",
+          "vendors",
+          "excludedVendors",
+          "monthly",
+          "daily"
+        ]
+      },
+      "EmailSendPriceRefreshAttempt": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "succeeded",
+              "failed"
+            ]
+          },
+          "asOf": {
+            "type": "string",
+            "description": "UTC day the attempt computed for, YYYY-MM-DD"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "finishedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true,
+            "description": "Why the attempt failed (upstream named), null otherwise"
+          }
+        },
+        "required": [
+          "status",
+          "asOf",
+          "startedAt",
+          "finishedAt",
+          "error"
+        ],
+        "description": "The most recent attempt, failed ones included"
+      },
+      "EmailSendPriceDay": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "string",
+            "description": "YYYY-MM-DD; dense, one point per calendar day from the first payment or send"
+          },
+          "spendUsd": {
+            "type": "number",
+            "description": "Net email-infrastructure spend booked that day (paid minus refunded), USD; negative on a refund-only day"
+          },
+          "emailsToLeads": {
+            "type": "integer",
+            "description": "Emails sent to leads that UTC day"
+          },
+          "cumulativeSpendUsd": {
+            "type": "number"
+          },
+          "cumulativeEmailsToLeads": {
+            "type": "integer"
+          },
+          "priceUsdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "cumulativeSpendUsd*100 / cumulativeEmailsToLeads (net); null before the first send"
+          },
+          "cumulativePaidUsd": {
+            "type": "number",
+            "description": "Gross: every payment since inception, refunds ignored"
+          },
+          "grossPriceUsdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "cumulativePaidUsd*100 / cumulativeEmailsToLeads"
+          },
+          "monthToDateSpendUsd": {
+            "type": "number"
+          },
+          "monthToDateEmailsToLeads": {
+            "type": "integer"
+          },
+          "monthPriceUsdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "This calendar month alone (net), through this day; null when the month sent nothing yet or its net spend is negative"
+          }
+        },
+        "required": [
+          "day",
+          "spendUsd",
+          "emailsToLeads",
+          "cumulativeSpendUsd",
+          "cumulativeEmailsToLeads",
+          "priceUsdCents",
+          "cumulativePaidUsd",
+          "grossPriceUsdCents",
+          "monthToDateSpendUsd",
+          "monthToDateEmailsToLeads",
+          "monthPriceUsdCents"
+        ]
       }
     },
     "parameters": {
@@ -1801,6 +2135,131 @@
           },
           "502": {
             "description": "The bank ledger is not configured, unreachable, refused the key, or answered in an unknown shape (the error names which)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/email-send-price": {
+      "get": {
+        "operationId": "getEmailSendPrice",
+        "summary": "Price of one cold email sent to a lead: infra spend since inception / emails to leads since inception, daily series (service api key only)",
+        "description": "Displayed figure only, no billed price reads it. Served from the last SUCCEEDED daily refresh; when a refresh fails the previous series stays served (`stale: true`, `lastRefresh.error` says why).",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The stored series",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailSendPriceResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Never computed yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "lastRefresh": {
+                      "$ref": "#/components/schemas/EmailSendPriceRefreshAttempt"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "lastRefresh"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/email-send-price/refresh": {
+      "post": {
+        "operationId": "refreshEmailSendPrice",
+        "summary": "Recompute the email send price now from the bank ledger and instantly-service (idempotent per day)",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Refreshed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "refreshId": {
+                      "type": "string"
+                    },
+                    "asOf": {
+                      "type": "string"
+                    },
+                    "days": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "refreshId",
+                    "asOf",
+                    "days"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A refresh is already running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The bank ledger or instantly-service could not answer (named); nothing was written",
             "content": {
               "application/json": {
                 "schema": {

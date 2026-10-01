@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, numeric, uniqueIndex, index, check, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, numeric, uniqueIndex, index, check, foreignKey, date, integer, bigint, jsonb, primaryKey } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const providersCosts = pgTable(
@@ -119,3 +119,74 @@ export const platformCosts = pgTable(
 export type PlatformCost = typeof platformCosts.$inferSelect;
 export type NewPlatformCost = typeof platformCosts.$inferInsert;
 
+
+// --- Price of one cold email sent to a lead (staff display only, see src/lib/email-send-price.ts) ---
+
+/** One refresh attempt. The served series is always the last SUCCEEDED one; a failure is recorded, never zeroes it. */
+export const emailSendPriceRefreshes = pgTable(
+  "email_send_price_refreshes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    asOf: date("as_of").notNull(),
+    status: text("status").notNull(),
+    error: text("error"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("idx_email_send_price_refreshes_started").on(table.startedAt),
+    check("email_send_price_refreshes_status", sql`${table.status} IN ('running', 'succeeded', 'failed')`),
+  ],
+);
+
+/** Bronze: the raw upstream bodies, one per (day read, source). A same-day re-read replaces its own row. */
+export const emailSendPriceRawReads = pgTable(
+  "email_send_price_raw_reads",
+  {
+    readOn: date("read_on").notNull(),
+    source: text("source").notNull(),
+    url: text("url").notNull(),
+    body: jsonb("body").notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ name: "email_send_price_raw_reads_pk", columns: [table.readOn, table.source] })],
+);
+
+/** Silver: what we paid each email-infrastructure vendor per day, in US cents, refunds apart. */
+export const emailInfraSpendDaily = pgTable(
+  "email_infra_spend_daily",
+  {
+    day: date("day").notNull(),
+    vendor: text("vendor").notNull(),
+    paidUsdCents: bigint("paid_usd_cents", { mode: "number" }).notNull(),
+    refundedUsdCents: bigint("refunded_usd_cents", { mode: "number" }).notNull(),
+    payments: integer("payments").notNull(),
+    refunds: integer("refunds").notNull(),
+  },
+  (table) => [primaryKey({ name: "email_infra_spend_daily_pk", columns: [table.day, table.vendor] })],
+);
+
+/** Silver: emails sent to leads per UTC day (instantly-service `outreach` sends). Zero days are not stored. */
+export const emailsToLeadsDaily = pgTable("emails_to_leads_daily", {
+  day: date("day").primaryKey(),
+  toLeads: integer("to_leads").notNull(),
+});
+
+/** Gold: the per-day price series, dense from the first fact through the refresh day. */
+export const emailSendPriceDaily = pgTable("email_send_price_daily", {
+  day: date("day").primaryKey(),
+  spendUsdCents: bigint("spend_usd_cents", { mode: "number" }).notNull(),
+  emailsToLeads: integer("emails_to_leads").notNull(),
+  cumulativeSpendUsdCents: bigint("cumulative_spend_usd_cents", { mode: "number" }).notNull(),
+  cumulativeEmailsToLeads: integer("cumulative_emails_to_leads").notNull(),
+  // Spend columns are NET (paid - refunded). NULL price = no email sent yet (since inception / this
+  // month) or a negative net spend: neither is a price.
+  priceUsdCents: numeric("price_usd_cents", { precision: 14, scale: 4 }),
+  // Gross: every payment, refunds ignored, carried beside the net figures above.
+  cumulativePaidUsdCents: bigint("cumulative_paid_usd_cents", { mode: "number" }).notNull(),
+  grossPriceUsdCents: numeric("gross_price_usd_cents", { precision: 14, scale: 4 }),
+  monthToDateSpendUsdCents: bigint("month_to_date_spend_usd_cents", { mode: "number" }).notNull(),
+  monthToDateEmailsToLeads: integer("month_to_date_emails_to_leads").notNull(),
+  monthPriceUsdCents: numeric("month_price_usd_cents", { precision: 14, scale: 4 }),
+  refreshId: uuid("refresh_id").notNull(),
+});
