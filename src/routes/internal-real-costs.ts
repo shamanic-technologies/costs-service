@@ -207,6 +207,7 @@ router.get("/internal/real-costs", async (req, res) => {
           meteredUsdCents: Number(r.cumulativeMeteredUsdCents),
           vendorCostRecordedUsdCents: Number(r.cumulativeVendorRecordedUsdCents),
           ratio: num(r.ratio),
+          ...internalCost(r),
           split: r.numeratorBasis === "ledger-net-paid" ? null : vendorSplit(r.provider, r.numeratorBasis, day, lastSucceeded.asOf, r.cumulativeNetPaidUsdCents, vat.vatUsdCents, parts),
         };
       }),
@@ -215,6 +216,63 @@ router.get("/internal/real-costs", async (req, res) => {
   } catch (err) {
     console.error("[Costs Service] Error reading the real costs:", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /internal/real-costs/basis-summary[?day=YYYY-MM-DD] — the fleet since 2026-01-01 per pricing basis,
+// at the day's catalogue and proposed lists (default: latest), plus each API vendor's internal cost.
+router.get("/internal/real-costs/basis-summary", async (req, res) => {
+  try {
+    const { lastSucceeded, lastRefresh } = await servedState();
+    if (!lastSucceeded) {
+      res.status(503).json({ error: "The real costs have not been computed yet", lastRefresh });
+      return;
+    }
+    if (req.query.day !== undefined && !validDay(req.query.day)) throw new BadRequest("day must be a YYYY-MM-DD day");
+    const day = (req.query.day as string | undefined) ?? lastSucceeded.asOf;
+    if (day < REAL_COST_SINCE || day > lastSucceeded.asOf) throw new NotFound(`Real costs exist from ${REAL_COST_SINCE} through ${lastSucceeded.asOf}`);
+    const [gold, ratios, rows, inputs] = await Promise.all([
+      goldOnDay(day),
+      paygRatiosOnDay(day),
+      consumptionByOrg(),
+      comparisonInputs({ source: "catalogue", date: day }, { source: "proposed", date: day }),
+    ]);
+    const result = compare({ rows, ...inputs, interval: "month" });
+    const basisOf = new Map(gold.map((g) => [g.costName, BASIS_OF_METHOD[g.method] ?? "unknown"]));
+    const unknownMethods = [...new Set(gold.map((g) => g.method))].filter((m) => !BASIS_OF_METHOD[m]);
+    if (unknownMethods.length > 0) throw new Error(`No pricing basis for real-cost method(s): ${unknownMethods.join(", ")}`);
+    const bases = [...BASIS_ORDER, "not-on-the-day-list"].map((basis) => {
+      const items = gold.filter((g) => basisOf.get(g.costName) === basis);
+      const consumed = result.costItems.filter((c) => (basisOf.get(c.costName) ?? "not-on-the-day-list") === basis);
+      return {
+        basis,
+        providers: [...new Set(items.map((g) => g.provider).filter((p): p is string => p !== null))].sort(),
+        itemCount: items.length,
+        consumedItemCount: consumed.length,
+        realCostUsdCents: r2(consumed.reduce((t, c) => t + c.realCostUsdCents, 0)),
+        amountCatalogueUsdCents: r2(consumed.reduce((t, c) => t + c.amount1UsdCents, 0)),
+        amountProposedUsdCents: r2(consumed.reduce((t, c) => t + c.amount2UsdCents, 0)),
+      };
+    });
+    const internal = ratios.map((r) => ({ provider: r.provider, netPaidUsdCents: r.cumulativeNetPaidUsdCents, ...internalCost(r) }));
+    res.json({
+      day,
+      asOf: lastSucceeded.asOf,
+      stale: lastSucceeded.asOf < utcDay(new Date()),
+      perimeter: { grain: "fleet", since: REAL_COST_SINCE },
+      lists: { catalogue: `catalogue:${day}`, proposed: `proposed:${day}` },
+      rule: "Averaging (bank money / units) only for flat fees: email infrastructure and vendor subscriptions. Every pay-as-you-go API at its catalogue list cost; proposed = real cost x2, x1 for pass-through (Stripe, media). What the bank paid an API vendor beyond its list cost is internal, outside clients.",
+      bases,
+      totals: result.totals,
+      unpricedCostNames2: result.unpricedCostNames2,
+      realCostUnknownCostNames: result.realCostUnknownCostNames,
+      internalCost: {
+        byVendor: internal,
+        totalUsdCents: r2(internal.reduce((t, i) => t + i.internalCostUsdCents, 0)),
+      },
+    });
+  } catch (err) {
+    sendError(res, err, "reading the basis summary");
   }
 });
 
@@ -296,6 +354,40 @@ router.get("/internal/price-lists", async (req, res) => {
   }
 });
 
+/** The two price lists and the replayed real cost of one unit, shared by the comparison and the basis summary. */
+async function comparisonInputs(list1: ListSpec, list2: ListSpec) {
+  const [items1, items2, points] = await Promise.all([priceList(list1), priceList(list2), realCostPoints()]);
+  return {
+    price1: new Map(items1.map((i) => [i.costName, i.pricePerUnitUsdCents])),
+    price2: new Map(items2.map((i) => [i.costName, i.pricePerUnitUsdCents])),
+    realCost: replayRealCost(points),
+  };
+}
+
+/**
+ * What the bank paid a pay-as-you-go vendor (net, excluding VAT) beyond the list cost our runs
+ * recorded: Anthropic seat or test spend, Gemini outside runs, Twilio rental... Internal, outside
+ * clients, never loaded on a unit (owner rule 2026-10-01).
+ */
+function internalCost(r: { cumulativeNetPaidUsdCents: number; cumulativeVendorRecordedAllUsdCents: string }) {
+  return {
+    vendorCostRecordedAtListUsdCents: Number(r.cumulativeVendorRecordedAllUsdCents),
+    internalCostUsdCents: r2(r.cumulativeNetPaidUsdCents - Number(r.cumulativeVendorRecordedAllUsdCents)),
+    internalCostBasis: "bank net paid excluding VAT since 2026-01-01 - vendor cost our runs recorded at list price; internal, not billed to clients, never loaded on a unit",
+  };
+}
+
+/** The pricing basis each real-cost method belongs to (owner rule 2026-10-01). */
+const BASIS_OF_METHOD: Record<string, string> = {
+  "email-send-price": "email-infrastructure-averaged",
+  subscription: "subscription-averaged",
+  "api-list-cost": "api-list-cost",
+  "pass-through": "pass-through-x1",
+  "catalogue-vendor-cost": "catalogue-vendor-cost-flagged",
+  "included-at-vendor": "included-at-vendor",
+};
+const BASIS_ORDER = Object.values(BASIS_OF_METHOD);
+
 // GET /internal/price-comparison?list1=<source>:<day>&list2=<source>:<day>[&orgId=&brandId=][&interval=day|week|month]
 router.get("/internal/price-comparison", async (req, res) => {
   try {
@@ -314,15 +406,8 @@ router.get("/internal/price-comparison", async (req, res) => {
       res.status(503).json({ error: "The real costs have not been computed yet", lastRefresh });
       return;
     }
-    const [items1, items2, points, rows] = await Promise.all([
-      priceList(list1),
-      priceList(list2),
-      realCostPoints(),
-      brandId ? consumptionByBrand(orgId, brandId) : consumptionByOrg(orgId),
-    ]);
-    const price1 = new Map(items1.map((i) => [i.costName, i.pricePerUnitUsdCents]));
-    const price2 = new Map(items2.map((i) => [i.costName, i.pricePerUnitUsdCents]));
-    const realCost = replayRealCost(points);
+    const rows = await (brandId ? consumptionByBrand(orgId, brandId) : consumptionByOrg(orgId));
+    const { price1, price2, realCost } = await comparisonInputs(list1, list2);
     const result = compare({ rows, price1, price2, realCost, interval });
 
     let byOrg: unknown = null;
@@ -348,7 +433,7 @@ router.get("/internal/price-comparison", async (req, res) => {
       stale: lastSucceeded.asOf < utcDay(new Date()),
       notes: [
         "Amounts replay every unit runs-service counted (actual and refunded rows, both key sources) at quantity x the list's price.",
-        "Real cost = quantity x the real cost of one unit: spend paid as a lump (email infrastructure, subscriptions, the pay-as-you-go paid/recorded ratio) is spread over every unit since 2026-01-01 at its latest value, so summed over units it equals what we paid; catalogue vendor rates are those of the consumption day. Units through a customer's own key cost us nothing unless declared ours (Serper, Apify).",
+        "Real cost = quantity x the real cost of one unit: spend paid as a flat fee (email infrastructure, subscriptions) is spread over every unit since 2026-01-01 at its latest value, so summed over units it equals what we paid; an API is at its list cost of the consumption day (owner rule 2026-10-01: no averaging for APIs, what the bank paid beyond list cost is internal). Units through a customer's own key cost us nothing unless declared ours (Serper, Apify).",
         "Billed = what runs-service actually charged: gross, net of the per-org discount, and the platform-key part (= the margin read's billed).",
         "Per brand, a co-branded run counts under each of its brands, so brand rows sum above the org.",
       ],
