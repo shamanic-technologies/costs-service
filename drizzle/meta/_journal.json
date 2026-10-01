@@ -99,6 +99,13 @@
       "when": 1790865291958,
       "tag": "0013_subscription_cost",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790866696769,
+      "tag": "0014_real_cost_price_lists",
+      "breakpoints": true
     }
   ]
 }

@@ -979,6 +979,201 @@ registry.registerPath({
   },
 });
 
+// --- Real cost per unit, proposed price list, price list at a date, comparison (staff-only, displayed, never billed) ---
+
+const RealCostItemSchema = z
+  .object({
+    costName: z.string(),
+    provider: z.string().nullable(),
+    method: z.enum(["email-send-price", "pass-through", "subscription", "pay-as-you-go-ratio", "catalogue-vendor-cost"]),
+    flag: z
+      .enum(["no-email-sent-yet", "not-a-subscription-credit", "no-real-cost-per-credit", "no-payment-yet", "no-recorded-usage-yet", "no-ledger-line", "declared-catalogue-vendor-cost", "no-vendor-cost"])
+      .nullable()
+      .describe("Why the item fell back to its catalogue vendor cost (or kept its price); null = its specific real cost applies"),
+    realCostPerUnitUsdCents: z.number().nullable(),
+    ratio: z.number().nullable().describe("Pay-as-you-go: net paid / vendor cost recorded, through the day"),
+    catalogueVendorCostPerUnitUsdCents: z.number().nullable(),
+    cataloguePricePerUnitUsdCents: z.number().nullable(),
+    catalogueMarkupOnRealCost: z.number().nullable().describe("catalogue price / real cost"),
+    multiplier: z.number().describe("2 for production tools, 1 for pass-through (Stripe, media)"),
+    proposedPricePerUnitUsdCents: z.number().nullable(),
+    proposedBasis: z.enum(["real-cost-x2", "real-cost-x1", "current-price-kept", "no-price"]),
+    proposedVsCataloguePct: z.number().nullable(),
+  })
+  .openapi("RealCostItem");
+
+registry.registerPath({
+  method: "get",
+  path: "/internal/real-costs",
+  operationId: "getRealCosts",
+  summary: "Real cost per unit and proposed price of every cost item on a day (default latest), service api key only",
+  description: "Display only. Query `day=YYYY-MM-DD` (2026-01-01 through asOf). 503 before the first refresh.",
+  security: [{ ApiKeyAuth: [] }],
+  responses: {
+    200: {
+      description: "Every item",
+      content: {
+        "application/json": {
+          schema: z.object({
+            formula: z.string(),
+            rules: z.record(z.string(), z.unknown()).describe("Every owner-reviewable declaration (multipliers, x1 rule, vendors)"),
+            day: z.string(),
+            asOf: z.string(),
+            refreshedAt: z.string(),
+            stale: z.boolean(),
+            lastRefresh: RefreshAttemptSchema.nullable(),
+            payAsYouGo: z.array(
+              z.object({
+                provider: z.string(),
+                ledgerVendors: z.array(z.string()),
+                paidUsdCents: z.number(),
+                refundedUsdCents: z.number(),
+                netPaidUsdCents: z.number(),
+                vendorCostRecordedUsdCents: z.number(),
+                ratio: z.number().nullable(),
+              }),
+            ),
+            items: z.array(RealCostItemSchema),
+          }),
+        },
+      },
+    },
+    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
+    404: { description: "Day outside the series", content: { "application/json": { schema: ErrorResponseSchema } } },
+    503: { description: "Never computed yet", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/internal/real-costs/{costName}",
+  operationId: "getRealCostSeries",
+  summary: "One cost item's real cost and proposed price per day since 2026-01-01",
+  security: [{ ApiKeyAuth: [] }],
+  request: { params: z.object({ costName: z.string() }) },
+  responses: {
+    200: {
+      description: "Daily series",
+      content: { "application/json": { schema: z.object({ costName: z.string(), daily: z.array(RealCostItemSchema.extend({ day: z.string() })) }) } },
+    },
+    404: { description: "No series for that name", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/internal/price-lists",
+  operationId: "getPriceList",
+  summary: "A price list at a date: catalogue (version in force at the day's end) or proposed (that day's computed list)",
+  security: [{ ApiKeyAuth: [] }],
+  request: { query: z.object({ source: z.enum(["catalogue", "proposed"]), date: z.string().describe("YYYY-MM-DD") }) },
+  responses: {
+    200: {
+      description: "Price per cost item",
+      content: {
+        "application/json": {
+          schema: z.object({
+            source: z.enum(["catalogue", "proposed"]),
+            date: z.string(),
+            items: z.array(z.object({ costName: z.string(), provider: z.string().nullable(), pricePerUnitUsdCents: z.number().nullable() }).passthrough()),
+          }),
+        },
+      },
+    },
+    400: { description: "Bad source or date", content: { "application/json": { schema: ErrorResponseSchema } } },
+    404: { description: "Proposed list not computed for that date", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
+});
+
+const ComparisonFiguresSchema = z.object({
+  amount1UsdCents: z.number(),
+  amount2UsdCents: z.number(),
+  differenceUsdCents: z.number().describe("amount2 - amount1"),
+  differencePct: z.number().nullable().describe("vs amount1"),
+  realCostUsdCents: z.number(),
+  margin1UsdCents: z.number(),
+  margin1Pct: z.number().nullable(),
+  margin2UsdCents: z.number(),
+  margin2Pct: z.number().nullable(),
+  billedUsdCents: z.number().describe("Actually billed, gross"),
+  netBilledUsdCents: z.number().describe("Actually billed, net of the per-org discount"),
+  billedPlatformKeyUsdCents: z.number().describe("Platform-key part of billed = runs-service margin read's billed"),
+  netBilledPlatformKeyUsdCents: z.number(),
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/internal/price-comparison",
+  operationId: "comparePriceLists",
+  summary: "Replay a perimeter's consumption since inception under two price lists, with real cost, margins and actually billed",
+  security: [{ ApiKeyAuth: [] }],
+  request: {
+    query: z.object({
+      list1: z.string().describe("<catalogue|proposed>:<YYYY-MM-DD>"),
+      list2: z.string().describe("<catalogue|proposed>:<YYYY-MM-DD>"),
+      orgId: z.string().optional().describe("Org perimeter (internal org UUID)"),
+      brandId: z.string().optional().describe("With orgId: org x brand perimeter"),
+      interval: z.enum(["day", "week", "month"]).optional().describe("Bucket size, default month; weeks start Monday"),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Totals, buckets with cumulative, per cost item; at fleet grain per org and per brand ranked by difference",
+      content: {
+        "application/json": {
+          schema: z.object({
+            perimeter: z.object({ grain: z.enum(["fleet", "org", "org-brand"]), orgId: z.string().optional(), brandId: z.string().optional() }),
+            list1: z.object({ source: z.string(), date: z.string() }),
+            list2: z.object({ source: z.string(), date: z.string() }),
+            interval: z.string(),
+            consumptionAsOf: z.string(),
+            stale: z.boolean(),
+            notes: z.array(z.string()),
+            totals: ComparisonFiguresSchema,
+            unpricedCostNames1: z.array(z.string()),
+            unpricedCostNames2: z.array(z.string()),
+            realCostUnknownCostNames: z.array(z.string()),
+            buckets: z.array(ComparisonFiguresSchema.extend({ period: z.string(), cumulative: ComparisonFiguresSchema })),
+            costItems: z.array(
+              ComparisonFiguresSchema.extend({
+                costName: z.string(),
+                quantity: z.number(),
+                quantityPlatformKey: z.number(),
+                price1PerUnitUsdCents: z.number().nullable(),
+                price2PerUnitUsdCents: z.number().nullable(),
+                unpricedQuantity1: z.number(),
+                unpricedQuantity2: z.number(),
+                realCostUnknownQuantity: z.number(),
+              }),
+            ),
+            byOrg: z.array(ComparisonFiguresSchema.extend({ orgId: z.string().nullable() })).nullable(),
+            byBrand: z.array(ComparisonFiguresSchema.extend({ orgId: z.string().nullable(), brandId: z.string().nullable() })).nullable(),
+          }),
+        },
+      },
+    },
+    400: { description: "Bad list, perimeter or interval", content: { "application/json": { schema: ErrorResponseSchema } } },
+    404: { description: "Proposed list not computed for that date", content: { "application/json": { schema: ErrorResponseSchema } } },
+    503: { description: "Real costs never computed yet", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/internal/real-costs/refresh",
+  operationId: "refreshRealCosts",
+  summary: "Recompute the real costs and proposed list now (idempotent per day)",
+  security: [{ ApiKeyAuth: [] }],
+  responses: {
+    200: {
+      description: "Refreshed",
+      content: { "application/json": { schema: z.object({ refreshId: z.string(), asOf: z.string(), days: z.number().int(), costItems: z.number().int() }) } },
+    },
+    409: { description: "A refresh is already running", content: { "application/json": { schema: ErrorResponseSchema } } },
+    502: { description: "Bank ledger or runs-service could not answer (named); nothing written", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
+});
+
 registry.registerComponent("securitySchemes", "ApiKeyAuth", {
   type: "apiKey",
   in: "header",

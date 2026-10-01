@@ -11,6 +11,7 @@ import internalVendorCostsRoutes from "../../src/routes/internal-vendor-costs.js
 import internalPaymentSourcesRoutes from "../../src/routes/internal-payment-sources.js";
 import internalEmailSendPriceRoutes from "../../src/routes/internal-email-send-price.js";
 import internalSubscriptionCostsRoutes from "../../src/routes/internal-subscription-costs.js";
+import internalRealCostsRoutes from "../../src/routes/internal-real-costs.js";
 import { requireIdentityHeaders } from "../../src/middleware/auth.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -37,6 +38,7 @@ export function createTestApp() {
   app.use(internalPaymentSourcesRoutes);
   app.use(internalEmailSendPriceRoutes);
   app.use(internalSubscriptionCostsRoutes);
+  app.use(internalRealCostsRoutes);
   app.use((_req: express.Request, res: express.Response) => {
     res.status(404).json({ error: "Not found" });
   });

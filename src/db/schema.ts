@@ -272,3 +272,119 @@ export const subscriptionCostDaily = pgTable(
   },
   (table) => [primaryKey({ name: "subscription_cost_daily_pk", columns: [table.day, table.subscription] })],
 );
+
+// --- Real cost per unit of every cost item + proposed price list (staff display only, see src/lib/real-cost.ts) ---
+
+/** One refresh attempt; records which email-send-price and subscription-cost runs it read. */
+export const realCostRefreshes = pgTable(
+  "real_cost_refreshes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    asOf: date("as_of").notNull(),
+    status: text("status").notNull(),
+    error: text("error"),
+    emailSendPriceRefreshId: uuid("email_send_price_refresh_id"),
+    subscriptionCostRefreshId: uuid("subscription_cost_refresh_id"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("idx_real_cost_refreshes_started").on(table.startedAt),
+    check("real_cost_refreshes_status", sql`${table.status} IN ('running', 'succeeded', 'failed')`),
+  ],
+);
+
+/** Bronze: raw upstream bodies, one per (day read, source); pruned after 30 days (silver is rewritten whole daily). */
+export const realCostRawReads = pgTable(
+  "real_cost_raw_reads",
+  {
+    readOn: date("read_on").notNull(),
+    source: text("source").notNull(),
+    url: text("url").notNull(),
+    body: jsonb("body").notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ name: "real_cost_raw_reads_pk", columns: [table.readOn, table.source] })],
+);
+
+/** Silver: what we paid each declared pay-as-you-go ledger vendor per day, US cents, refunds apart. */
+export const paygVendorSpendDaily = pgTable(
+  "payg_vendor_spend_daily",
+  {
+    day: date("day").notNull(),
+    vendor: text("vendor").notNull(),
+    provider: text("provider").notNull(),
+    paidUsdCents: bigint("paid_usd_cents", { mode: "number" }).notNull(),
+    refundedUsdCents: bigint("refunded_usd_cents", { mode: "number" }).notNull(),
+    payments: integer("payments").notNull(),
+    refunds: integer("refunds").notNull(),
+  },
+  (table) => [primaryKey({ name: "payg_vendor_spend_daily_pk", columns: [table.day, table.vendor] })],
+);
+
+/** Silver: units consumed and money billed per day, org, cost name and key source (runs-service, since inception). */
+export const consumptionByOrgDaily = pgTable(
+  "consumption_by_org_daily",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    day: date("day").notNull(),
+    orgId: text("org_id"),
+    costName: text("cost_name").notNull(),
+    costSource: text("cost_source").notNull(),
+    quantity: numeric("quantity", { precision: 24, scale: 6 }).notNull(),
+    billedUsdCents: numeric("billed_usd_cents", { precision: 24, scale: 10 }).notNull(),
+    netBilledUsdCents: numeric("net_billed_usd_cents", { precision: 24, scale: 10 }).notNull(),
+  },
+  (table) => [index("idx_consumption_by_org_daily_org").on(table.orgId)],
+);
+
+/** Silver: the same per brand. A co-branded run counts under EACH brand: never summed into an org or fleet figure. */
+export const consumptionByBrandDaily = pgTable(
+  "consumption_by_brand_daily",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    day: date("day").notNull(),
+    orgId: text("org_id"),
+    brandId: text("brand_id"),
+    costName: text("cost_name").notNull(),
+    costSource: text("cost_source").notNull(),
+    quantity: numeric("quantity", { precision: 24, scale: 6 }).notNull(),
+    billedUsdCents: numeric("billed_usd_cents", { precision: 24, scale: 10 }).notNull(),
+    netBilledUsdCents: numeric("net_billed_usd_cents", { precision: 24, scale: 10 }).notNull(),
+  },
+  (table) => [index("idx_consumption_by_brand_daily_org_brand").on(table.orgId, table.brandId)],
+);
+
+/** Gold: per declared pay-as-you-go provider and day, the ratio real / catalogue vendor cost. */
+export const paygRatioDaily = pgTable(
+  "payg_ratio_daily",
+  {
+    day: date("day").notNull(),
+    provider: text("provider").notNull(),
+    cumulativeNetPaidUsdCents: bigint("cumulative_net_paid_usd_cents", { mode: "number" }).notNull(),
+    cumulativeVendorRecordedUsdCents: numeric("cumulative_vendor_recorded_usd_cents", { precision: 24, scale: 10 }).notNull(),
+    ratio: numeric("ratio", { precision: 18, scale: 10 }),
+  },
+  (table) => [primaryKey({ name: "payg_ratio_daily_pk", columns: [table.day, table.provider] })],
+);
+
+/** Gold: per cost item and day since 2026-01-01, its real cost per unit and its proposed price. */
+export const realUnitCostsDaily = pgTable(
+  "real_unit_costs_daily",
+  {
+    day: date("day").notNull(),
+    costName: text("cost_name").notNull(),
+    provider: text("provider"),
+    method: text("method").notNull(),
+    flag: text("flag"),
+    realCostUsdCents: numeric("real_cost_usd_cents", { precision: 18, scale: 10 }),
+    ratio: numeric("ratio", { precision: 18, scale: 10 }),
+    catalogueVendorCostUsdCents: numeric("catalogue_vendor_cost_usd_cents", { precision: 18, scale: 10 }),
+    cataloguePriceUsdCents: numeric("catalogue_price_usd_cents", { precision: 18, scale: 10 }),
+    multiplier: numeric("multiplier", { precision: 6, scale: 2 }).notNull(),
+    proposedPriceUsdCents: numeric("proposed_price_usd_cents", { precision: 18, scale: 10 }),
+    proposedBasis: text("proposed_basis").notNull(),
+    refreshId: uuid("refresh_id").notNull(),
+  },
+  (table) => [primaryKey({ name: "real_unit_costs_daily_pk", columns: [table.day, table.costName] })],
+);
