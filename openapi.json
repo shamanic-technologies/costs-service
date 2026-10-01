@@ -1392,6 +1392,102 @@
           "costPerCreditUsdCents",
           "grossCostPerCreditUsdCents"
         ]
+      },
+      "RealCostItem": {
+        "type": "object",
+        "properties": {
+          "costName": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "email-send-price",
+              "pass-through",
+              "subscription",
+              "pay-as-you-go-ratio",
+              "catalogue-vendor-cost"
+            ]
+          },
+          "flag": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "no-email-sent-yet",
+              "not-a-subscription-credit",
+              "no-real-cost-per-credit",
+              "no-payment-yet",
+              "no-recorded-usage-yet",
+              "no-ledger-line",
+              "declared-catalogue-vendor-cost",
+              "no-vendor-cost",
+              null
+            ],
+            "description": "Why the item fell back to its catalogue vendor cost (or kept its price); null = its specific real cost applies"
+          },
+          "realCostPerUnitUsdCents": {
+            "type": "number",
+            "nullable": true
+          },
+          "ratio": {
+            "type": "number",
+            "nullable": true,
+            "description": "Pay-as-you-go: net paid / vendor cost recorded, through the day"
+          },
+          "catalogueVendorCostPerUnitUsdCents": {
+            "type": "number",
+            "nullable": true
+          },
+          "cataloguePricePerUnitUsdCents": {
+            "type": "number",
+            "nullable": true
+          },
+          "catalogueMarkupOnRealCost": {
+            "type": "number",
+            "nullable": true,
+            "description": "catalogue price / real cost"
+          },
+          "multiplier": {
+            "type": "number",
+            "description": "2 for production tools, 1 for pass-through (Stripe, media)"
+          },
+          "proposedPricePerUnitUsdCents": {
+            "type": "number",
+            "nullable": true
+          },
+          "proposedBasis": {
+            "type": "string",
+            "enum": [
+              "real-cost-x2",
+              "real-cost-x1",
+              "current-price-kept",
+              "no-price"
+            ]
+          },
+          "proposedVsCataloguePct": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "costName",
+          "provider",
+          "method",
+          "flag",
+          "realCostPerUnitUsdCents",
+          "ratio",
+          "catalogueVendorCostPerUnitUsdCents",
+          "cataloguePricePerUnitUsdCents",
+          "catalogueMarkupOnRealCost",
+          "multiplier",
+          "proposedPricePerUnitUsdCents",
+          "proposedBasis",
+          "proposedVsCataloguePct"
+        ]
       }
     },
     "parameters": {
@@ -2759,6 +2855,1077 @@
           },
           "502": {
             "description": "The bank ledger or runs-service could not answer (named); nothing was written",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/real-costs": {
+      "get": {
+        "operationId": "getRealCosts",
+        "summary": "Real cost per unit and proposed price of every cost item on a day (default latest), service api key only",
+        "description": "Display only. Query `day=YYYY-MM-DD` (2026-01-01 through asOf). 503 before the first refresh.",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "formula": {
+                      "type": "string"
+                    },
+                    "rules": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Every owner-reviewable declaration (multipliers, x1 rule, vendors)"
+                    },
+                    "day": {
+                      "type": "string"
+                    },
+                    "asOf": {
+                      "type": "string"
+                    },
+                    "refreshedAt": {
+                      "type": "string"
+                    },
+                    "stale": {
+                      "type": "boolean"
+                    },
+                    "lastRefresh": {
+                      "$ref": "#/components/schemas/EmailSendPriceRefreshAttempt"
+                    },
+                    "payAsYouGo": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string"
+                          },
+                          "ledgerVendors": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "paidUsdCents": {
+                            "type": "number"
+                          },
+                          "refundedUsdCents": {
+                            "type": "number"
+                          },
+                          "netPaidUsdCents": {
+                            "type": "number"
+                          },
+                          "vendorCostRecordedUsdCents": {
+                            "type": "number"
+                          },
+                          "ratio": {
+                            "type": "number",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "provider",
+                          "ledgerVendors",
+                          "paidUsdCents",
+                          "refundedUsdCents",
+                          "netPaidUsdCents",
+                          "vendorCostRecordedUsdCents",
+                          "ratio"
+                        ]
+                      }
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RealCostItem"
+                      }
+                    }
+                  },
+                  "required": [
+                    "formula",
+                    "rules",
+                    "day",
+                    "asOf",
+                    "refreshedAt",
+                    "stale",
+                    "lastRefresh",
+                    "payAsYouGo",
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Day outside the series",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Never computed yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/real-costs/{costName}": {
+      "get": {
+        "operationId": "getRealCostSeries",
+        "summary": "One cost item's real cost and proposed price per day since 2026-01-01",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "costName",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daily series",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "costName": {
+                      "type": "string"
+                    },
+                    "daily": {
+                      "type": "array",
+                      "items": {
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/RealCostItem"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "day": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "day"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "costName",
+                    "daily"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No series for that name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/price-lists": {
+      "get": {
+        "operationId": "getPriceList",
+        "summary": "A price list at a date: catalogue (version in force at the day's end) or proposed (that day's computed list)",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "catalogue",
+                "proposed"
+              ]
+            },
+            "required": true,
+            "name": "source",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "YYYY-MM-DD"
+            },
+            "required": true,
+            "description": "YYYY-MM-DD",
+            "name": "date",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Price per cost item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "catalogue",
+                        "proposed"
+                      ]
+                    },
+                    "date": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "costName": {
+                            "type": "string"
+                          },
+                          "provider": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "pricePerUnitUsdCents": {
+                            "type": "number",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "costName",
+                          "provider",
+                          "pricePerUnitUsdCents"
+                        ],
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "source",
+                    "date",
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad source or date",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Proposed list not computed for that date",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/price-comparison": {
+      "get": {
+        "operationId": "comparePriceLists",
+        "summary": "Replay a perimeter's consumption since inception under two price lists, with real cost, margins and actually billed",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "<catalogue|proposed>:<YYYY-MM-DD>"
+            },
+            "required": true,
+            "description": "<catalogue|proposed>:<YYYY-MM-DD>",
+            "name": "list1",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "<catalogue|proposed>:<YYYY-MM-DD>"
+            },
+            "required": true,
+            "description": "<catalogue|proposed>:<YYYY-MM-DD>",
+            "name": "list2",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Org perimeter (internal org UUID)"
+            },
+            "required": false,
+            "description": "Org perimeter (internal org UUID)",
+            "name": "orgId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "With orgId: org x brand perimeter"
+            },
+            "required": false,
+            "description": "With orgId: org x brand perimeter",
+            "name": "brandId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "day",
+                "week",
+                "month"
+              ],
+              "description": "Bucket size, default month; weeks start Monday"
+            },
+            "required": false,
+            "description": "Bucket size, default month; weeks start Monday",
+            "name": "interval",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Totals, buckets with cumulative, per cost item; at fleet grain per org and per brand ranked by difference",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "perimeter": {
+                      "type": "object",
+                      "properties": {
+                        "grain": {
+                          "type": "string",
+                          "enum": [
+                            "fleet",
+                            "org",
+                            "org-brand"
+                          ]
+                        },
+                        "orgId": {
+                          "type": "string"
+                        },
+                        "brandId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "grain"
+                      ]
+                    },
+                    "list1": {
+                      "type": "object",
+                      "properties": {
+                        "source": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "source",
+                        "date"
+                      ]
+                    },
+                    "list2": {
+                      "type": "object",
+                      "properties": {
+                        "source": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "source",
+                        "date"
+                      ]
+                    },
+                    "interval": {
+                      "type": "string"
+                    },
+                    "consumptionAsOf": {
+                      "type": "string"
+                    },
+                    "stale": {
+                      "type": "boolean"
+                    },
+                    "notes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "totals": {
+                      "type": "object",
+                      "properties": {
+                        "amount1UsdCents": {
+                          "type": "number"
+                        },
+                        "amount2UsdCents": {
+                          "type": "number"
+                        },
+                        "differenceUsdCents": {
+                          "type": "number",
+                          "description": "amount2 - amount1"
+                        },
+                        "differencePct": {
+                          "type": "number",
+                          "nullable": true,
+                          "description": "vs amount1"
+                        },
+                        "realCostUsdCents": {
+                          "type": "number"
+                        },
+                        "margin1UsdCents": {
+                          "type": "number"
+                        },
+                        "margin1Pct": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "margin2UsdCents": {
+                          "type": "number"
+                        },
+                        "margin2Pct": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "billedUsdCents": {
+                          "type": "number",
+                          "description": "Actually billed, gross"
+                        },
+                        "netBilledUsdCents": {
+                          "type": "number",
+                          "description": "Actually billed, net of the per-org discount"
+                        },
+                        "billedPlatformKeyUsdCents": {
+                          "type": "number",
+                          "description": "Platform-key part of billed = runs-service margin read's billed"
+                        },
+                        "netBilledPlatformKeyUsdCents": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "amount1UsdCents",
+                        "amount2UsdCents",
+                        "differenceUsdCents",
+                        "differencePct",
+                        "realCostUsdCents",
+                        "margin1UsdCents",
+                        "margin1Pct",
+                        "margin2UsdCents",
+                        "margin2Pct",
+                        "billedUsdCents",
+                        "netBilledUsdCents",
+                        "billedPlatformKeyUsdCents",
+                        "netBilledPlatformKeyUsdCents"
+                      ]
+                    },
+                    "unpricedCostNames1": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "unpricedCostNames2": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "realCostUnknownCostNames": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "buckets": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "amount1UsdCents": {
+                            "type": "number"
+                          },
+                          "amount2UsdCents": {
+                            "type": "number"
+                          },
+                          "differenceUsdCents": {
+                            "type": "number",
+                            "description": "amount2 - amount1"
+                          },
+                          "differencePct": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "vs amount1"
+                          },
+                          "realCostUsdCents": {
+                            "type": "number"
+                          },
+                          "margin1UsdCents": {
+                            "type": "number"
+                          },
+                          "margin1Pct": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "margin2UsdCents": {
+                            "type": "number"
+                          },
+                          "margin2Pct": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "billedUsdCents": {
+                            "type": "number",
+                            "description": "Actually billed, gross"
+                          },
+                          "netBilledUsdCents": {
+                            "type": "number",
+                            "description": "Actually billed, net of the per-org discount"
+                          },
+                          "billedPlatformKeyUsdCents": {
+                            "type": "number",
+                            "description": "Platform-key part of billed = runs-service margin read's billed"
+                          },
+                          "netBilledPlatformKeyUsdCents": {
+                            "type": "number"
+                          },
+                          "period": {
+                            "type": "string"
+                          },
+                          "cumulative": {
+                            "type": "object",
+                            "properties": {
+                              "amount1UsdCents": {
+                                "type": "number"
+                              },
+                              "amount2UsdCents": {
+                                "type": "number"
+                              },
+                              "differenceUsdCents": {
+                                "type": "number",
+                                "description": "amount2 - amount1"
+                              },
+                              "differencePct": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "vs amount1"
+                              },
+                              "realCostUsdCents": {
+                                "type": "number"
+                              },
+                              "margin1UsdCents": {
+                                "type": "number"
+                              },
+                              "margin1Pct": {
+                                "type": "number",
+                                "nullable": true
+                              },
+                              "margin2UsdCents": {
+                                "type": "number"
+                              },
+                              "margin2Pct": {
+                                "type": "number",
+                                "nullable": true
+                              },
+                              "billedUsdCents": {
+                                "type": "number",
+                                "description": "Actually billed, gross"
+                              },
+                              "netBilledUsdCents": {
+                                "type": "number",
+                                "description": "Actually billed, net of the per-org discount"
+                              },
+                              "billedPlatformKeyUsdCents": {
+                                "type": "number",
+                                "description": "Platform-key part of billed = runs-service margin read's billed"
+                              },
+                              "netBilledPlatformKeyUsdCents": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "amount1UsdCents",
+                              "amount2UsdCents",
+                              "differenceUsdCents",
+                              "differencePct",
+                              "realCostUsdCents",
+                              "margin1UsdCents",
+                              "margin1Pct",
+                              "margin2UsdCents",
+                              "margin2Pct",
+                              "billedUsdCents",
+                              "netBilledUsdCents",
+                              "billedPlatformKeyUsdCents",
+                              "netBilledPlatformKeyUsdCents"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "amount1UsdCents",
+                          "amount2UsdCents",
+                          "differenceUsdCents",
+                          "differencePct",
+                          "realCostUsdCents",
+                          "margin1UsdCents",
+                          "margin1Pct",
+                          "margin2UsdCents",
+                          "margin2Pct",
+                          "billedUsdCents",
+                          "netBilledUsdCents",
+                          "billedPlatformKeyUsdCents",
+                          "netBilledPlatformKeyUsdCents",
+                          "period",
+                          "cumulative"
+                        ]
+                      }
+                    },
+                    "costItems": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "amount1UsdCents": {
+                            "type": "number"
+                          },
+                          "amount2UsdCents": {
+                            "type": "number"
+                          },
+                          "differenceUsdCents": {
+                            "type": "number",
+                            "description": "amount2 - amount1"
+                          },
+                          "differencePct": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "vs amount1"
+                          },
+                          "realCostUsdCents": {
+                            "type": "number"
+                          },
+                          "margin1UsdCents": {
+                            "type": "number"
+                          },
+                          "margin1Pct": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "margin2UsdCents": {
+                            "type": "number"
+                          },
+                          "margin2Pct": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "billedUsdCents": {
+                            "type": "number",
+                            "description": "Actually billed, gross"
+                          },
+                          "netBilledUsdCents": {
+                            "type": "number",
+                            "description": "Actually billed, net of the per-org discount"
+                          },
+                          "billedPlatformKeyUsdCents": {
+                            "type": "number",
+                            "description": "Platform-key part of billed = runs-service margin read's billed"
+                          },
+                          "netBilledPlatformKeyUsdCents": {
+                            "type": "number"
+                          },
+                          "costName": {
+                            "type": "string"
+                          },
+                          "quantity": {
+                            "type": "number"
+                          },
+                          "quantityPlatformKey": {
+                            "type": "number"
+                          },
+                          "price1PerUnitUsdCents": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "price2PerUnitUsdCents": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "unpricedQuantity1": {
+                            "type": "number"
+                          },
+                          "unpricedQuantity2": {
+                            "type": "number"
+                          },
+                          "realCostUnknownQuantity": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "amount1UsdCents",
+                          "amount2UsdCents",
+                          "differenceUsdCents",
+                          "differencePct",
+                          "realCostUsdCents",
+                          "margin1UsdCents",
+                          "margin1Pct",
+                          "margin2UsdCents",
+                          "margin2Pct",
+                          "billedUsdCents",
+                          "netBilledUsdCents",
+                          "billedPlatformKeyUsdCents",
+                          "netBilledPlatformKeyUsdCents",
+                          "costName",
+                          "quantity",
+                          "quantityPlatformKey",
+                          "price1PerUnitUsdCents",
+                          "price2PerUnitUsdCents",
+                          "unpricedQuantity1",
+                          "unpricedQuantity2",
+                          "realCostUnknownQuantity"
+                        ]
+                      }
+                    },
+                    "byOrg": {
+                      "type": "array",
+                      "nullable": true,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "amount1UsdCents": {
+                            "type": "number"
+                          },
+                          "amount2UsdCents": {
+                            "type": "number"
+                          },
+                          "differenceUsdCents": {
+                            "type": "number",
+                            "description": "amount2 - amount1"
+                          },
+                          "differencePct": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "vs amount1"
+                          },
+                          "realCostUsdCents": {
+                            "type": "number"
+                          },
+                          "margin1UsdCents": {
+                            "type": "number"
+                          },
+                          "margin1Pct": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "margin2UsdCents": {
+                            "type": "number"
+                          },
+                          "margin2Pct": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "billedUsdCents": {
+                            "type": "number",
+                            "description": "Actually billed, gross"
+                          },
+                          "netBilledUsdCents": {
+                            "type": "number",
+                            "description": "Actually billed, net of the per-org discount"
+                          },
+                          "billedPlatformKeyUsdCents": {
+                            "type": "number",
+                            "description": "Platform-key part of billed = runs-service margin read's billed"
+                          },
+                          "netBilledPlatformKeyUsdCents": {
+                            "type": "number"
+                          },
+                          "orgId": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "amount1UsdCents",
+                          "amount2UsdCents",
+                          "differenceUsdCents",
+                          "differencePct",
+                          "realCostUsdCents",
+                          "margin1UsdCents",
+                          "margin1Pct",
+                          "margin2UsdCents",
+                          "margin2Pct",
+                          "billedUsdCents",
+                          "netBilledUsdCents",
+                          "billedPlatformKeyUsdCents",
+                          "netBilledPlatformKeyUsdCents",
+                          "orgId"
+                        ]
+                      }
+                    },
+                    "byBrand": {
+                      "type": "array",
+                      "nullable": true,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "amount1UsdCents": {
+                            "type": "number"
+                          },
+                          "amount2UsdCents": {
+                            "type": "number"
+                          },
+                          "differenceUsdCents": {
+                            "type": "number",
+                            "description": "amount2 - amount1"
+                          },
+                          "differencePct": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "vs amount1"
+                          },
+                          "realCostUsdCents": {
+                            "type": "number"
+                          },
+                          "margin1UsdCents": {
+                            "type": "number"
+                          },
+                          "margin1Pct": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "margin2UsdCents": {
+                            "type": "number"
+                          },
+                          "margin2Pct": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "billedUsdCents": {
+                            "type": "number",
+                            "description": "Actually billed, gross"
+                          },
+                          "netBilledUsdCents": {
+                            "type": "number",
+                            "description": "Actually billed, net of the per-org discount"
+                          },
+                          "billedPlatformKeyUsdCents": {
+                            "type": "number",
+                            "description": "Platform-key part of billed = runs-service margin read's billed"
+                          },
+                          "netBilledPlatformKeyUsdCents": {
+                            "type": "number"
+                          },
+                          "orgId": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "brandId": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "amount1UsdCents",
+                          "amount2UsdCents",
+                          "differenceUsdCents",
+                          "differencePct",
+                          "realCostUsdCents",
+                          "margin1UsdCents",
+                          "margin1Pct",
+                          "margin2UsdCents",
+                          "margin2Pct",
+                          "billedUsdCents",
+                          "netBilledUsdCents",
+                          "billedPlatformKeyUsdCents",
+                          "netBilledPlatformKeyUsdCents",
+                          "orgId",
+                          "brandId"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "perimeter",
+                    "list1",
+                    "list2",
+                    "interval",
+                    "consumptionAsOf",
+                    "stale",
+                    "notes",
+                    "totals",
+                    "unpricedCostNames1",
+                    "unpricedCostNames2",
+                    "realCostUnknownCostNames",
+                    "buckets",
+                    "costItems",
+                    "byOrg",
+                    "byBrand"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad list, perimeter or interval",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Proposed list not computed for that date",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Real costs never computed yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/real-costs/refresh": {
+      "post": {
+        "operationId": "refreshRealCosts",
+        "summary": "Recompute the real costs and proposed list now (idempotent per day)",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Refreshed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "refreshId": {
+                      "type": "string"
+                    },
+                    "asOf": {
+                      "type": "string"
+                    },
+                    "days": {
+                      "type": "integer"
+                    },
+                    "costItems": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "refreshId",
+                    "asOf",
+                    "days",
+                    "costItems"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A refresh is already running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bank ledger or runs-service could not answer (named); nothing written",
             "content": {
               "application/json": {
                 "schema": {
