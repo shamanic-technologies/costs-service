@@ -104,7 +104,7 @@ const BY_ORG = {
 };
 const BY_BRAND = { ...BY_ORG, groupBy: ["orgId", "brandId"], days: BY_ORG.days.map((d) => ({ ...d, brandId: "brand-1" })) };
 
-function stub(over: Partial<Record<"vendors" | "payments" | "byOrg" | "byBrand" | "twilio" | "google", () => Response>> = {}) {
+function stub(over: Partial<Record<"vendors" | "payments" | "byOrg" | "byBrand" | "twilio" | "twilioAccount" | "google", () => Response>> = {}) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: string | URL | Request) => {
@@ -114,6 +114,7 @@ function stub(over: Partial<Record<"vendors" | "payments" | "byOrg" | "byBrand" 
       if (url.startsWith("https://ledger.test/api/v1/vendor-payments")) return (over.payments ?? (() => json(PAYMENTS)))();
       if (url === "http://keys.test/keys/platform/twilio/decrypt") return json({ provider: "twilio", key: JSON.stringify({ accountSid: "AC1", authToken: "t" }) });
       if (url.startsWith("https://api.twilio.com/2010-04-01/Accounts/AC1/Usage/Records/Daily.json")) return (over.twilio ?? (() => twilioPage(url)))();
+      if (url === "https://api.twilio.com/2010-04-01/Accounts/AC1.json") return (over.twilioAccount ?? (() => json({ sid: "AC1", friendly_name: "Distribute.you" })))();
       if (url === "https://api.twilio.com/2010-04-01/Accounts/AC1/Balance.json") return json({ account_sid: "AC1", balance: "16.67", currency: "USD" });
       if (url.includes("groupBy=orgId%2CbrandId")) return (over.byBrand ?? (() => json(BY_BRAND)))();
       if (url.includes("groupBy=orgId")) return (over.byOrg ?? (() => json(BY_ORG)))();
@@ -287,6 +288,14 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     const res = await request(app).post("/internal/real-costs/refresh").set(API_KEY);
     expect(res.status).toBe(502);
     expect(res.body.error).toMatch(/google-cloud/);
+  });
+
+  it("Twilio: refuses to count another account's usage as ours (owner 2026-10-01: only 'Distribute.you')", async () => {
+    await seedCatalogue();
+    stub({ twilioAccount: () => json({ sid: "AC1", friendly_name: "Pressbeat" }) });
+    const res = await request(app).post("/internal/real-costs/refresh").set(API_KEY);
+    expect(res.status).toBe(502);
+    expect(res.body.error).toMatch(/opens account 'Pressbeat', not the declared 'Distribute.you'/);
   });
 
   it("fails loud when Twilio cannot answer", async () => {
