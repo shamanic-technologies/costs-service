@@ -414,6 +414,63 @@ export const ADVERTISING_CHANNEL_COSTS: SeedProviderCost[] = ADVERTISING_CHANNEL
   })
 );
 
+/**
+ * Google Gemini rows for the two price dimensions Google bills beyond plain input/output.
+ *
+ * 1. CACHE HIT (`-tokens-cached-input`). Implicit caching is on by default on Gemini 2.5
+ *    and newer ("We automatically pass on cost savings if your request hits caches",
+ *    https://ai.google.dev/gemini-api/docs/caching), and a hit is billed at the model's
+ *    "Context caching" rate, 0.1x input. The hit count is `usageMetadata.cachedContentTokenCount`,
+ *    a SUBSET of the prompt: chat-service declares it here and only the remainder under
+ *    `-tokens-input`. Implicit hits carry no storage charge.
+ * 2. LONG CONTEXT (`-long-context-tokens-*`). Pro models price a request whose prompt
+ *    exceeds 200k tokens at a higher rate for EVERY token of that request (input, cache hit
+ *    and output). One name per combination, picked per request by the consumer.
+ *
+ * Rates are Google's published standard tier (https://ai.google.dev/gemini-api/docs/pricing,
+ * read 2026-10-01), in USD cents per token. The 3.6/3.7/3.8 Flash cache rate is the 2027 list
+ * rate ($0.15/1M), matching how their input/output rows skip the promotion.
+ */
+function googleGeminiCost(name: string, type: string, vendorCentsPerToken: string): SeedProviderCost {
+  return {
+    name,
+    provider: "google",
+    providerDomain: PROVIDER_DOMAINS.google,
+    type,
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier(vendorCentsPerToken),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  };
+}
+
+export const GOOGLE_GEMINI_CACHE_AND_LONG_CONTEXT_COSTS: SeedProviderCost[] = [
+  // Cache hits, standard context ($/1M: Pro 3.1 0.20, Pro 2.5 0.125, Flash 3.6-3.8 0.15,
+  // Flash 3 0.05, Flash-Lite 3.5 0.03, Flash-Lite 3.1 0.025, Flash 2.5 0.03, Flash-Lite 2.5 0.01).
+  googleGeminiCost("google-pro-3.1-tokens-cached-input", "Cached input tokens (Gemini 3.1 Pro)", "0.0000200000"),
+  googleGeminiCost("google-pro-2.5-tokens-cached-input", "Cached input tokens (Gemini 2.5 Pro)", "0.0000125000"),
+  googleGeminiCost("google-flash-3.8-tokens-cached-input", "Cached input tokens (Gemini 3.8 Flash)", "0.0000150000"),
+  googleGeminiCost("google-flash-3.7-tokens-cached-input", "Cached input tokens (Gemini 3.7 Flash)", "0.0000150000"),
+  googleGeminiCost("google-flash-3.6-tokens-cached-input", "Cached input tokens (Gemini 3.6 Flash)", "0.0000150000"),
+  googleGeminiCost("google-flash-3-tokens-cached-input", "Cached input tokens (Gemini 3 Flash)", "0.0000050000"),
+  googleGeminiCost("google-flash-lite-3.5-tokens-cached-input", "Cached input tokens (Gemini 3.5 Flash-Lite)", "0.0000030000"),
+  googleGeminiCost("google-flash-lite-3.1-tokens-cached-input", "Cached input tokens (Gemini 3.1 Flash Lite)", "0.0000025000"),
+  googleGeminiCost("google-flash-2.5-tokens-cached-input", "Cached input tokens (Gemini 2.5 Flash)", "0.0000030000"),
+  googleGeminiCost("google-flash-lite-2.5-tokens-cached-input", "Cached input tokens (Gemini 2.5 Flash-Lite)", "0.0000010000"),
+  // Prompts over 200k tokens ($/1M: Pro 3.1 4 / 0.40 / 18, Pro 2.5 2.50 / 0.25 / 15).
+  googleGeminiCost("google-pro-3.1-long-context-tokens-input", "Input tokens, prompt over 200k (Gemini 3.1 Pro)", "0.0004000000"),
+  googleGeminiCost("google-pro-3.1-long-context-tokens-cached-input", "Cached input tokens, prompt over 200k (Gemini 3.1 Pro)", "0.0000400000"),
+  googleGeminiCost("google-pro-3.1-long-context-tokens-output", "Output tokens, prompt over 200k (Gemini 3.1 Pro)", "0.0018000000"),
+  googleGeminiCost("google-pro-2.5-long-context-tokens-input", "Input tokens, prompt over 200k (Gemini 2.5 Pro)", "0.0002500000"),
+  googleGeminiCost("google-pro-2.5-long-context-tokens-cached-input", "Cached input tokens, prompt over 200k (Gemini 2.5 Pro)", "0.0000250000"),
+  googleGeminiCost("google-pro-2.5-long-context-tokens-output", "Output tokens, prompt over 200k (Gemini 2.5 Pro)", "0.0015000000"),
+  // Gemini 3.1 Flash Image bills text and thinking output at $3/1M, image output at $60/1M.
+  // `google-flash-image-3.1-tokens-output` stays the IMAGE rate; this is the non-image part.
+  googleGeminiCost("google-flash-image-3.1-tokens-text-output", "Text and thinking output tokens (Gemini 3.1 Flash Image)", "0.0003000000"),
+];
+
 export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   // Apollo — unified credit: Basic plan $59/mo ÷ 2,500 credits = 2.36¢/credit
   // Covers enrichment + person match. Quantity comes from Apollo webhook (credits_consumed).
@@ -1252,6 +1309,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  ...GOOGLE_GEMINI_CACHE_AND_LONG_CONTEXT_COSTS,
   // Google Gemini Embedding 001: $0.15/MTok input (standard tier).
   // Synchronous batchEmbedContents bills at standard tier, NOT the $0.075 Batch API
   // (async 24h jobs). Embeddings bill input only — the vector output is not token-billed.
