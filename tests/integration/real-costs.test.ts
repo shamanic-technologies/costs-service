@@ -274,12 +274,26 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     expect(part("adjustments").usdCents).toBe(0);
     expect(part("prepaid")).toMatchObject({ usdCents: 360, loadedOnUnits: false });
     expect(part("metered").basis).toMatch(/EUR->USD 1\.2000/);
+
     expect(gc.split.unexplained).toMatchObject({ usdCents: 8080, flag: "unexplained-not-loaded-on-units" });
     expect(res.body.items.find((i: { costName: string }) => i.costName === "google-tokens")).toMatchObject({ ratio: 2, realCostPerUnitUsdCents: 4, proposedPricePerUnitUsdCents: 8 });
     // Before the export covers a day, the item keeps its catalogue vendor cost, flagged.
     const jan = await request(app).get("/internal/real-costs?day=2026-01-31").set(API_KEY);
     expect(jan.body.items.find((i: { costName: string }) => i.costName === "google-tokens")).toMatchObject({ method: "catalogue-vendor-cost", flag: "no-metered-spend-yet", realCostPerUnitUsdCents: 2 });
     expect(jan.body.payAsYouGo.find((p: { provider: string }) => p.provider === "google").split.unexplained.usdCents).toBe(10000);
+  });
+
+  it("Google: a part summed over months converted at different rates names every rate, not only the first", async () => {
+    await seedCatalogue();
+    const feb = GOOGLE_SPLIT.months[1];
+    const mar = { ...feb, month: "2026-03", export: { ...feb.export!, coveredFrom: "2026-03-02", coveredTo: "2026-03-02", prepayments: [] }, bank: { payments: [{ eurAmount: 10, usdAmount: 11, direction: "payment" }], paidEur: 10, prepaidEur: 0 } };
+    stub({ google: () => json({ ...GOOGLE_SPLIT, months: [...GOOGLE_SPLIT.months, mar] }) });
+    await refreshRealCosts();
+    const res = await request(app).get("/internal/real-costs").set(API_KEY);
+    const metered = res.body.payAsYouGo.find((p: { provider: string }) => p.provider === "google").split.parts.find((p: { part: string }) => p.part === "metered");
+    // 10 EUR x 1.2 + 10 EUR x 1.1 = 2300 cents
+    expect(metered.usdCents).toBe(2300);
+    expect(metered.basis).toMatch(/EUR->USD 1\.2000 .* \| .*EUR->USD 1\.1000/);
   });
 
   it("fails loud when the Google Cloud split cannot be read", async () => {
