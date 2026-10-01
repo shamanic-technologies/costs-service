@@ -8,6 +8,7 @@ import providersCostsRoutes from "./routes/providers-costs.js";
 import platformCostsRoutes from "./routes/platform-costs.js";
 import platformPricesRoutes from "./routes/platform-prices.js";
 import internalVendorCostsRoutes from "./routes/internal-vendor-costs.js";
+import internalPaymentSourcesRoutes from "./routes/internal-payment-sources.js";
 import { requireIdentityHeaders } from "./middleware/auth.js";
 import { db, sql } from "./db/index.js";
 import { runMigrationsIfNeeded } from "./db/migrate.js";
@@ -39,6 +40,7 @@ app.use(providersCostsRoutes);
 app.use(platformCostsRoutes);
 app.use(platformPricesRoutes);
 app.use(internalVendorCostsRoutes);
+app.use(internalPaymentSourcesRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Not found" });
