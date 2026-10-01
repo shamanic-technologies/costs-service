@@ -12,6 +12,8 @@ import {
   X1_RULE,
   EMAIL_SEND_COST_SHARES,
   CATALOGUE_VENDOR_COST_PROVIDERS,
+  INCLUDED_AT_VENDOR,
+  LEGACY_COST_NAMES,
 } from "../lib/price-lists.js";
 import { utcDay } from "../db/email-send-price.js";
 import {
@@ -86,6 +88,8 @@ const RULES = {
   emailSendCostShares: EMAIL_SEND_COST_SHARES,
   payAsYouGoVendors: PAY_AS_YOU_GO_VENDORS,
   catalogueVendorCostProviders: CATALOGUE_VENDOR_COST_PROVIDERS,
+  includedAtVendor: INCLUDED_AT_VENDOR,
+  legacyCostNames: LEGACY_COST_NAMES,
 };
 
 // GET /internal/real-costs[?day=YYYY-MM-DD] — every cost item's real cost and proposed price on a day (default: latest).
