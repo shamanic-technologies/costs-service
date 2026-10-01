@@ -1,9 +1,8 @@
 import { db, sql } from "../../src/db/index.js";
-import { providersCosts, platformCosts, providerPaymentSources } from "../../src/db/schema.js";
+import { providersCosts, platformCosts } from "../../src/db/schema.js";
 import type { PricingBasis } from "../../src/db/seed.js";
 
 export async function cleanTestData() {
-  await db.delete(providerPaymentSources);
   await db.delete(providersCosts);
   await db.delete(platformCosts);
 }
