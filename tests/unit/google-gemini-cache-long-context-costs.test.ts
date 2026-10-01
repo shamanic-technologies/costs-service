@@ -15,6 +15,7 @@ const EXPECTED: Record<string, string> = {
   "google-flash-3.8-tokens-cached-input": "0.0000150000", // $0.15/1M (2027 list)
   "google-flash-3.7-tokens-cached-input": "0.0000150000",
   "google-flash-3.6-tokens-cached-input": "0.0000150000",
+  "google-flash-3.5-tokens-cached-input": "0.0000150000",
   "google-flash-3-tokens-cached-input": "0.0000050000", // $0.05/1M
   "google-flash-lite-3.5-tokens-cached-input": "0.0000030000", // $0.03/1M
   "google-flash-lite-3.1-tokens-cached-input": "0.0000025000", // $0.025/1M

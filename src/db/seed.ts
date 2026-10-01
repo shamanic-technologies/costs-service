@@ -447,13 +447,14 @@ function googleGeminiCost(name: string, type: string, vendorCentsPerToken: strin
 }
 
 export const GOOGLE_GEMINI_CACHE_AND_LONG_CONTEXT_COSTS: SeedProviderCost[] = [
-  // Cache hits, standard context ($/1M: Pro 3.1 0.20, Pro 2.5 0.125, Flash 3.6-3.8 0.15,
+  // Cache hits, standard context ($/1M: Pro 3.1 0.20, Pro 2.5 0.125, Flash 3.5-3.8 0.15,
   // Flash 3 0.05, Flash-Lite 3.5 0.03, Flash-Lite 3.1 0.025, Flash 2.5 0.03, Flash-Lite 2.5 0.01).
   googleGeminiCost("google-pro-3.1-tokens-cached-input", "Cached input tokens (Gemini 3.1 Pro)", "0.0000200000"),
   googleGeminiCost("google-pro-2.5-tokens-cached-input", "Cached input tokens (Gemini 2.5 Pro)", "0.0000125000"),
   googleGeminiCost("google-flash-3.8-tokens-cached-input", "Cached input tokens (Gemini 3.8 Flash)", "0.0000150000"),
   googleGeminiCost("google-flash-3.7-tokens-cached-input", "Cached input tokens (Gemini 3.7 Flash)", "0.0000150000"),
   googleGeminiCost("google-flash-3.6-tokens-cached-input", "Cached input tokens (Gemini 3.6 Flash)", "0.0000150000"),
+  googleGeminiCost("google-flash-3.5-tokens-cached-input", "Cached input tokens (Gemini 3.5 Flash)", "0.0000150000"),
   googleGeminiCost("google-flash-3-tokens-cached-input", "Cached input tokens (Gemini 3 Flash)", "0.0000050000"),
   googleGeminiCost("google-flash-lite-3.5-tokens-cached-input", "Cached input tokens (Gemini 3.5 Flash-Lite)", "0.0000030000"),
   googleGeminiCost("google-flash-lite-3.1-tokens-cached-input", "Cached input tokens (Gemini 3.1 Flash Lite)", "0.0000025000"),

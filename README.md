@@ -99,6 +99,7 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `google-flash-3.8-tokens-cached-input` | 0.000075 | 1M tokens | Cached input tokens (Gemini 3.8 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-flash-3.7-tokens-cached-input` | 0.000075 | 1M tokens | Cached input tokens (Gemini 3.7 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-flash-3.6-tokens-cached-input` | 0.000075 | 1M tokens | Cached input tokens (Gemini 3.6 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.5-tokens-cached-input` | 0.000075 | 1M tokens | Cached input tokens (Gemini 3.5 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-flash-3-tokens-cached-input` | 0.000025 | 1M tokens | Cached input tokens (Gemini 3 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-flash-lite-3.5-tokens-cached-input` | 0.000015 | 1M tokens | Cached input tokens (Gemini 3.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-flash-lite-3.1-tokens-cached-input` | 0.0000125 | 1M tokens | Cached input tokens (Gemini 3.1 Flash Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
