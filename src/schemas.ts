@@ -985,9 +985,9 @@ const RealCostItemSchema = z
   .object({
     costName: z.string(),
     provider: z.string().nullable(),
-    method: z.enum(["email-send-price", "pass-through", "subscription", "pay-as-you-go-ratio", "catalogue-vendor-cost"]),
+    method: z.enum(["email-send-price", "pass-through", "subscription", "pay-as-you-go-ratio", "catalogue-vendor-cost", "included-at-vendor"]),
     flag: z
-      .enum(["no-email-sent-yet", "not-a-subscription-credit", "no-real-cost-per-credit", "no-payment-yet", "no-recorded-usage-yet", "no-ledger-line", "declared-catalogue-vendor-cost", "no-vendor-cost"])
+      .enum(["no-email-sent-yet", "not-a-subscription-credit", "no-real-cost-per-credit", "no-payment-yet", "no-recorded-usage-yet", "no-ledger-line", "declared-catalogue-vendor-cost", "no-vendor-cost", "included-in-another-cost", "legacy-name-priced-as-successor"])
       .nullable()
       .describe("Why the item fell back to its catalogue vendor cost (or kept its price); null = its specific real cost applies"),
     realCostPerUnitUsdCents: z.number().nullable(),

@@ -33,11 +33,31 @@ export const X1_RULE = "Every pass-through line (Stripe processing fees and medi
 /**
  * The email send price is the cost of ONE email to a lead. runs-service recorded each email under
  * two names at once (one per sending account, one per sending domain), so the price is split
- * evenly between them: a unit of each, together, costs one email.
+ * evenly between them: a unit of each, together, costs one email. Before that split, each email
+ * was one `instantly-email-send` unit: the whole price.
  */
 export const EMAIL_SEND_COST_SHARES: Readonly<Record<string, number>> = {
   "instantly-account-email-sent": 0.5,
   "instantly-domain-email-sent": 0.5,
+  "instantly-email-send": 1,
+};
+
+/**
+ * Units that cost nothing more at the vendor: their spend is already inside another real cost.
+ * Real cost 0 (declared, flagged `included-in-another-cost`), so the proposed price is 0 too.
+ */
+export const INCLUDED_AT_VENDOR: Readonly<Record<string, string>> = {
+  "apollo-search-credit": "Apollo does not deduct credits for search",
+  "instantly-contact-uploaded": "Uploads are included in the Instantly subscription, already counted in the email send price",
+};
+
+/**
+ * Names runs-service recorded that the catalogue no longer carries under that name: priced like
+ * their successor on each day (flag `legacy-name-priced-as-successor`).
+ */
+export const LEGACY_COST_NAMES: Readonly<Record<string, { successor: string; reason: string }>> = {
+  "gemini-3-flash-tokens-input": { successor: "google-flash-3-tokens-input", reason: "Renamed gemini -> google" },
+  "gemini-3-flash-tokens-output": { successor: "google-flash-3-tokens-output", reason: "Renamed gemini -> google" },
 };
 
 /**
