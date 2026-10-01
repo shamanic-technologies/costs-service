@@ -151,6 +151,16 @@ Which of OUR accounts pays each vendor lives in Kevin's bank ledger (admin.kevin
 - **Consumption = runs-service `GET /internal/stats/costs/consumption`** (`RUNS_SERVICE_*`), fleet-wide, `platform` vs `org` key apart. Only `platform` units are our credits unless `orgKeyRows.count` carries key-service evidence (Serper and Apify: runs tags them `org`, key-service holds no customer key for either, 2026-10-01). Re-check key-service before flipping another provider.
 - Regressions: `tests/unit/subscription-cost.test.ts` (also fails when a seeded cost name of a subscription provider is neither a credit nor an exclusion), `tests/integration/subscription-costs.test.ts`.
 
+## Real cost per unit + proposed price list + comparison = DISPLAY ONLY until the owner's go (2026-10)
+
+`/internal/real-costs`, `/internal/price-lists`, `/internal/price-comparison` (staff, api key). Nothing bills from them; wiring the proposed list into the catalogue is a separate, owner-approved price change (staging-first, like any reprice).
+
+- **Every rule and list is declared in `src/lib/price-lists.ts`** (multiplier 2, x1 = every `pass-through` line, email-send split, pay-as-you-go ledger vendors with prefix for Google Cloud and named exclusions such as seat subscriptions, Cloudflare kept on catalogue vendor cost because its ledger line is email-infra DNS). The formula is in `src/lib/real-cost.ts`; it never returns 0 for a missing figure: it falls back to the catalogue vendor cost with a `flag`.
+- **Pay-as-you-go denominator = platform-key units x the catalogue vendor cost in force that day**, computed here (costs-service owns the vendor cost), not runs-service's frozen-price match; reconcile against runs-service's margin read when touching it.
+- Inputs: bank ledger, runs-service `GET /internal/stats/costs/consumption?groupBy=orgId` (fleet/org grain) and `groupBy=orgId,brandId` (brand grain: a co-branded run counts under EACH brand, never sum brand rows into an org), and the email-send-price + subscription-cost golds (the refresh records which runs it read and fails loud if either never ran). Bronze pruned after 30 days.
+- Catalogue "at a date" = `CatalogueHistory` (effective_from only; versions overwritten before v0.25.0 are gone, so early dates read the oldest surviving version).
+- Regressions: `tests/unit/real-cost.test.ts`, `tests/integration/real-costs.test.ts`.
+
 ## Cold-email infrastructure = DELISTED, not deleted (2026-08)
 
 Instantly subscriptions, MailForge, PrimeForge and the Claude Max seat moved OFF the
