@@ -18,6 +18,7 @@ import {
   LEGACY_COST_NAMES,
 } from "../lib/price-lists.js";
 import { utcDay } from "../db/email-send-price.js";
+import { VAT_RULE, vatTakenOut } from "../lib/email-send-price.js";
 import {
   consumptionByBrand,
   consumptionByOrg,
@@ -108,7 +109,7 @@ const PARTS_BY_BASIS: Record<string, string[]> = {
 /** What a split vendor's remainder is known to be made of, once every part is served. */
 const UNEXPLAINED_BASIS: Record<string, string> = {
   "google-cloud-split-metered":
-    "bank net paid - every part above: bank money before the billing export began (no service line says what it paid) and exchange-rate cents; never loaded on units",
+    "bank net paid VAT included - every part above (tax is one of them): bank money before the billing export began (no service line says what it paid) and exchange-rate cents; never loaded on units",
 };
 
 const r2 = (x: number) => Math.round(x * 1e6) / 1e6;
@@ -120,7 +121,7 @@ const r2 = (x: number) => Math.round(x * 1e6) / 1e6;
  * snapshot part (Twilio's balance left) exists only on the refresh day, so on an earlier day it and
  * the remainder are null.
  */
-function vendorSplit(provider: string, basis: string, day: string, asOf: string, netPaid: number, parts: PartRow[]) {
+function vendorSplit(provider: string, basis: string, day: string, asOf: string, netPaid: number, vat: number, parts: PartRow[]) {
   const all = parts.filter((p) => p.provider === provider);
   const names = PARTS_BY_BASIS[basis];
   if (!names) throw new Error(`No part list for numerator basis '${basis}'`);
@@ -136,10 +137,13 @@ function vendorSplit(provider: string, basis: string, day: string, asOf: string,
     return { part, usdCents, basis: bases.length > 0 ? bases.join(" | ") : null, ...PART_RULES[part] };
   });
   const explained = out.reduce((t, p) => t + (p.usdCents ?? 0), 0);
+  // A split that serves the vendor's own tax as a part (Google Cloud) states the bank money it
+  // explains VAT included, so its remainder is taken on what the bank paid, VAT included.
+  const bank = names.includes("tax") ? netPaid + vat : netPaid;
   return {
     parts: out,
     unexplained: {
-      usdCents: snapshotMissing ? null : r2(netPaid - explained),
+      usdCents: snapshotMissing ? null : r2(bank - explained),
       basis: UNEXPLAINED_BASIS[basis] ?? "bank net paid - every part above; never loaded on units",
       loadedOnUnits: false as const,
       flag: snapshotMissing ? "balance-known-only-on-refresh-day" : "unexplained-not-loaded-on-units",
@@ -149,6 +153,7 @@ function vendorSplit(provider: string, basis: string, day: string, asOf: string,
 
 const RULES = {
   since: REAL_COST_SINCE,
+  vatRule: VAT_RULE,
   proposedMultiplier: PROPOSED_MULTIPLIER,
   passThroughMultiplier: PASS_THROUGH_MULTIPLIER,
   x1Rule: X1_RULE,
@@ -189,17 +194,20 @@ router.get("/internal/real-costs", async (req, res) => {
         const own = spend.filter((s) => s.provider === r.provider && s.day <= day);
         const paid = own.reduce((t, s) => t + s.paidUsdCents, 0);
         const refunded = own.reduce((t, s) => t + s.refundedUsdCents, 0);
+        const vat = vatTakenOut(own);
         return {
           provider: r.provider,
           ledgerVendors: [...new Set(own.map((s) => s.vendor))].sort(),
           paidUsdCents: paid,
           refundedUsdCents: refunded,
           netPaidUsdCents: r.cumulativeNetPaidUsdCents,
+          vatUsdCents: vat.vatUsdCents,
+          vatBasis: vat.vatBasis,
           numeratorBasis: r.numeratorBasis,
           meteredUsdCents: Number(r.cumulativeMeteredUsdCents),
           vendorCostRecordedUsdCents: Number(r.cumulativeVendorRecordedUsdCents),
           ratio: num(r.ratio),
-          split: r.numeratorBasis === "ledger-net-paid" ? null : vendorSplit(r.provider, r.numeratorBasis, day, lastSucceeded.asOf, r.cumulativeNetPaidUsdCents, parts),
+          split: r.numeratorBasis === "ledger-net-paid" ? null : vendorSplit(r.provider, r.numeratorBasis, day, lastSucceeded.asOf, r.cumulativeNetPaidUsdCents, vat.vatUsdCents, parts),
         };
       }),
       items: rows.map(item),

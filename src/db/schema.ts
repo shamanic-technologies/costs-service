@@ -160,6 +160,10 @@ export const emailInfraSpendDaily = pgTable(
     vendor: text("vendor").notNull(),
     paidUsdCents: bigint("paid_usd_cents", { mode: "number" }).notNull(),
     refundedUsdCents: bigint("refunded_usd_cents", { mode: "number" }).notNull(),
+    vatPaidUsdCents: bigint("vat_paid_usd_cents", { mode: "number" }).notNull().default(0),
+    vatRefundedUsdCents: bigint("vat_refunded_usd_cents", { mode: "number" }).notNull().default(0),
+    /** The ledger's VAT source + rate + evidence; null on rows written before VAT was read. */
+    vatBasis: text("vat_basis"),
     payments: integer("payments").notNull(),
     refunds: integer("refunds").notNull(),
   },
@@ -231,6 +235,10 @@ export const subscriptionSpendDaily = pgTable(
     vendor: text("vendor").notNull(),
     paidUsdCents: bigint("paid_usd_cents", { mode: "number" }).notNull(),
     refundedUsdCents: bigint("refunded_usd_cents", { mode: "number" }).notNull(),
+    vatPaidUsdCents: bigint("vat_paid_usd_cents", { mode: "number" }).notNull().default(0),
+    vatRefundedUsdCents: bigint("vat_refunded_usd_cents", { mode: "number" }).notNull().default(0),
+    /** The ledger's VAT source + rate + evidence; null on rows written before VAT was read. */
+    vatBasis: text("vat_basis"),
     payments: integer("payments").notNull(),
     refunds: integer("refunds").notNull(),
   },
@@ -316,6 +324,10 @@ export const paygVendorSpendDaily = pgTable(
     provider: text("provider").notNull(),
     paidUsdCents: bigint("paid_usd_cents", { mode: "number" }).notNull(),
     refundedUsdCents: bigint("refunded_usd_cents", { mode: "number" }).notNull(),
+    vatPaidUsdCents: bigint("vat_paid_usd_cents", { mode: "number" }).notNull().default(0),
+    vatRefundedUsdCents: bigint("vat_refunded_usd_cents", { mode: "number" }).notNull().default(0),
+    /** The ledger's VAT source + rate + evidence; null on rows written before VAT was read. */
+    vatBasis: text("vat_basis"),
     payments: integer("payments").notNull(),
     refunds: integer("refunds").notNull(),
   },

@@ -56,6 +56,18 @@ const LedgerVendorPaymentSchema = z.object({
   eurAmount: z.number(),
   usdAmount: z.number(),
   accountId: z.string(),
+  /**
+   * The line's VAT as the ledger reads it (KevinLourd/kevinlourd.com#305): `bank` (the bank's own
+   * VAT field), `declared` (an owner-reviewable rate per vendor, with its evidence) or `unknown`.
+   * `excludingVat` is THE COST (owner 2026-10-01: our VAT is recoverable); null when unknown.
+   */
+  vat: z.object({
+    source: z.enum(["bank", "declared", "unknown"]),
+    rate: z.number().nullable(),
+    evidence: z.string().nullable(),
+    excludingVat: z.object({ amount: z.number(), eurAmount: z.number(), usdAmount: z.number() }).nullable(),
+    vat: z.object({ amount: z.number(), eurAmount: z.number(), usdAmount: z.number() }).nullable(),
+  }),
 });
 
 const LedgerVendorTotalsSchema = z.object({

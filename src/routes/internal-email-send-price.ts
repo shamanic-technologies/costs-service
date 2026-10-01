@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireApiKey } from "../middleware/auth.js";
 import { EMAIL_INFRA_VENDORS, EXCLUDED_EMAIL_VENDORS } from "../lib/email-infra-vendors.js";
-import { monthlyRollup } from "../lib/email-send-price.js";
+import { monthlyRollup, VAT_RULE, vatServed } from "../lib/email-send-price.js";
 import { LedgerError } from "../lib/ledger.js";
 import { InstantlyServiceError } from "../lib/instantly-service.js";
 import { readStoredSeries, refreshEmailSendPrice, RefreshInProgressError, utcDay } from "../db/email-send-price.js";
@@ -38,7 +38,9 @@ router.get("/internal/email-send-price", async (_req, res) => {
     const firstPaymentOn = stored.spend.find((s) => s.paidUsdCents > 0)?.day ?? null;
 
     res.json({
-      formula: "everything consumed from the email-infrastructure vendors since inception (paid minus refunded) / every email sent to a lead since inception",
+      formula:
+        "everything consumed from the email-infrastructure vendors since inception (paid minus refunded, excluding VAT) / every email sent to a lead since inception",
+      vatRule: VAT_RULE,
       asOf: latest.day,
       refreshedAt: stored.lastSucceeded.finishedAt.toISOString(),
       stale: stored.lastSucceeded.asOf < today,
@@ -51,6 +53,7 @@ router.get("/internal/email-send-price", async (_req, res) => {
         paidUsd: usd(latest.cumulativePaidUsdCents),
         refundedUsd: usd(stored.spend.reduce((t, s) => t + s.refundedUsdCents, 0)),
         emailsToLeads: latest.cumulativeEmailsToLeads,
+        ...vatServed(stored.spend),
       },
       firstPaymentOn,
       firstSendOn: stored.emailDays[0]?.day ?? null,
@@ -70,6 +73,7 @@ router.get("/internal/email-send-price", async (_req, res) => {
           paidUsd: usd(paid),
           refundedUsd: usd(refunded),
           netUsd: usd(paid - refunded),
+          ...vatServed(own),
         };
       }),
       excludedVendors: EXCLUDED_EMAIL_VENDORS,

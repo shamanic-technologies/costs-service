@@ -11,7 +11,7 @@ import {
   refreshSubscriptionCosts,
   SubscriptionRefreshInProgressError,
 } from "../db/subscription-cost.js";
-import type { SilverSpendDay } from "../lib/email-send-price.js";
+import { VAT_RULE, vatServed, type SilverSpendDay } from "../lib/email-send-price.js";
 
 /**
  * The real cost per credit of each vendor subscription — STAFF-ONLY (service api key), read by
@@ -76,6 +76,7 @@ function ledgerVendors(sub: Subscription, spend: SilverSpendDay[]) {
       paidUsd: usd(paid),
       refundedUsd: usd(refunded),
       netUsd: usd(paid - refunded),
+      ...vatServed(own),
     };
   });
 }
@@ -116,6 +117,7 @@ router.get("/internal/subscription-costs", async (_req, res) => {
           paidUsd: usd(last.cumulativePaidUsdCents),
           refundedUsd: usd(last.cumulativeRefundedUsdCents),
           netUsd: usd(last.cumulativeNetUsdCents),
+          ...vatServed(stored.spend.filter((s) => sub.ledgerVendors.includes(s.vendor))),
           creditDefinition: sub.creditDefinition,
           orgKeyUnitsCounted: sub.orgKeyRows.count,
           orgKeyUnitsNote: sub.orgKeyRows.count
@@ -155,7 +157,8 @@ router.get("/internal/subscription-costs", async (_req, res) => {
 
     res.json({
       formula:
-        "net paid to the subscription's bank-ledger vendor(s) since 2026-01-01 (paid minus refunded) / credits consumed through our own account since 2026-01-01",
+        "net paid to the subscription's bank-ledger vendor(s) since 2026-01-01 (paid minus refunded, excluding VAT) / credits consumed through our own account since 2026-01-01",
+      vatRule: VAT_RULE,
       since: SUBSCRIPTIONS_SINCE,
       asOf: stored.series[stored.series.length - 1].day,
       refreshedAt: stored.lastSucceeded.finishedAt.toISOString(),

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from "vitest";
+import { declaredVat } from "../helpers/ledger-vat.js";
 import request from "supertest";
 import { createTestApp } from "../helpers/test-app.js";
 import { cleanTestData, insertPlatformCost, insertTestProviderCost } from "../helpers/test-db.js";
@@ -36,7 +37,7 @@ const LEDGER_VENDORS = {
     paidFrom: [],
   })),
 };
-const pay = (vendor: string, bookedOn: string, usdAmount: number) => ({ id: `${vendor}:${bookedOn}`, vendor, bookedOn, direction: "payment", amount: usdAmount, currency: "USD", eurAmount: usdAmount, usdAmount, accountId: "acc" });
+const pay = (vendor: string, bookedOn: string, usdAmount: number) => ({ id: `${vendor}:${bookedOn}`, vendor, bookedOn, direction: "payment", amount: usdAmount, currency: "USD", eurAmount: usdAmount, usdAmount, accountId: "acc", vat: declaredVat(usdAmount, vendor.startsWith("google") ? 0.25 : 0) });
 const PAYMENTS = {
   generatedAt: "2026-10-01T10:00:00.000Z",
   since: null,
@@ -278,7 +279,8 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     const res = await request(app).get("/internal/real-costs").set(API_KEY);
     const gc = res.body.payAsYouGo.find((p: { provider: string }) => p.provider === "google");
     // Gemini on our two projects: 11 EUR covered + 5 EUR before the export = 16 x 1.2 = 1920 cents over 800 recorded from 02-01 -> ratio 2.4
-    expect(gc).toMatchObject({ netPaidUsdCents: 10000, numeratorBasis: "google-cloud-split-metered", meteredUsdCents: 1920, vendorCostRecordedUsdCents: 800, ratio: 2.4 });
+    // The bank paid 100 USD VAT included; declared 25% here, so 80 USD is the cost and 20 USD the VAT taken out.
+    expect(gc).toMatchObject({ netPaidUsdCents: 8000, vatUsdCents: 2000, vatBasis: expect.stringMatching(/^declared 25%/), numeratorBasis: "google-cloud-split-metered", meteredUsdCents: 1920, vendorCostRecordedUsdCents: 800, ratio: 2.4 });
     const part = (name: string) => gc.split.parts.find((p: { part: string }) => p.part === name);
     expect(part("metered")).toMatchObject({ usdCents: 1320, loadedOnUnits: true });
     expect(part("metered").basis).toMatch(/mcp-factory-485906, distribute-488803/);
@@ -293,6 +295,7 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     expect(part("prepaid")).toMatchObject({ usdCents: 360, loadedOnUnits: false });
     expect(part("outstanding")).toMatchObject({ usdCents: -480, loadedOnUnits: false, flag: "billed-not-collected-yet" });
 
+    // The split serves Google's own tax as a part, so its remainder is taken VAT included:
     // 10000 paid - (1320 + 600 + 600 + 240 + 240 + 360 - 480) = 7120: January's pre-export money only
     expect(gc.split.unexplained).toMatchObject({ usdCents: 7120, flag: "unexplained-not-loaded-on-units" });
     expect(gc.split.unexplained.basis).toMatch(/before the billing export began/);
@@ -301,6 +304,7 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     const jan = await request(app).get("/internal/real-costs?day=2026-01-31").set(API_KEY);
     expect(jan.body.items.find((i: { costName: string }) => i.costName === "google-tokens")).toMatchObject({ method: "catalogue-vendor-cost", flag: "no-metered-spend-yet", realCostPerUnitUsdCents: 2 });
     expect(jan.body.payAsYouGo.find((p: { provider: string }) => p.provider === "google").split.unexplained.usdCents).toBe(10000);
+    expect(res.body.rules.vatRule).toMatch(/EXCLUDING VAT/);
   });
 
   it("Google: fails loud when the ledger cannot infer a Gemini project's consumption before the export began", async () => {

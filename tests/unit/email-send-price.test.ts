@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { declaredVat, UNKNOWN_VAT } from "../helpers/ledger-vat.js";
 import {
   emailsPerDay,
   monthlyRollup,
@@ -6,14 +7,18 @@ import {
   pricePerEmail,
   spendPerDayAndVendor,
   type SpendLine,
+  vatTakenOut,
+  UnknownVatError,
 } from "../../src/lib/email-send-price.js";
 import { EMAIL_INFRA_VENDORS, EXCLUDED_EMAIL_VENDORS } from "../../src/lib/email-infra-vendors.js";
 
-const pay = (vendor: string, bookedOn: string, usdAmount: number, direction: "payment" | "refund" = "payment"): SpendLine => ({
+const pay = (vendor: string, bookedOn: string, usdAmount: number, direction: "payment" | "refund" = "payment", vatRate = 0): SpendLine => ({
+  id: `${vendor}:${bookedOn}:${usdAmount}`,
   vendor,
   bookedOn,
   usdAmount,
   direction,
+  vat: declaredVat(usdAmount, vatRate),
 });
 
 describe("email send price — owner formula: infra spend since inception / emails to leads since inception", () => {
@@ -39,10 +44,26 @@ describe("email send price — owner formula: infra spend since inception / emai
       pay("instantly", "2026-03-01", 20, "refund"),
       pay("forge", "2026-03-01", 3.33),
     ]);
+    const basis = "declared 0%: Bills excluding VAT (owner 2026-10-01)";
     expect(silver).toEqual([
-      { day: "2026-03-01", vendor: "forge", paidUsdCents: 333, refundedUsdCents: 0, payments: 1, refunds: 0 },
-      { day: "2026-03-01", vendor: "instantly", paidUsdCents: 10701, refundedUsdCents: 2000, payments: 2, refunds: 1 },
+      { day: "2026-03-01", vendor: "forge", paidUsdCents: 333, refundedUsdCents: 0, vatPaidUsdCents: 0, vatRefundedUsdCents: 0, vatBasis: basis, payments: 1, refunds: 0 },
+      { day: "2026-03-01", vendor: "instantly", paidUsdCents: 10701, refundedUsdCents: 2000, vatPaidUsdCents: 0, vatRefundedUsdCents: 0, vatBasis: basis, payments: 2, refunds: 1 },
     ]);
+  });
+
+  it("counts each line EXCLUDING VAT, the VAT taken out beside it (owner 2026-10-01: VAT is recoverable)", () => {
+    // Gandi bills 7.99 + 20% = 9.59; a 2.39 refund is 1.99 + 20%.
+    const silver = spendPerDayAndVendor([pay("gandi order", "2026-03-01", 9.59, "payment", 0.2), pay("gandi order", "2026-03-01", 2.39, "refund", 0.2)]);
+    expect(silver).toEqual([
+      { day: "2026-03-01", vendor: "gandi order", paidUsdCents: 799, refundedUsdCents: 199, vatPaidUsdCents: 160, vatRefundedUsdCents: 40, vatBasis: "declared 20%: Every line is a price x 1.2", payments: 1, refunds: 1 },
+    ]);
+    expect(vatTakenOut(silver)).toEqual({ vatUsdCents: 120, vatBasis: "declared 20%: Every line is a price x 1.2" });
+  });
+
+  it("refuses a line whose VAT the ledger cannot state: never read as 0% or a guessed rate", () => {
+    const line = { ...pay("forge", "2026-03-02", 50), vat: UNKNOWN_VAT };
+    expect(() => spendPerDayAndVendor([pay("forge", "2026-03-01", 10), line])).toThrow(UnknownVatError);
+    expect(() => spendPerDayAndVendor([line])).toThrow(/cannot state the VAT of 1 line\(s\).*forge 2026-03-02/);
   });
 
   it("is dense from the first PAYMENT (before any send) through today, price null until the first send", () => {
