@@ -21,7 +21,7 @@ import { fetchLedgerVendorPayments, fetchLedgerVendors } from "../lib/ledger.js"
 import { fetchGroupedConsumption } from "../lib/runs-service.js";
 import { CatalogueHistory } from "../lib/catalogue-history.js";
 import { PAY_AS_YOU_GO_VENDORS, REAL_COST_SINCE, matchesPrefix } from "../lib/price-lists.js";
-import { paygRatios, realCostSeries, type PlatformUnits } from "../lib/real-cost.js";
+import { paygRatios, realCostSeries, type GoldPoint, type PlatformUnits } from "../lib/real-cost.js";
 import type { ConsumptionRow } from "../lib/price-comparison.js";
 import { utcDay } from "./email-send-price.js";
 
@@ -267,13 +267,17 @@ const HOUR_MS = 60 * 60 * 1000;
  * today's real costs have not. Started after `listen()`, never awaited.
  */
 export function startRealCostScheduler(intervalMs: number = HOUR_MS): NodeJS.Timeout {
+  // The first tick after boot always recomputes: a deploy can change the formula, and the
+  // day's stored series would otherwise keep the old one until tomorrow.
+  let booted = false;
   const tick = async () => {
     if (running) return;
     try {
       const today = utcDay(new Date());
-      if (await succeededOn(realCostRefreshes, today)) return;
+      if (booted && await succeededOn(realCostRefreshes, today)) return;
       if (!(await succeededOn(emailSendPriceRefreshes, today)) || !(await succeededOn(subscriptionCostRefreshes, today))) return;
       const outcome = await refreshRealCosts();
+      booted = true;
       console.log(`[Costs Service] Real costs refreshed as of ${outcome.asOf} (${outcome.costItems} cost items)`);
     } catch (err) {
       console.error("[Costs Service] Real cost refresh FAILED, last series stays served:", err);
@@ -307,12 +311,20 @@ export async function goldForCostName(costName: string): Promise<GoldRow[]> {
   return db.select().from(realUnitCostsDaily).where(eq(realUnitCostsDaily.costName, costName)).orderBy(asc(realUnitCostsDaily.day));
 }
 
-/** `${day}|${costName}` -> real cost per unit (US cents). */
-export async function realCostMap(): Promise<Map<string, number | null>> {
+/** Every gold point, for replaying consumption at its real cost (`replayRealCost`). */
+export async function realCostPoints(): Promise<GoldPoint[]> {
   const rows = await db
-    .select({ day: realUnitCostsDaily.day, costName: realUnitCostsDaily.costName, real: realUnitCostsDaily.realCostUsdCents })
+    .select({
+      day: realUnitCostsDaily.day,
+      costName: realUnitCostsDaily.costName,
+      method: realUnitCostsDaily.method,
+      real: realUnitCostsDaily.realCostUsdCents,
+      ratio: realUnitCostsDaily.ratio,
+      vendor: realUnitCostsDaily.catalogueVendorCostUsdCents,
+    })
     .from(realUnitCostsDaily);
-  return new Map(rows.map((r) => [`${r.day}|${r.costName}`, r.real === null ? null : Number(r.real)]));
+  const n = (v: string | null) => (v === null ? null : Number(v));
+  return rows.map((r) => ({ day: r.day, costName: r.costName, method: r.method, realCost: n(r.real), ratio: n(r.ratio), catalogueVendorCost: n(r.vendor) }));
 }
 
 export async function paygRatiosOnDay(day: string) {

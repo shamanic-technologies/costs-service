@@ -4,6 +4,7 @@ import { LedgerError } from "../lib/ledger.js";
 import { RunsServiceError } from "../lib/runs-service.js";
 import { endOfDay } from "../lib/catalogue-history.js";
 import { compare, compareByGroup, type ConsumptionRow, type Interval } from "../lib/price-comparison.js";
+import { replayRealCost } from "../lib/real-cost.js";
 import {
   PAY_AS_YOU_GO_VENDORS,
   PROPOSED_MULTIPLIER,
@@ -24,7 +25,7 @@ import {
   loadCatalogueHistory,
   paygRatiosOnDay,
   paygSpend,
-  realCostMap,
+  realCostPoints,
   realCostRefreshState,
   refreshRealCosts,
   RealCostRefreshInProgressError,
@@ -236,14 +237,15 @@ router.get("/internal/price-comparison", async (req, res) => {
       res.status(503).json({ error: "The real costs have not been computed yet", lastRefresh });
       return;
     }
-    const [items1, items2, realCost, rows] = await Promise.all([
+    const [items1, items2, points, rows] = await Promise.all([
       priceList(list1),
       priceList(list2),
-      realCostMap(),
+      realCostPoints(),
       brandId ? consumptionByBrand(orgId, brandId) : consumptionByOrg(orgId),
     ]);
     const price1 = new Map(items1.map((i) => [i.costName, i.pricePerUnitUsdCents]));
     const price2 = new Map(items2.map((i) => [i.costName, i.pricePerUnitUsdCents]));
+    const realCost = replayRealCost(points);
     const result = compare({ rows, price1, price2, realCost, interval });
 
     let byOrg: unknown = null;
@@ -269,7 +271,7 @@ router.get("/internal/price-comparison", async (req, res) => {
       stale: lastSucceeded.asOf < utcDay(new Date()),
       notes: [
         "Amounts replay every unit runs-service counted (actual and refunded rows, both key sources) at quantity x the list's price.",
-        "Real cost = quantity x the real cost per unit of the consumption day; units through a customer's own key cost us nothing unless declared ours (Serper, Apify).",
+        "Real cost = quantity x the real cost of one unit: spend paid as a lump (email infrastructure, subscriptions, the pay-as-you-go paid/recorded ratio) is spread over every unit since 2026-01-01 at its latest value, so summed over units it equals what we paid; catalogue vendor rates are those of the consumption day. Units through a customer's own key cost us nothing unless declared ours (Serper, Apify).",
         "Billed = what runs-service actually charged: gross, net of the per-org discount, and the platform-key part (= the margin read's billed).",
         "Per brand, a co-branded run counts under each of its brands, so brand rows sum above the org.",
       ],

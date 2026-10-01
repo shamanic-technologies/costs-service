@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CatalogueHistory, endOfDay, type CatalogueVersion } from "../../src/lib/catalogue-history.js";
-import { paygRatios, realCostSeries } from "../../src/lib/real-cost.js";
+import { paygRatios, realCostSeries, replayRealCost } from "../../src/lib/real-cost.js";
 import { compare, compareByGroup, periodOf, type ConsumptionRow } from "../../src/lib/price-comparison.js";
 import { PAY_AS_YOU_GO_VENDORS, PROPOSED_MULTIPLIER, PASS_THROUGH_MULTIPLIER, EMAIL_SEND_COST_SHARES, matchesPrefix } from "../../src/lib/price-lists.js";
 import { SUBSCRIPTIONS } from "../../src/lib/subscriptions.js";
@@ -154,7 +154,7 @@ describe("price comparison", () => {
     row("2026-04-01", "b", 4, 8, { costSource: "org" }),
   ];
   const price1 = new Map<string, number | null>([["a", 5], ["b", 2]]);
-  const realCost = new Map<string, number | null>([["2026-03-02|a", 1], ["2026-03-09|a", 1], ["2026-04-01|b", 1]]);
+  const realCost = () => 1;
 
   it("the same list twice gives zero difference, and billed is what runs-service charged", () => {
     const r = compare({ rows, price1, price2: price1, realCost, interval: "month" });
@@ -185,5 +185,38 @@ describe("price comparison", () => {
   it("weeks start on Monday", () => {
     expect(periodOf("2026-10-04", "week")).toBe("2026-09-28");
     expect(periodOf("2026-09-28", "week")).toBe("2026-09-28");
+  });
+});
+
+describe("replaying consumption at its real cost", () => {
+  const p = (day: string, costName: string, method: string, realCost: number | null, ratio: number | null = null, vendor: number | null = null) => ({
+    day,
+    costName,
+    method,
+    realCost,
+    ratio,
+    catalogueVendorCost: vendor,
+  });
+  const real = replayRealCost([
+    p("2026-03-01", "email", "email-send-price", 494.7),
+    p("2026-10-01", "email", "email-send-price", 3.11),
+    p("2026-03-01", "tokens", "catalogue-vendor-cost", 0.0001, null, 0.0001),
+    p("2026-10-01", "tokens", "pay-as-you-go-ratio", 0.0006, 3, 0.0002),
+    p("2026-03-01", "zai", "catalogue-vendor-cost", 0.5),
+    p("2026-10-01", "zai", "catalogue-vendor-cost", 0.7),
+  ]);
+
+  it("spreads lump spend at its latest value (an early email is not priced at the setup average)", () => {
+    expect(real("2026-03-01", "email")).toBe(3.11);
+  });
+
+  it("applies the latest paid/recorded ratio to the vendor rate of the consumption day", () => {
+    expect(real("2026-03-01", "tokens")).toBe(0.0003);
+    expect(real("2026-10-01", "tokens")).toBe(0.0006);
+  });
+
+  it("keeps the consumption day's own real cost otherwise, and null for a name never priced", () => {
+    expect(real("2026-03-01", "zai")).toBe(0.5);
+    expect(real("2026-03-01", "nope")).toBeNull();
   });
 });
