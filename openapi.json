@@ -1022,6 +1022,376 @@
           "monthToDateEmailsToLeads",
           "monthPriceUsdCents"
         ]
+      },
+      "SubscriptionCostsResponse": {
+        "type": "object",
+        "properties": {
+          "formula": {
+            "type": "string"
+          },
+          "since": {
+            "type": "string",
+            "description": "2026-01-01: owner start date"
+          },
+          "asOf": {
+            "type": "string"
+          },
+          "refreshedAt": {
+            "type": "string"
+          },
+          "stale": {
+            "type": "boolean",
+            "description": "True when the served series was not computed today (UTC)"
+          },
+          "lastRefresh": {
+            "$ref": "#/components/schemas/EmailSendPriceRefreshAttempt"
+          },
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionCost"
+            },
+            "description": "Declared in costs-service src/lib/subscriptions.ts"
+          }
+        },
+        "required": [
+          "formula",
+          "since",
+          "asOf",
+          "refreshedAt",
+          "stale",
+          "lastRefresh",
+          "subscriptions"
+        ]
+      },
+      "SubscriptionCost": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string",
+            "description": "Catalogue provider"
+          },
+          "ledgerMatched": {
+            "type": "boolean",
+            "description": "False = no bank-ledger line declared: money fields are null (unknown), never 0"
+          },
+          "ledgerNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "ledgerVendors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "description": "Bank-ledger vendor key"
+                },
+                "firstPaidOn": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "lastPaidOn": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "payments": {
+                  "type": "integer"
+                },
+                "refunds": {
+                  "type": "integer"
+                },
+                "paidUsd": {
+                  "type": "number"
+                },
+                "refundedUsd": {
+                  "type": "number"
+                },
+                "netUsd": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "key",
+                "firstPaidOn",
+                "lastPaidOn",
+                "payments",
+                "refunds",
+                "paidUsd",
+                "refundedUsd",
+                "netUsd"
+              ]
+            }
+          },
+          "firstPaymentOn": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastPaymentOn": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidUsd": {
+            "type": "number",
+            "nullable": true,
+            "description": "Since 2026-01-01"
+          },
+          "refundedUsd": {
+            "type": "number",
+            "nullable": true
+          },
+          "netUsd": {
+            "type": "number",
+            "nullable": true,
+            "description": "paidUsd - refundedUsd: the numerator"
+          },
+          "creditDefinition": {
+            "type": "string"
+          },
+          "orgKeyUnitsCounted": {
+            "type": "boolean",
+            "description": "Whether units runs-service tags 'org' (customer key) are counted as our credits"
+          },
+          "orgKeyUnitsNote": {
+            "type": "string",
+            "description": "Why (evidence when counted)"
+          },
+          "credits": {
+            "type": "number",
+            "description": "Credits consumed through our account since 2026-01-01: the denominator"
+          },
+          "costPerCreditUsdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "Real cost of one credit, US cents, on NET paid"
+          },
+          "grossCostPerCreditUsdCents": {
+            "type": "number",
+            "nullable": true
+          },
+          "costPerCreditNullReason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "no-ledger-line",
+              "no-credit-consumed",
+              "negative-net-paid",
+              null
+            ]
+          },
+          "costItems": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "costName": {
+                  "type": "string"
+                },
+                "isCredit": {
+                  "type": "boolean"
+                },
+                "excludedReason": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "quantityPlatformKey": {
+                  "type": "number",
+                  "description": "Units since 2026-01-01 through our platform key"
+                },
+                "quantityOrgKey": {
+                  "type": "number",
+                  "description": "Units since 2026-01-01 runs-service tags as a customer's own key"
+                },
+                "creditsCounted": {
+                  "type": "number"
+                },
+                "unit": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "billedPricePerUnitInUsdCents": {
+                  "type": "number",
+                  "nullable": true,
+                  "description": "Catalogue price in force now"
+                },
+                "vendorCostPerUnitInUsdCents": {
+                  "type": "number",
+                  "nullable": true,
+                  "description": "Catalogue vendor cost of that version"
+                },
+                "catalogueNote": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Why the catalogue fields are null"
+                }
+              },
+              "required": [
+                "costName",
+                "isCredit",
+                "excludedReason",
+                "quantityPlatformKey",
+                "quantityOrgKey",
+                "creditsCounted",
+                "unit",
+                "billedPricePerUnitInUsdCents",
+                "vendorCostPerUnitInUsdCents",
+                "catalogueNote"
+              ]
+            }
+          },
+          "monthly": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "month": {
+                  "type": "string",
+                  "description": "YYYY-MM"
+                },
+                "paidUsd": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "refundedUsd": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "netUsd": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "credits": {
+                  "type": "number"
+                },
+                "monthCostPerCreditUsdCents": {
+                  "type": "number",
+                  "nullable": true,
+                  "description": "This month alone"
+                },
+                "cumulativeNetUsd": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "cumulativeCredits": {
+                  "type": "number"
+                },
+                "costPerCreditUsdCents": {
+                  "type": "number",
+                  "nullable": true,
+                  "description": "Running since 2026-01-01 at the month's last point"
+                },
+                "grossCostPerCreditUsdCents": {
+                  "type": "number",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "month",
+                "paidUsd",
+                "refundedUsd",
+                "netUsd",
+                "credits",
+                "monthCostPerCreditUsdCents",
+                "cumulativeNetUsd",
+                "cumulativeCredits",
+                "costPerCreditUsdCents",
+                "grossCostPerCreditUsdCents"
+              ]
+            }
+          },
+          "daily": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionCostDay"
+            },
+            "description": "Oldest first, last point = asOf"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "provider",
+          "ledgerMatched",
+          "ledgerNote",
+          "ledgerVendors",
+          "firstPaymentOn",
+          "lastPaymentOn",
+          "paidUsd",
+          "refundedUsd",
+          "netUsd",
+          "creditDefinition",
+          "orgKeyUnitsCounted",
+          "orgKeyUnitsNote",
+          "credits",
+          "costPerCreditUsdCents",
+          "grossCostPerCreditUsdCents",
+          "costPerCreditNullReason",
+          "costItems",
+          "monthly",
+          "daily"
+        ]
+      },
+      "SubscriptionCostDay": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "string",
+            "description": "YYYY-MM-DD; dense, one point per calendar day from 2026-01-01"
+          },
+          "paidUsd": {
+            "type": "number",
+            "nullable": true,
+            "description": "Paid to the ledger vendor(s) that day, USD; null when the subscription has no ledger line"
+          },
+          "netUsd": {
+            "type": "number",
+            "nullable": true,
+            "description": "Paid minus refunded that day"
+          },
+          "credits": {
+            "type": "number",
+            "description": "Credits consumed through our account that UTC day"
+          },
+          "cumulativePaidUsd": {
+            "type": "number",
+            "nullable": true
+          },
+          "cumulativeNetUsd": {
+            "type": "number",
+            "nullable": true
+          },
+          "cumulativeCredits": {
+            "type": "number"
+          },
+          "costPerCreditUsdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "cumulativeNetUsd*100 / cumulativeCredits; null over zero credits, a negative net, or no ledger line"
+          },
+          "grossCostPerCreditUsdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "cumulativePaidUsd*100 / cumulativeCredits (refunds ignored)"
+          }
+        },
+        "required": [
+          "day",
+          "paidUsd",
+          "netUsd",
+          "credits",
+          "cumulativePaidUsd",
+          "cumulativeNetUsd",
+          "cumulativeCredits",
+          "costPerCreditUsdCents",
+          "grossCostPerCreditUsdCents"
+        ]
       }
     },
     "parameters": {
@@ -2260,6 +2630,135 @@
           },
           "502": {
             "description": "The bank ledger or instantly-service could not answer (named); nothing was written",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/subscription-costs": {
+      "get": {
+        "operationId": "getSubscriptionCosts",
+        "summary": "Real cost per credit of each vendor subscription: net paid since 2026-01-01 / credits consumed since 2026-01-01, daily series (service api key only)",
+        "description": "Displayed figure only, no billed price reads it. Served from the last SUCCEEDED daily refresh; when a refresh fails the previous series stays served (`stale: true`, `lastRefresh.error` says why).",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The stored series",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionCostsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Never computed yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "lastRefresh": {
+                      "$ref": "#/components/schemas/EmailSendPriceRefreshAttempt"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "lastRefresh"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/subscription-costs/refresh": {
+      "post": {
+        "operationId": "refreshSubscriptionCosts",
+        "summary": "Recompute the subscription costs now from the bank ledger and runs-service (idempotent per day)",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Refreshed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "refreshId": {
+                      "type": "string"
+                    },
+                    "asOf": {
+                      "type": "string"
+                    },
+                    "days": {
+                      "type": "integer"
+                    },
+                    "subscriptions": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "refreshId",
+                    "asOf",
+                    "days",
+                    "subscriptions"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A refresh is already running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The bank ledger or runs-service could not answer (named); nothing was written",
             "content": {
               "application/json": {
                 "schema": {

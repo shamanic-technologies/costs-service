@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { and, asc, desc, eq, inArray, lte } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { platformCosts, providerCostVendorCosts, providersCosts } from "../db/schema.js";
+import { providerCostVendorCosts, providersCosts } from "../db/schema.js";
+import { catalogueVersionAt } from "../db/catalogue-version.js";
 import { requireApiKey } from "../middleware/auth.js";
 import { RECONSTRUCTED_PRICE_VERSIONS, type ReconstructedPriceVersion } from "../lib/vendor-cost-statements.js";
 
@@ -113,60 +114,13 @@ router.get("/internal/vendor-costs/:name", async (req, res) => {
       res.status(400).json({ error: `Invalid 'at': '${atParam}'. Expected an ISO-8601 instant.` });
       return;
     }
-    const existedAndInForce = and(
-      eq(providersCosts.name, name),
-      lte(providersCosts.effectiveFrom, at),
-      lte(providersCosts.createdAt, at),
-    );
-
-    const [newest] = await db
-      .select({ provider: providersCosts.provider })
-      .from(providersCosts)
-      .where(existedAndInForce)
-      .orderBy(desc(providersCosts.effectiveFrom), desc(providersCosts.createdAt))
-      .limit(1);
-    if (!newest) {
-      res.status(404).json({ error: `No price version of '${name}' was in force at ${at.toISOString()}` });
+    const resolved = await catalogueVersionAt(name, at);
+    if (!resolved.found) {
+      res.status(404).json({ error: resolved.reason });
       return;
     }
 
-    const [plan] = await db
-      .select()
-      .from(platformCosts)
-      .where(
-        // effective_from only: the seed writes a new provider's plan row a moment AFTER that
-        // provider's first cost rows, so bounding by created_at too would 404 the very instant
-        // those rows came into existence.
-        and(eq(platformCosts.provider, newest.provider), lte(platformCosts.effectiveFrom, at)),
-      )
-      .orderBy(desc(platformCosts.effectiveFrom))
-      .limit(1);
-    if (!plan) {
-      res.status(404).json({ error: `No platform plan for provider '${newest.provider}' was in force at ${at.toISOString()}` });
-      return;
-    }
-
-    const [row] = await db
-      .select({ pc: providersCosts, v: providerCostVendorCosts })
-      .from(providersCosts)
-      .leftJoin(providerCostVendorCosts, eq(providerCostVendorCosts.providerCostId, providersCosts.id))
-      .where(
-        and(
-          existedAndInForce,
-          eq(providersCosts.planTier, plan.planTier),
-          eq(providersCosts.billingCycle, plan.billingCycle),
-        ),
-      )
-      .orderBy(desc(providersCosts.effectiveFrom), desc(providersCosts.createdAt))
-      .limit(1);
-    if (!row) {
-      res.status(404).json({
-        error: `No price version of '${name}' on plan '${plan.planTier}/${plan.billingCycle}' was in force at ${at.toISOString()}`,
-      });
-      return;
-    }
-
-    res.json({ at: at.toISOString(), version: toVersion(row) });
+    res.json({ at: at.toISOString(), version: toVersion(resolved.row) });
   } catch (err) {
     console.error("[Costs Service] Error resolving vendor cost:", err);
     res.status(500).json({ error: "Internal server error" });
