@@ -30,6 +30,7 @@ const UsagePageSchema = z.object({
 });
 
 const BalanceSchema = z.object({ balance: z.string(), currency: z.string() });
+const AccountSchema = z.object({ sid: z.string(), friendly_name: z.string() });
 
 export type TwilioDailyUsage = { day: string; category: string; usdCents: number };
 
@@ -92,10 +93,15 @@ async function twilioGet<T>(path: string, auth: string, schema: z.ZodType<T>): P
 }
 
 /** Daily price of each named usage category from `since` through `until` (inclusive), and the balance now. */
-export async function fetchTwilioUsage(categories: readonly string[], since: string, until: string): Promise<TwilioUsage> {
+export async function fetchTwilioUsage(accountName: string, categories: readonly string[], since: string, until: string): Promise<TwilioUsage> {
   const { accountSid, authToken } = await platformCredentials();
   const auth = `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`;
   const account = `/2010-04-01/Accounts/${accountSid}`;
+  // Only the declared account's spend counts: refuse to read another one's usage as ours.
+  const { data: acct } = await twilioGet(`${account}.json`, auth, AccountSchema);
+  if (acct.friendly_name !== accountName) {
+    throw new TwilioUsageError(`The Twilio platform key opens account '${acct.friendly_name}', not the declared '${accountName}'`);
+  }
 
   const daily: TwilioDailyUsage[] = [];
   const raw: { category: string; pages: unknown[] }[] = [];

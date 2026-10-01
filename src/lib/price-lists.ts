@@ -90,6 +90,12 @@ export type PayAsYouGoVendor = {
 export type MeteredSpendSource =
   | {
       kind: "twilio-usage";
+      /**
+       * The ONE Twilio account whose spend counts (owner 2026-10-01): the bank line "twilio com" can
+       * pay several accounts; any other account's money stays in `unexplained`, never on a unit.
+       * The platform key must open exactly this account (matched on Twilio's friendly name).
+       */
+      account: string;
       meteredCategories: readonly string[];
       rentalCategories: readonly string[];
     }
@@ -145,7 +151,7 @@ export const PAY_AS_YOU_GO_VENDORS: readonly PayAsYouGoVendor[] = [
     ledgerVendors: ["twilio com"],
     ledgerVendorPrefix: null,
     excludedLedgerVendors: [],
-    meteredSpend: { kind: "twilio-usage", meteredCategories: ["calls", "sms", "mms", "channels"], rentalCategories: ["phonenumbers"] },
+    meteredSpend: { kind: "twilio-usage", account: "Distribute.you", meteredCategories: ["calls", "sms", "mms", "channels"], rentalCategories: ["phonenumbers"] },
   },
   { provider: "treg", ledgerVendors: ["treg"], ledgerVendorPrefix: null, excludedLedgerVendors: [] },
 ];

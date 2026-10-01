@@ -114,6 +114,7 @@ describe("a vendor whose bank money pays more than the units our runs record", (
   it("declares Twilio's rental apart from its metered categories, top-level only", () => {
     const tw = PAY_AS_YOU_GO_VENDORS.find((p) => p.provider === "twilio")!.meteredSpend!;
     expect(tw.kind).toBe("twilio-usage");
+    if (tw.kind === "twilio-usage") expect(tw.account).toBe("Distribute.you");
     expect(tw.rentalCategories).toEqual(["phonenumbers"]);
     for (const m of tw.meteredCategories) expect(tw.rentalCategories).not.toContain(m);
     for (const m of [...tw.meteredCategories, ...tw.rentalCategories]) expect(m, "a child category would count twice").not.toMatch(/-/);

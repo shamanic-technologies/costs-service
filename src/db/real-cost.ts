@@ -113,7 +113,7 @@ export async function readVendorParts(v: PayAsYouGoVendor, asOf: string): Promis
     const read = await fetchGoogleCloudSplit(REAL_COST_SINCE.slice(0, 7));
     return { ...googleCloudParts(read.data, v.provider, src.meteredServices, asOf), raw: read.body, url: read.url };
   }
-  const usage = await fetchTwilioUsage([...src.meteredCategories, ...src.rentalCategories, "totalprice"], REAL_COST_SINCE, asOf);
+  const usage = await fetchTwilioUsage(src.account, [...src.meteredCategories, ...src.rentalCategories, "totalprice"], REAL_COST_SINCE, asOf);
   const byDay = new Map<string, { metered: number; rental: number; total: number }>();
   for (const u of usage.daily) {
     const d = byDay.get(u.day) ?? { metered: 0, rental: 0, total: 0 };
