@@ -72,10 +72,6 @@
         "description": "Priority audience identifier chosen by campaign-service for cost attribution, injected by workflow-service (optional)",
         "example": "aud_abc123"
       },
-      "PaymentSourceKey": {
-        "type": "string",
-        "example": "revolut_business"
-      },
       "HealthResponse": {
         "type": "object",
         "properties": {
@@ -574,65 +570,13 @@
           "version"
         ]
       },
-      "PaymentSourceList": {
-        "type": "object",
-        "properties": {
-          "sources": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PaymentSource"
-            }
-          }
-        },
-        "required": [
-          "sources"
-        ]
-      },
-      "PaymentSource": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string",
-            "description": "Stable key, e.g. 'revolut_business'.",
-            "example": "revolut_business"
-          },
-          "displayName": {
-            "type": "string",
-            "example": "Revolut Business"
-          },
-          "domain": {
-            "type": "string",
-            "description": "Domain to feed a logo service (logo.dev).",
-            "example": "revolut.com"
-          }
-        },
-        "required": [
-          "key",
-          "displayName",
-          "domain"
-        ]
-      },
-      "PutPaymentSourceBody": {
-        "type": "object",
-        "properties": {
-          "displayName": {
-            "type": "string",
-            "minLength": 1
-          },
-          "domain": {
-            "type": "string",
-            "pattern": "^[a-z0-9-]+(\\.[a-z0-9-]+)+$"
-          }
-        },
-        "required": [
-          "displayName",
-          "domain"
-        ],
-        "additionalProperties": false
-      },
       "ProviderPaymentSourcesList": {
         "type": "object",
         "properties": {
+          "ledgerGeneratedAt": {
+            "type": "string",
+            "description": "When the bank ledger produced the answer (read live, never cached)."
+          },
           "providers": {
             "type": "array",
             "items": {
@@ -641,6 +585,7 @@
           }
         },
         "required": [
+          "ledgerGeneratedAt",
           "providers"
         ]
       },
@@ -657,40 +602,92 @@
             "nullable": true,
             "example": "openai.com"
           },
-          "sources": {
+          "match": {
+            "type": "string",
+            "enum": [
+              "matched",
+              "unmatched"
+            ],
+            "description": "'unmatched' = no vendor in the bank ledger could be tied to this provider (we cannot say who pays it), distinct from a matched provider."
+          },
+          "ledgerVendors": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/PaymentSource"
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "key",
+                "name"
+              ]
             },
-            "description": "Sources that pay this provider, sorted by key. Empty = not stated yet."
+            "description": "The ledger vendors joined to this provider (a vendor key starting with the provider's name or domain, longest name wins)."
+          },
+          "lastPaidOn": {
+            "type": "string",
+            "nullable": true,
+            "description": "Latest payment across every account (YYYY-MM-DD). Null when unmatched."
+          },
+          "paidFrom": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaidFromAccount"
+            },
+            "description": "Accounts that paid this provider, most recent first. Empty when unmatched."
           }
         },
         "required": [
           "provider",
           "providerDomain",
-          "sources"
+          "match",
+          "ledgerVendors",
+          "lastPaidOn",
+          "paidFrom"
         ]
       },
-      "PutProviderPaymentSourcesBody": {
+      "PaidFromAccount": {
         "type": "object",
         "properties": {
-          "sources": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            },
-            "description": "The full set of source keys that pay this provider (replaces the previous set). [] clears it.",
-            "example": [
-              "revolut_business",
-              "qonto"
+          "accountId": {
+            "type": "string",
+            "description": "The ledger's account id."
+          },
+          "label": {
+            "type": "string",
+            "example": "Revolut Business"
+          },
+          "institutionDomain": {
+            "type": "string",
+            "nullable": true,
+            "description": "Bank domain for a logo (logo.dev). Null when the ledger does not know the bank.",
+            "example": "revolut.com"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "personal",
+              "business"
             ]
+          },
+          "lastPaidOn": {
+            "type": "string",
+            "description": "Date (YYYY-MM-DD) this account last paid this provider.",
+            "example": "2026-09-28"
           }
         },
         "required": [
-          "sources"
-        ],
-        "additionalProperties": false
+          "accountId",
+          "label",
+          "institutionDomain",
+          "scope",
+          "lastPaidOn"
+        ]
       }
     },
     "parameters": {
@@ -783,14 +780,6 @@
         "description": "Priority audience identifier chosen by campaign-service for cost attribution, injected by workflow-service (optional)",
         "name": "x-audience-id",
         "in": "header"
-      },
-      "PaymentSourceKey": {
-        "schema": {
-          "$ref": "#/components/schemas/PaymentSourceKey"
-        },
-        "required": true,
-        "name": "key",
-        "in": "path"
       }
     }
   },
@@ -1770,121 +1759,10 @@
         }
       }
     },
-    "/internal/payment-sources": {
-      "get": {
-        "operationId": "listPaymentSources",
-        "summary": "The vocabulary of our own payment accounts that can pay a vendor (service api key only)",
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Every known payment source, sorted by key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaymentSourceList"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/internal/payment-sources/{key}": {
-      "put": {
-        "operationId": "putPaymentSource",
-        "summary": "Add a payment source to the vocabulary, or rename/re-domain an existing one (service api key only)",
-        "description": "Idempotent upsert. The key must match ^[a-z][a-z0-9_]*$ and is never renamed.",
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/PaymentSourceKey"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PutPaymentSourceBody"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The stored source",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaymentSource"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid key or body",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/internal/provider-payment-sources": {
       "get": {
         "operationId": "listProviderPaymentSources",
-        "summary": "Every catalogue provider with the payment sources that pay it (service api key only)",
+        "summary": "Every catalogue provider with the accounts that pay it, read live from the bank ledger (service api key only)",
         "security": [
           {
             "ApiKeyAuth": []
@@ -1892,7 +1770,7 @@
         ],
         "responses": {
           "200": {
-            "description": "One entry per provider in the catalogue, sorted by provider; sources = [] when not stated",
+            "description": "One entry per provider in the catalogue, sorted by provider",
             "content": {
               "application/json": {
                 "schema": {
@@ -1920,76 +1798,9 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/internal/provider-payment-sources/{provider}": {
-      "put": {
-        "operationId": "putProviderPaymentSources",
-        "summary": "Set the payment sources that pay a provider (replaces the set; service api key only)",
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/Provider"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PutProviderPaymentSourcesBody"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The provider with its new sources",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProviderPaymentSources"
-                }
-              }
-            }
           },
-          "400": {
-            "description": "Invalid body or unknown source key(s)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Provider not in the catalogue",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
+          "502": {
+            "description": "The bank ledger is not configured, unreachable, refused the key, or answered in an unknown shape (the error names which)",
             "content": {
               "application/json": {
                 "schema": {
