@@ -713,7 +713,12 @@
           "currentPriceUsdCents": {
             "type": "number",
             "nullable": true,
-            "description": "US cents per email sent to a lead, since inception"
+            "description": "US cents per email sent to a lead, since inception, on NET spend (paid minus refunded)"
+          },
+          "currentGrossPriceUsdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "Same on GROSS paid (refunds ignored), shown beside"
           },
           "currentMonthPriceUsdCents": {
             "type": "number",
@@ -724,11 +729,15 @@
             "properties": {
               "spendUsd": {
                 "type": "number",
-                "description": "Everything paid since inception, gross: the numerator of the price"
+                "description": "Net consumed since inception = paidUsd - refundedUsd: the numerator of the price"
+              },
+              "paidUsd": {
+                "type": "number",
+                "description": "Gross: every payment since inception"
               },
               "refundedUsd": {
                 "type": "number",
-                "description": "Money the vendors gave back since inception, NOT subtracted from the price"
+                "description": "Money the vendors gave back since inception"
               },
               "emailsToLeads": {
                 "type": "integer"
@@ -736,6 +745,7 @@
             },
             "required": [
               "spendUsd",
+              "paidUsd",
               "refundedUsd",
               "emailsToLeads"
             ]
@@ -830,14 +840,21 @@
                   "description": "YYYY-MM"
                 },
                 "spendUsd": {
-                  "type": "number"
+                  "type": "number",
+                  "description": "Net that month"
                 },
                 "spendByVendorUsd": {
                   "type": "object",
                   "additionalProperties": {
                     "type": "number"
                   },
-                  "description": "Paid per vendor key that month (gross)"
+                  "description": "Net per vendor key that month"
+                },
+                "paidUsd": {
+                  "type": "number"
+                },
+                "refundedUsd": {
+                  "type": "number"
                 },
                 "emailsToLeads": {
                   "type": "integer"
@@ -856,17 +873,28 @@
                 "priceUsdCents": {
                   "type": "number",
                   "nullable": true
+                },
+                "cumulativePaidUsd": {
+                  "type": "number"
+                },
+                "grossPriceUsdCents": {
+                  "type": "number",
+                  "nullable": true
                 }
               },
               "required": [
                 "month",
                 "spendUsd",
                 "spendByVendorUsd",
+                "paidUsd",
+                "refundedUsd",
                 "emailsToLeads",
                 "monthPriceUsdCents",
                 "cumulativeSpendUsd",
                 "cumulativeEmailsToLeads",
-                "priceUsdCents"
+                "priceUsdCents",
+                "cumulativePaidUsd",
+                "grossPriceUsdCents"
               ]
             }
           },
@@ -885,6 +913,7 @@
           "stale",
           "lastRefresh",
           "currentPriceUsdCents",
+          "currentGrossPriceUsdCents",
           "currentMonthPriceUsdCents",
           "totals",
           "firstPaymentOn",
@@ -942,7 +971,7 @@
           },
           "spendUsd": {
             "type": "number",
-            "description": "Email-infrastructure payments booked that day, USD (gross: refunds are not subtracted)"
+            "description": "Net email-infrastructure spend booked that day (paid minus refunded), USD; negative on a refund-only day"
           },
           "emailsToLeads": {
             "type": "integer",
@@ -957,7 +986,16 @@
           "priceUsdCents": {
             "type": "number",
             "nullable": true,
-            "description": "cumulativeSpendUsd*100 / cumulativeEmailsToLeads; null before the first send"
+            "description": "cumulativeSpendUsd*100 / cumulativeEmailsToLeads (net); null before the first send"
+          },
+          "cumulativePaidUsd": {
+            "type": "number",
+            "description": "Gross: every payment since inception, refunds ignored"
+          },
+          "grossPriceUsdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "cumulativePaidUsd*100 / cumulativeEmailsToLeads"
           },
           "monthToDateSpendUsd": {
             "type": "number"
@@ -968,7 +1006,7 @@
           "monthPriceUsdCents": {
             "type": "number",
             "nullable": true,
-            "description": "This calendar month alone, through this day; null when the month sent nothing yet"
+            "description": "This calendar month alone (net), through this day; null when the month sent nothing yet or its net spend is negative"
           }
         },
         "required": [
@@ -978,6 +1016,8 @@
           "cumulativeSpendUsd",
           "cumulativeEmailsToLeads",
           "priceUsdCents",
+          "cumulativePaidUsd",
+          "grossPriceUsdCents",
           "monthToDateSpendUsd",
           "monthToDateEmailsToLeads",
           "monthPriceUsdCents"

@@ -179,8 +179,12 @@ export const emailSendPriceDaily = pgTable("email_send_price_daily", {
   emailsToLeads: integer("emails_to_leads").notNull(),
   cumulativeSpendUsdCents: bigint("cumulative_spend_usd_cents", { mode: "number" }).notNull(),
   cumulativeEmailsToLeads: integer("cumulative_emails_to_leads").notNull(),
-  // NULL = no email sent yet (since inception / this month): a price over zero emails does not exist.
+  // Spend columns are NET (paid - refunded). NULL price = no email sent yet (since inception / this
+  // month) or a negative net spend: neither is a price.
   priceUsdCents: numeric("price_usd_cents", { precision: 14, scale: 4 }),
+  // Gross: every payment, refunds ignored, carried beside the net figures above.
+  cumulativePaidUsdCents: bigint("cumulative_paid_usd_cents", { mode: "number" }).notNull(),
+  grossPriceUsdCents: numeric("gross_price_usd_cents", { precision: 14, scale: 4 }),
   monthToDateSpendUsdCents: bigint("month_to_date_spend_usd_cents", { mode: "number" }).notNull(),
   monthToDateEmailsToLeads: integer("month_to_date_emails_to_leads").notNull(),
   monthPriceUsdCents: numeric("month_price_usd_cents", { precision: 14, scale: 4 }),

@@ -748,14 +748,16 @@ const RefreshAttemptSchema = z
 const EmailSendPriceDaySchema = z
   .object({
     day: z.string().describe("YYYY-MM-DD; dense, one point per calendar day from the first payment or send"),
-    spendUsd: z.number().describe("Email-infrastructure payments booked that day, USD (gross: refunds are not subtracted)"),
+    spendUsd: z.number().describe("Net email-infrastructure spend booked that day (paid minus refunded), USD; negative on a refund-only day"),
     emailsToLeads: z.number().int().describe("Emails sent to leads that UTC day"),
     cumulativeSpendUsd: z.number(),
     cumulativeEmailsToLeads: z.number().int(),
-    priceUsdCents: z.number().nullable().describe("cumulativeSpendUsd*100 / cumulativeEmailsToLeads; null before the first send"),
+    priceUsdCents: z.number().nullable().describe("cumulativeSpendUsd*100 / cumulativeEmailsToLeads (net); null before the first send"),
+    cumulativePaidUsd: z.number().describe("Gross: every payment since inception, refunds ignored"),
+    grossPriceUsdCents: z.number().nullable().describe("cumulativePaidUsd*100 / cumulativeEmailsToLeads"),
     monthToDateSpendUsd: z.number(),
     monthToDateEmailsToLeads: z.number().int(),
-    monthPriceUsdCents: z.number().nullable().describe("This calendar month alone, through this day; null when the month sent nothing yet"),
+    monthPriceUsdCents: z.number().nullable().describe("This calendar month alone (net), through this day; null when the month sent nothing yet or its net spend is negative"),
   })
   .openapi("EmailSendPriceDay");
 
@@ -766,11 +768,13 @@ export const EmailSendPriceResponseSchema = z
     refreshedAt: z.string().describe("When the served series was computed"),
     stale: z.boolean().describe("True when the served series was not computed today (UTC): the last refresh failed or has not run yet"),
     lastRefresh: RefreshAttemptSchema.nullable().describe("The most recent attempt, failed ones included"),
-    currentPriceUsdCents: z.number().nullable().describe("US cents per email sent to a lead, since inception"),
+    currentPriceUsdCents: z.number().nullable().describe("US cents per email sent to a lead, since inception, on NET spend (paid minus refunded)"),
+    currentGrossPriceUsdCents: z.number().nullable().describe("Same on GROSS paid (refunds ignored), shown beside"),
     currentMonthPriceUsdCents: z.number().nullable(),
     totals: z.object({
-      spendUsd: z.number().describe("Everything paid since inception, gross: the numerator of the price"),
-      refundedUsd: z.number().describe("Money the vendors gave back since inception, NOT subtracted from the price"),
+      spendUsd: z.number().describe("Net consumed since inception = paidUsd - refundedUsd: the numerator of the price"),
+      paidUsd: z.number().describe("Gross: every payment since inception"),
+      refundedUsd: z.number().describe("Money the vendors gave back since inception"),
       emailsToLeads: z.number().int(),
     }),
     firstPaymentOn: z.string().nullable(),
@@ -793,13 +797,17 @@ export const EmailSendPriceResponseSchema = z
     monthly: z.array(
       z.object({
         month: z.string().describe("YYYY-MM"),
-        spendUsd: z.number(),
-        spendByVendorUsd: z.record(z.string(), z.number()).describe("Paid per vendor key that month (gross)"),
+        spendUsd: z.number().describe("Net that month"),
+        spendByVendorUsd: z.record(z.string(), z.number()).describe("Net per vendor key that month"),
+        paidUsd: z.number(),
+        refundedUsd: z.number(),
         emailsToLeads: z.number().int(),
         monthPriceUsdCents: z.number().nullable(),
         cumulativeSpendUsd: z.number().describe("At the month's last point (month end, or today)"),
         cumulativeEmailsToLeads: z.number().int(),
         priceUsdCents: z.number().nullable(),
+        cumulativePaidUsd: z.number(),
+        grossPriceUsdCents: z.number().nullable(),
       }),
     ),
     daily: z.array(EmailSendPriceDaySchema).describe("Oldest first, last point = asOf"),

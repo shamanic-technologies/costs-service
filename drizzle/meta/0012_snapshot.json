@@ -1,5 +1,5 @@
 {
-  "id": "70d303be-2e41-4123-9ce4-65f56b132ad0",
+  "id": "ba2e1a38-20c6-4a20-9935-fe6117533e09",
   "prevId": "7e1a7992-772a-4370-a5f2-d75fe84b2623",
   "version": "7",
   "dialect": "postgresql",
@@ -97,6 +97,18 @@
         },
         "price_usd_cents": {
           "name": "price_usd_cents",
+          "type": "numeric(14, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cumulative_paid_usd_cents": {
+          "name": "cumulative_paid_usd_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gross_price_usd_cents": {
+          "name": "gross_price_usd_cents",
           "type": "numeric(14, 4)",
           "primaryKey": false,
           "notNull": false

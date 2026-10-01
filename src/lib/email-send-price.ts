@@ -4,8 +4,9 @@
  *
  * Owner rule (LOCKED 2026-10-01):
  *
- *   price per email (US cents) = everything ever paid to the email-infrastructure vendors
- *                                (`EMAIL_INFRA_VENDORS`, since inception, all included)
+ *   price per email (US cents) = everything ever consumed from the email-infrastructure vendors
+ *                                (`EMAIL_INFRA_VENDORS`, since inception, all included,
+ *                                paid MINUS refunded: a refunded purchase was not consumed)
  *                              / every email ever sent to a lead (`outreach` sends, since inception)
  *
  * Recomputed daily and kept as a dense per-day series so a reader can chart how it converged.
@@ -17,10 +18,11 @@
  *   silver = spend per (day, vendor) in USD, emails to leads per day
  *   gold   = the per-day series below
  *
- * "Paid" is GROSS: every payment line, refunds NOT subtracted. That is the owner's figure as
- * measured on 2026-10-01 (~4,583 EUR paid, ~3.34 US cents/email); the refunds (~378 EUR, mostly
- * Forge) are stored and served per vendor beside it so the net is one subtraction away, but
- * switching the price to net is the owner's call, not a rounding detail.
+ * Spend is NET (owner, 2026-10-01: "total consommé"). The GROSS figure (every payment line,
+ * refunds ignored — what the first brief measured, ~3.34c) is carried beside it on every point
+ * as `cumulativePaid*` / `grossPriceUsdCents`, so a reader can show both and see the gap.
+ * A price over a NEGATIVE spend (a month whose refunds exceed its payments) does not exist:
+ * `null`, like a price over zero emails.
  *
  * Money is summed in integer US cents (the ledger rounds each line to the cent), so a long
  * cumulative sum cannot drift. A price over zero emails is `null`, never zero and never infinite.
@@ -46,12 +48,17 @@ export type SilverSpendDay = {
 
 export type GoldDay = {
   day: string;
+  /** Net (paid - refunded) that day; negative on a day the vendors gave back more than we paid. */
   spendUsdCents: number;
   emailsToLeads: number;
   cumulativeSpendUsdCents: number;
   cumulativeEmailsToLeads: number;
-  /** US cents per email, since inception through this day. null while no email was ever sent. */
+  /** US cents per email on NET spend, since inception through this day. null while no email was ever sent. */
   priceUsdCents: number | null;
+  /** Gross: every payment since inception, refunds ignored. */
+  cumulativePaidUsdCents: number;
+  /** US cents per email on GROSS paid, since inception. */
+  grossPriceUsdCents: number | null;
   monthToDateSpendUsdCents: number;
   monthToDateEmailsToLeads: number;
   /** US cents per email, this calendar month alone through this day. null when the month sent nothing yet. */
@@ -65,7 +72,7 @@ export function toUsdCents(usd: number): number {
 }
 
 export function pricePerEmail(spendUsdCents: number, emails: number): number | null {
-  if (emails === 0) return null;
+  if (emails === 0 || spendUsdCents < 0) return null;
   const factor = 10 ** PRICE_DECIMALS;
   return Math.round((spendUsdCents / emails) * factor) / factor;
 }
@@ -115,8 +122,10 @@ export function addDays(day: string, n: number): string {
  */
 export function priceSeries(spend: SilverSpendDay[], emails: SendDay[], today: string): GoldDay[] {
   const spendByDay = new Map<string, number>();
+  const paidByDay = new Map<string, number>();
   for (const s of spend) {
-    if (s.paidUsdCents > 0) spendByDay.set(s.day, (spendByDay.get(s.day) ?? 0) + s.paidUsdCents);
+    spendByDay.set(s.day, (spendByDay.get(s.day) ?? 0) + s.paidUsdCents - s.refundedUsdCents);
+    paidByDay.set(s.day, (paidByDay.get(s.day) ?? 0) + s.paidUsdCents);
   }
   const emailsByDay = new Map(emails.map((e) => [e.day, e.toLeads]));
 
@@ -127,6 +136,7 @@ export function priceSeries(spend: SilverSpendDay[], emails: SendDay[], today: s
 
   const series: GoldDay[] = [];
   let cumSpend = 0;
+  let cumPaid = 0;
   let cumEmails = 0;
   let mtdSpend = 0;
   let mtdEmails = 0;
@@ -138,6 +148,7 @@ export function priceSeries(spend: SilverSpendDay[], emails: SendDay[], today: s
     const spendToday = spendByDay.get(day) ?? 0;
     const emailsToday = emailsByDay.get(day) ?? 0;
     cumSpend += spendToday;
+    cumPaid += paidByDay.get(day) ?? 0;
     cumEmails += emailsToday;
     mtdSpend += spendToday;
     mtdEmails += emailsToday;
@@ -148,6 +159,8 @@ export function priceSeries(spend: SilverSpendDay[], emails: SendDay[], today: s
       cumulativeSpendUsdCents: cumSpend,
       cumulativeEmailsToLeads: cumEmails,
       priceUsdCents: pricePerEmail(cumSpend, cumEmails),
+      cumulativePaidUsdCents: cumPaid,
+      grossPriceUsdCents: pricePerEmail(cumPaid, cumEmails),
       monthToDateSpendUsdCents: mtdSpend,
       monthToDateEmailsToLeads: mtdEmails,
       monthPriceUsdCents: pricePerEmail(mtdSpend, mtdEmails),
@@ -159,13 +172,18 @@ export function priceSeries(spend: SilverSpendDay[], emails: SendDay[], today: s
 export type MonthRollup = {
   month: string; // YYYY-MM
   spendUsdCents: number;
+  /** Net per vendor key that month. */
   spendByVendorUsdCents: Record<string, number>;
+  paidUsdCents: number;
+  refundedUsdCents: number;
   emailsToLeads: number;
   monthPriceUsdCents: number | null;
   cumulativeSpendUsdCents: number;
   cumulativeEmailsToLeads: number;
   /** The since-inception price at the month's last day in the series (month end, or today). */
   priceUsdCents: number | null;
+  cumulativePaidUsdCents: number;
+  grossPriceUsdCents: number | null;
 };
 
 /** Per calendar month: spend per vendor, emails, both prices at the month's last point. */
@@ -173,23 +191,31 @@ export function monthlyRollup(spend: SilverSpendDay[], series: GoldDay[], vendor
   const lastPointByMonth = new Map<string, GoldDay>();
   for (const p of series) lastPointByMonth.set(p.day.slice(0, 7), p);
   const byVendor = new Map<string, Record<string, number>>();
+  const paid = new Map<string, number>();
+  const refunded = new Map<string, number>();
   for (const s of spend) {
     const month = s.day.slice(0, 7);
+    paid.set(month, (paid.get(month) ?? 0) + s.paidUsdCents);
+    refunded.set(month, (refunded.get(month) ?? 0) + s.refundedUsdCents);
     let row = byVendor.get(month);
     if (!row) {
       row = Object.fromEntries(vendorKeys.map((k) => [k, 0]));
       byVendor.set(month, row);
     }
-    row[s.vendor] = (row[s.vendor] ?? 0) + s.paidUsdCents;
+    row[s.vendor] = (row[s.vendor] ?? 0) + s.paidUsdCents - s.refundedUsdCents;
   }
   return [...lastPointByMonth.entries()].map(([month, p]) => ({
     month,
     spendUsdCents: p.monthToDateSpendUsdCents,
     spendByVendorUsdCents: byVendor.get(month) ?? Object.fromEntries(vendorKeys.map((k) => [k, 0])),
+    paidUsdCents: paid.get(month) ?? 0,
+    refundedUsdCents: refunded.get(month) ?? 0,
     emailsToLeads: p.monthToDateEmailsToLeads,
     monthPriceUsdCents: p.monthPriceUsdCents,
     cumulativeSpendUsdCents: p.cumulativeSpendUsdCents,
     cumulativeEmailsToLeads: p.cumulativeEmailsToLeads,
     priceUsdCents: p.priceUsdCents,
+    cumulativePaidUsdCents: p.cumulativePaidUsdCents,
+    grossPriceUsdCents: p.grossPriceUsdCents,
   }));
 }

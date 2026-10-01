@@ -109,9 +109,10 @@ describe("/internal/email-send-price — price of one cold email sent to a lead"
 
     const res = await request(app).get("/internal/email-send-price").set(API_KEY);
     expect(res.status).toBe(200);
-    // gross: (40 + 97 + 63) USD = 200 USD over 6000 emails = 3.3333 US cents; the 3 USD refund is served apart
-    expect(res.body.totals).toEqual({ spendUsd: 200, refundedUsd: 3, emailsToLeads: 6000 });
-    expect(res.body.currentPriceUsdCents).toBeCloseTo(3.3333, 4);
+    // net: (40 + 97 + 63 - 3) USD = 197 USD over 6000 emails = 3.2833 US cents; gross 200 USD = 3.3333 beside it
+    expect(res.body.totals).toEqual({ spendUsd: 197, paidUsd: 200, refundedUsd: 3, emailsToLeads: 6000 });
+    expect(res.body.currentPriceUsdCents).toBeCloseTo(3.2833, 4);
+    expect(res.body.currentGrossPriceUsdCents).toBeCloseTo(3.3333, 4);
     expect(res.body.asOf).toBe(today);
     expect(res.body.stale).toBe(false);
     expect(res.body.firstPaymentOn).toBe("2026-02-10");
@@ -131,8 +132,8 @@ describe("/internal/email-send-price — price of one cold email sent to a lead"
     expect(cloudflare).toMatchObject({ firstPaidOn: null, netUsd: 0 });
 
     const march = res.body.monthly.find((m: { month: string }) => m.month === "2026-03");
-    expect(march).toMatchObject({ spendUsd: 63, spendByVendorUsd: { forge: 63, instantly: 0 }, emailsToLeads: 5000, monthPriceUsdCents: 1.26 });
-    expect(march.cumulativeSpendUsd).toBe(200);
+    expect(march).toMatchObject({ spendUsd: 60, paidUsd: 63, refundedUsd: 3, spendByVendorUsd: { forge: 60, instantly: 0 }, emailsToLeads: 5000, monthPriceUsdCents: 1.2 });
+    expect(march).toMatchObject({ cumulativeSpendUsd: 197, cumulativePaidUsd: 200 });
 
     const raw = await db.select().from(emailSendPriceRawReads);
     expect(raw.map((r) => r.source).sort()).toEqual(["bank-ledger", "instantly-service"]);

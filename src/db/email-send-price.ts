@@ -85,6 +85,7 @@ export async function refreshEmailSendPrice(now: Date = new Date()): Promise<Ref
           series.slice(i, i + 500).map((p) => ({
             ...p,
             priceUsdCents: p.priceUsdCents === null ? null : p.priceUsdCents.toFixed(4),
+            grossPriceUsdCents: p.grossPriceUsdCents === null ? null : p.grossPriceUsdCents.toFixed(4),
             monthPriceUsdCents: p.monthPriceUsdCents === null ? null : p.monthPriceUsdCents.toFixed(4),
             refreshId: attempt.id,
           })),
@@ -173,6 +174,7 @@ export async function readStoredSeries(): Promise<StoredSeries> {
     series: gold.map(({ refreshId: _r, ...p }) => ({
       ...p,
       priceUsdCents: p.priceUsdCents === null ? null : Number(p.priceUsdCents),
+      grossPriceUsdCents: p.grossPriceUsdCents === null ? null : Number(p.grossPriceUsdCents),
       monthPriceUsdCents: p.monthPriceUsdCents === null ? null : Number(p.monthPriceUsdCents),
     })),
   };

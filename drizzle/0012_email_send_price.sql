@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS "email_send_price_daily" (
 	"cumulative_spend_usd_cents" bigint NOT NULL,
 	"cumulative_emails_to_leads" integer NOT NULL,
 	"price_usd_cents" numeric(14, 4),
+	"cumulative_paid_usd_cents" bigint NOT NULL,
+	"gross_price_usd_cents" numeric(14, 4),
 	"month_to_date_spend_usd_cents" bigint NOT NULL,
 	"month_to_date_emails_to_leads" integer NOT NULL,
 	"month_price_usd_cents" numeric(14, 4),

@@ -38,15 +38,17 @@ router.get("/internal/email-send-price", async (_req, res) => {
     const firstPaymentOn = stored.spend.find((s) => s.paidUsdCents > 0)?.day ?? null;
 
     res.json({
-      formula: "everything paid to the email-infrastructure vendors since inception (gross, refunds not subtracted) / every email sent to a lead since inception",
+      formula: "everything consumed from the email-infrastructure vendors since inception (paid minus refunded) / every email sent to a lead since inception",
       asOf: latest.day,
       refreshedAt: stored.lastSucceeded.finishedAt.toISOString(),
       stale: stored.lastSucceeded.asOf < today,
       lastRefresh,
       currentPriceUsdCents: latest.priceUsdCents,
+      currentGrossPriceUsdCents: latest.grossPriceUsdCents,
       currentMonthPriceUsdCents: latest.monthPriceUsdCents,
       totals: {
         spendUsd: usd(latest.cumulativeSpendUsdCents),
+        paidUsd: usd(latest.cumulativePaidUsdCents),
         refundedUsd: usd(stored.spend.reduce((t, s) => t + s.refundedUsdCents, 0)),
         emailsToLeads: latest.cumulativeEmailsToLeads,
       },
@@ -75,11 +77,15 @@ router.get("/internal/email-send-price", async (_req, res) => {
         month: m.month,
         spendUsd: usd(m.spendUsdCents),
         spendByVendorUsd: Object.fromEntries(Object.entries(m.spendByVendorUsdCents).map(([k, c]) => [k, usd(c)])),
+        paidUsd: usd(m.paidUsdCents),
+        refundedUsd: usd(m.refundedUsdCents),
         emailsToLeads: m.emailsToLeads,
         monthPriceUsdCents: m.monthPriceUsdCents,
         cumulativeSpendUsd: usd(m.cumulativeSpendUsdCents),
         cumulativeEmailsToLeads: m.cumulativeEmailsToLeads,
         priceUsdCents: m.priceUsdCents,
+        cumulativePaidUsd: usd(m.cumulativePaidUsdCents),
+        grossPriceUsdCents: m.grossPriceUsdCents,
       })),
       daily: stored.series.map((p) => ({
         day: p.day,
@@ -88,6 +94,8 @@ router.get("/internal/email-send-price", async (_req, res) => {
         cumulativeSpendUsd: usd(p.cumulativeSpendUsdCents),
         cumulativeEmailsToLeads: p.cumulativeEmailsToLeads,
         priceUsdCents: p.priceUsdCents,
+        cumulativePaidUsd: usd(p.cumulativePaidUsdCents),
+        grossPriceUsdCents: p.grossPriceUsdCents,
         monthToDateSpendUsd: usd(p.monthToDateSpendUsdCents),
         monthToDateEmailsToLeads: p.monthToDateEmailsToLeads,
         monthPriceUsdCents: p.monthPriceUsdCents,
