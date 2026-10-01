@@ -141,6 +141,14 @@ Which of OUR accounts pays each vendor lives in Kevin's bank ledger (admin.kevin
 - Layering: bronze `email_send_price_raw_reads` (raw bodies, one per day per source), silver `email_infra_spend_daily` + `emails_to_leads_daily`, gold `email_send_price_daily`. A refresh rewrites silver+gold WHOLE in one transaction (late bank lines correct past days; same-day re-run is idempotent). A failed refresh writes only its `failed` attempt row; the previous series stays served with `stale: true`.
 - Scheduler: hourly in-process tick after `listen()`, refreshes when today (UTC) has no succeeded run. Regressions: `tests/unit/email-send-price.test.ts`, `tests/integration/email-send-price.test.ts`.
 
+## Subscription cost per credit = same machine as the email send price (2026-10)
+
+`GET /internal/subscription-costs` (staff, api key): per vendor subscription, NET paid to its ledger vendor(s) since 2026-01-01 / credits consumed through OUR account since 2026-01-01, daily series + monthly rollup, bronze `subscription_cost_raw_reads` / silver `subscription_spend_daily` + `subscription_consumption_daily` / gold `subscription_cost_daily`, same refresh/stale/scheduler contract as the email send price. Display only.
+
+- **Declared ONCE in `src/lib/subscriptions.ts`** (owner-reviewable): ledger vendor keys, credit cost names, excluded names with reason. Pay-as-you-go vendors are not subscriptions. A subscription with NO ledger line (Explee) serves money `null`, never $0.
+- **Consumption = runs-service `GET /internal/stats/costs/consumption`** (`RUNS_SERVICE_*`), fleet-wide, `platform` vs `org` key apart. Only `platform` units are our credits unless `orgKeyRows.count` carries key-service evidence (Serper and Apify: runs tags them `org`, key-service holds no customer key for either, 2026-10-01). Re-check key-service before flipping another provider.
+- Regressions: `tests/unit/subscription-cost.test.ts` (also fails when a seeded cost name of a subscription provider is neither a credit nor an exclusion), `tests/integration/subscription-costs.test.ts`.
+
 ## Cold-email infrastructure = DELISTED, not deleted (2026-08)
 
 Instantly subscriptions, MailForge, PrimeForge and the Claude Max seat moved OFF the

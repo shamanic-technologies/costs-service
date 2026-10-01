@@ -190,3 +190,85 @@ export const emailSendPriceDaily = pgTable("email_send_price_daily", {
   monthPriceUsdCents: numeric("month_price_usd_cents", { precision: 14, scale: 4 }),
   refreshId: uuid("refresh_id").notNull(),
 });
+
+// --- Real cost per credit of each vendor subscription (staff display only, see src/lib/subscription-cost.ts) ---
+
+/** One refresh attempt. The served series is always the last SUCCEEDED one; a failure is recorded, never zeroes it. */
+export const subscriptionCostRefreshes = pgTable(
+  "subscription_cost_refreshes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    asOf: date("as_of").notNull(),
+    status: text("status").notNull(),
+    error: text("error"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("idx_subscription_cost_refreshes_started").on(table.startedAt),
+    check("subscription_cost_refreshes_status", sql`${table.status} IN ('running', 'succeeded', 'failed')`),
+  ],
+);
+
+/** Bronze: the raw upstream bodies, one per (day read, source). A same-day re-read replaces its own row. */
+export const subscriptionCostRawReads = pgTable(
+  "subscription_cost_raw_reads",
+  {
+    readOn: date("read_on").notNull(),
+    source: text("source").notNull(),
+    url: text("url").notNull(),
+    body: jsonb("body").notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ name: "subscription_cost_raw_reads_pk", columns: [table.readOn, table.source] })],
+);
+
+/** Silver: what we paid each subscription's ledger vendor per day, in US cents, refunds apart. */
+export const subscriptionSpendDaily = pgTable(
+  "subscription_spend_daily",
+  {
+    day: date("day").notNull(),
+    vendor: text("vendor").notNull(),
+    paidUsdCents: bigint("paid_usd_cents", { mode: "number" }).notNull(),
+    refundedUsdCents: bigint("refunded_usd_cents", { mode: "number" }).notNull(),
+    payments: integer("payments").notNull(),
+    refunds: integer("refunds").notNull(),
+  },
+  (table) => [primaryKey({ name: "subscription_spend_daily_pk", columns: [table.day, table.vendor] })],
+);
+
+/** Silver: units consumed per UTC day, cost name and key source (runs-service), in micro-units. */
+export const subscriptionConsumptionDaily = pgTable(
+  "subscription_consumption_daily",
+  {
+    day: date("day").notNull(),
+    costName: text("cost_name").notNull(),
+    costSource: text("cost_source").notNull(),
+    quantityMicros: bigint("quantity_micros", { mode: "number" }).notNull(),
+    refundedQuantityMicros: bigint("refunded_quantity_micros", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    primaryKey({ name: "subscription_consumption_daily_pk", columns: [table.day, table.costName, table.costSource] }),
+  ],
+);
+
+/** Gold: per subscription, one point per day since 2026-01-01. Money NULL = no ledger line (unknown, not zero). */
+export const subscriptionCostDaily = pgTable(
+  "subscription_cost_daily",
+  {
+    day: date("day").notNull(),
+    subscription: text("subscription").notNull(),
+    paidUsdCents: bigint("paid_usd_cents", { mode: "number" }),
+    refundedUsdCents: bigint("refunded_usd_cents", { mode: "number" }),
+    netUsdCents: bigint("net_usd_cents", { mode: "number" }),
+    creditsMicros: bigint("credits_micros", { mode: "number" }).notNull(),
+    cumulativePaidUsdCents: bigint("cumulative_paid_usd_cents", { mode: "number" }),
+    cumulativeRefundedUsdCents: bigint("cumulative_refunded_usd_cents", { mode: "number" }),
+    cumulativeNetUsdCents: bigint("cumulative_net_usd_cents", { mode: "number" }),
+    cumulativeCreditsMicros: bigint("cumulative_credits_micros", { mode: "number" }).notNull(),
+    costPerCreditUsdCents: numeric("cost_per_credit_usd_cents", { precision: 18, scale: 6 }),
+    grossCostPerCreditUsdCents: numeric("gross_cost_per_credit_usd_cents", { precision: 18, scale: 6 }),
+    refreshId: uuid("refresh_id").notNull(),
+  },
+  (table) => [primaryKey({ name: "subscription_cost_daily_pk", columns: [table.day, table.subscription] })],
+);
