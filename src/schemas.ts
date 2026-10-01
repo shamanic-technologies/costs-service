@@ -1037,10 +1037,14 @@ registry.registerPath({
                   .object({
                     parts: z.array(
                       z.object({
-                        part: z.string().describe("metered | rental | other | unconsumed-balance"),
+                        part: z
+                          .string()
+                          .describe(
+                            "Twilio: metered | rental | other | unconsumed-balance. Google Cloud: metered | metered-uncovered | other-services | other-services-uncovered | tax | adjustments | prepaid | outstanding (negative: billed, not collected yet)",
+                          ),
                         usdCents: z.number().nullable(),
                         basis: z.string().nullable(),
-                        loadedOnUnits: z.boolean().describe("Only the metered part is loaded on units"),
+                        loadedOnUnits: z.boolean().describe("Only metered parts (metered, metered-uncovered) are loaded on units"),
                         flag: z.string().nullable(),
                       }),
                     ),

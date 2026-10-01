@@ -45,7 +45,9 @@ const PAYMENTS = {
 };
 
 // Google Cloud (bank ledger split, EUR): January has no export; February's export covers 02-02 only:
-// Gemini 10, Secret Manager 1, tax 2, a 3 EUR prepaid top-up charged 02-02. Ledger rate 1.2 USD/EUR.
+// Gemini 10 on MCP Factory + 1 on Distribute (both ours) + 4 on another project, Secret Manager 1,
+// tax 2, a 3 EUR prepaid top-up charged 02-02. Before the export began (02-01) the ledger infers
+// 5 EUR on MCP Factory and 2 on agent-base; 4 EUR billed is not collected yet. Ledger rate 1.2 USD/EUR.
 const GOOGLE_SPLIT = {
   generatedAt: "2026-10-01T10:00:00.000Z",
   vendor: "google cloud",
@@ -53,25 +55,35 @@ const GOOGLE_SPLIT = {
   since: "2026-01",
   until: "2026-02",
   months: [
-    { month: "2026-01", export: null, bank: { payments: [{ eurAmount: 50, usdAmount: 60, direction: "payment" }], paidEur: 50, prepaidEur: 0 }, explainedEur: 0, unexplainedEur: 50, notes: [] },
+    { month: "2026-01", export: null, bank: { payments: [{ eurAmount: 50, usdAmount: 60, direction: "payment" }], paidEur: 50, prepaidEur: 0 }, explainedEur: 0, outstandingEur: 0, unexplainedEur: 50, notes: [] },
     {
       month: "2026-02",
       export: {
         coveredFrom: "2026-02-02",
         coveredTo: "2026-02-02",
         partial: true,
-        consumption: [{ service: "Gemini API", costEur: 10, creditsEur: 0, netEur: 10 }, { service: "Secret Manager", costEur: 1, creditsEur: 0, netEur: 1 }],
-        consumptionEur: 11,
+        consumption: [{ service: "Gemini API", costEur: 15, creditsEur: 0, netEur: 15 }, { service: "Secret Manager", costEur: 1, creditsEur: 0, netEur: 1 }],
+        consumptionEur: 16,
         taxEur: 2,
         adjustmentsEur: 0,
         roundingEur: 0,
-        invoiceEur: 13,
+        invoiceEur: 18,
+        uncoveredEur: 7 as number | null,
+        invoiceTotalEur: 25,
+        projects: [
+          { projectId: "mcp-factory-485906", consumption: [{ service: "Gemini API", netEur: 10 }], uncoveredEur: 5 as number | null },
+          { projectId: "distribute-488803", consumption: [{ service: "Gemini API", netEur: 1 }], uncoveredEur: 0 as number | null },
+          { projectId: "side-project", consumption: [{ service: "Gemini API", netEur: 4 }], uncoveredEur: 0 as number | null },
+          { projectId: "agent-base-453812", consumption: [{ service: "Secret Manager", netEur: 1 }], uncoveredEur: 2 as number | null },
+          { projectId: null, consumption: [], uncoveredEur: 0 as number | null },
+        ],
         prepayments: [{ chargedOn: "2026-02-02", creditEur: 3, taxEur: 0, totalEur: 3, bankPaymentIds: [] }],
         prepaidEur: 3,
       },
       bank: { payments: [], paidEur: 0, prepaidEur: 0 },
-      explainedEur: 16,
-      unexplainedEur: -16,
+      explainedEur: 28,
+      outstandingEur: 4,
+      unexplainedEur: 0,
       notes: [],
     },
   ],
@@ -257,30 +269,48 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     expect(res.body.payAsYouGo.find((p: { provider: string }) => p.provider === "anthropic").split).toBeNull();
   });
 
-  it("Google: Gemini's real cost uses only Gemini consumption from the export's first day; tax, other services, prepaid and pre-export money apart (x3.24 bug)", async () => {
+  it("Google: Gemini's real cost counts Gemini on our two projects only, plus what they consumed before the export began; everything else apart", async () => {
     await seedCatalogue();
-    // 1000 units on 01-15 (before the export) must not dilute the ratio; 300 units on 02-02 = 600 cents recorded.
+    // 1000 units on 01-15 (before any Gemini figure) must not dilute the ratio; 100 units on 02-01 + 300 on 02-02 = 800 cents recorded.
     const g = (d: string, q: string) => day({ day: d, costName: "google-tokens", quantity: q, ...money("0.0000000000") });
-    stub({ byOrg: () => json({ ...BY_ORG, days: [...BY_ORG.days, g("2026-01-15", "1000.000000"), g("2026-02-02", "300.000000")] }) });
+    stub({ byOrg: () => json({ ...BY_ORG, days: [...BY_ORG.days, g("2026-01-15", "1000.000000"), g("2026-02-01", "100.000000"), g("2026-02-02", "300.000000")] }) });
     await refreshRealCosts();
     const res = await request(app).get("/internal/real-costs").set(API_KEY);
     const gc = res.body.payAsYouGo.find((p: { provider: string }) => p.provider === "google");
-    // Gemini 10 EUR x 1.2 = 1200 cents over 600 recorded from 02-02 -> ratio 2 (the whole bank block would say 10000 / 2600)
-    expect(gc).toMatchObject({ netPaidUsdCents: 10000, numeratorBasis: "google-cloud-split-metered", meteredUsdCents: 1200, vendorCostRecordedUsdCents: 600, ratio: 2 });
+    // Gemini on our two projects: 11 EUR covered + 5 EUR before the export = 16 x 1.2 = 1920 cents over 800 recorded from 02-01 -> ratio 2.4
+    expect(gc).toMatchObject({ netPaidUsdCents: 10000, numeratorBasis: "google-cloud-split-metered", meteredUsdCents: 1920, vendorCostRecordedUsdCents: 800, ratio: 2.4 });
     const part = (name: string) => gc.split.parts.find((p: { part: string }) => p.part === name);
-    expect(part("metered")).toMatchObject({ usdCents: 1200, loadedOnUnits: true });
-    expect(part("other-services")).toMatchObject({ usdCents: 120, loadedOnUnits: false, flag: "other-services-not-loaded-on-units" });
+    expect(part("metered")).toMatchObject({ usdCents: 1320, loadedOnUnits: true });
+    expect(part("metered").basis).toMatch(/mcp-factory-485906, distribute-488803/);
+    expect(part("metered").basis).toMatch(/EUR->USD 1\.2000/);
+    expect(part("metered-uncovered")).toMatchObject({ usdCents: 600, loadedOnUnits: true, flag: "inferred-before-export" });
+    expect(part("metered-uncovered").basis).toMatch(/2026-02-01 to 2026-02-01.*uncoveredEur/);
+    // Gemini on another project is not ours: 4 EUR + Secret Manager 1 EUR
+    expect(part("other-services")).toMatchObject({ usdCents: 600, loadedOnUnits: false, flag: "other-services-not-loaded-on-units" });
+    expect(part("other-services-uncovered")).toMatchObject({ usdCents: 240, loadedOnUnits: false });
     expect(part("tax")).toMatchObject({ usdCents: 240, loadedOnUnits: false, flag: "tax-not-real-cost" });
     expect(part("adjustments").usdCents).toBe(0);
     expect(part("prepaid")).toMatchObject({ usdCents: 360, loadedOnUnits: false });
-    expect(part("metered").basis).toMatch(/EUR->USD 1\.2000/);
+    expect(part("outstanding")).toMatchObject({ usdCents: -480, loadedOnUnits: false, flag: "billed-not-collected-yet" });
 
-    expect(gc.split.unexplained).toMatchObject({ usdCents: 8080, flag: "unexplained-not-loaded-on-units" });
-    expect(res.body.items.find((i: { costName: string }) => i.costName === "google-tokens")).toMatchObject({ ratio: 2, realCostPerUnitUsdCents: 4, proposedPricePerUnitUsdCents: 8 });
-    // Before the export covers a day, the item keeps its catalogue vendor cost, flagged.
+    // 10000 paid - (1320 + 600 + 600 + 240 + 240 + 360 - 480) = 7120: January's pre-export money only
+    expect(gc.split.unexplained).toMatchObject({ usdCents: 7120, flag: "unexplained-not-loaded-on-units" });
+    expect(gc.split.unexplained.basis).toMatch(/before the billing export began/);
+    expect(res.body.items.find((i: { costName: string }) => i.costName === "google-tokens")).toMatchObject({ ratio: 2.4, realCostPerUnitUsdCents: 4.8, proposedPricePerUnitUsdCents: 9.6 });
+    // Before any Gemini figure covers a day, the item keeps its catalogue vendor cost, flagged.
     const jan = await request(app).get("/internal/real-costs?day=2026-01-31").set(API_KEY);
     expect(jan.body.items.find((i: { costName: string }) => i.costName === "google-tokens")).toMatchObject({ method: "catalogue-vendor-cost", flag: "no-metered-spend-yet", realCostPerUnitUsdCents: 2 });
     expect(jan.body.payAsYouGo.find((p: { provider: string }) => p.provider === "google").split.unexplained.usdCents).toBe(10000);
+  });
+
+  it("Google: fails loud when the ledger cannot infer a Gemini project's consumption before the export began", async () => {
+    await seedCatalogue();
+    const feb = GOOGLE_SPLIT.months[1];
+    const projects = feb.export!.projects.map((p) => (p.projectId === "mcp-factory-485906" ? { ...p, uncoveredEur: null } : p));
+    stub({ google: () => json({ ...GOOGLE_SPLIT, months: [GOOGLE_SPLIT.months[0], { ...feb, export: { ...feb.export!, uncoveredEur: null, projects } }] }) });
+    const res = await request(app).post("/internal/real-costs/refresh").set(API_KEY);
+    expect(res.status).toBe(500);
+    expect(res.body.error).toMatch(/cannot infer mcp-factory-485906/);
   });
 
   it("Google: a part summed over months converted at different rates names every rate, not only the first", async () => {
@@ -291,8 +321,8 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     await refreshRealCosts();
     const res = await request(app).get("/internal/real-costs").set(API_KEY);
     const metered = res.body.payAsYouGo.find((p: { provider: string }) => p.provider === "google").split.parts.find((p: { part: string }) => p.part === "metered");
-    // 10 EUR x 1.2 + 10 EUR x 1.1 = 2300 cents
-    expect(metered.usdCents).toBe(2300);
+    // 11 EUR x 1.2 + 11 EUR x 1.1 = 2530 cents
+    expect(metered.usdCents).toBe(2530);
     expect(metered.basis).toMatch(/EUR->USD 1\.2000 .* \| .*EUR->USD 1\.1000/);
   });
 
