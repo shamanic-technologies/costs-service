@@ -122,7 +122,9 @@ function vendorSplit(provider: string, basis: string, day: string, asOf: string,
     const rows = SNAPSHOT_PARTS.has(part) ? all.filter((p) => p.part === part && p.day === day && day === asOf) : all.filter((p) => p.part === part && p.day <= day);
     if (SNAPSHOT_PARTS.has(part) && rows.length === 0) snapshotMissing = true;
     const usdCents = SNAPSHOT_PARTS.has(part) && rows.length === 0 ? null : r2(rows.reduce((t, p) => t + Number(p.usdCents), 0));
-    return { part, usdCents, basis: all.find((p) => p.part === part)?.basis ?? null, ...PART_RULES[part] };
+    // A cumulative part can span several monthly EUR->USD rates: name every basis it sums, not the first.
+    const bases = [...new Set((rows.length > 0 ? rows : all.filter((p) => p.part === part)).map((p) => p.basis))];
+    return { part, usdCents, basis: bases.length > 0 ? bases.join(" | ") : null, ...PART_RULES[part] };
   });
   const explained = out.reduce((t, p) => t + (p.usdCents ?? 0), 0);
   return {
