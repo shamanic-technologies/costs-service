@@ -78,6 +78,13 @@
       "when": 1790855177781,
       "tag": "0010_payment_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790858007541,
+      "tag": "0011_drop_payment_sources",
+      "breakpoints": true
     }
   ]
 }
