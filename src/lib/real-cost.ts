@@ -284,3 +284,45 @@ function uncataloguedRow(
     proposedBasis: realCost === null ? "no-price" : "real-cost-x2",
   };
 }
+
+export type GoldPoint = {
+  day: string;
+  costName: string;
+  method: string;
+  realCost: number | null;
+  ratio: number | null;
+  catalogueVendorCost: number | null;
+};
+
+/**
+ * Real cost of ONE unit consumed on `day`, for replaying consumption (`/internal/price-comparison`).
+ *
+ * Spend we pay as a lump is spread over EVERY unit since 2026-01-01 at its latest value, so the
+ * real cost summed over all units equals what we paid: the email send price and a subscription's
+ * cost per credit are since-inception averages whose early values are setup spend over a handful of
+ * units (the email price was ~$5 an email on 2026-03-01, over 74 emails), and a pay-as-you-go
+ * paid/recorded ratio is the same kind of average. The CATALOGUE vendor rate stays the one in force
+ * on the consumption day (a vendor price change is a fact of that day). Every other method uses the
+ * consumption day's own real cost.
+ */
+export function replayRealCost(points: GoldPoint[]): (day: string, costName: string) => number | null {
+  const byKey = new Map<string, GoldPoint>();
+  const latest = new Map<string, GoldPoint>();
+  for (const p of points) {
+    byKey.set(`${p.day}|${p.costName}`, p);
+    const l = latest.get(p.costName);
+    if (!l || p.day > l.day) latest.set(p.costName, p);
+  }
+  const AMORTIZED = new Set(["email-send-price", "subscription", "included-at-vendor"]);
+  return (day, costName) => {
+    const last = latest.get(costName);
+    const own = byKey.get(`${day}|${costName}`);
+    if (!last) return null;
+    if (AMORTIZED.has(last.method)) return last.realCost;
+    if (last.method === "pay-as-you-go-ratio" && last.ratio !== null) {
+      const vendor = own?.catalogueVendorCost ?? last.catalogueVendorCost;
+      return vendor === null ? last.realCost : round10(vendor * last.ratio);
+    }
+    return own ? own.realCost : last.realCost;
+  };
+}

@@ -92,8 +92,8 @@ export type ComparisonInputs = {
   rows: ConsumptionRow[];
   price1: Map<string, number | null>;
   price2: Map<string, number | null>;
-  /** `${day}|${costName}` -> real cost per unit that day (US cents); absent/null = unknown. */
-  realCost: Map<string, number | null>;
+  /** Real cost of one unit consumed that day (US cents); null = unknown. See `replayRealCost`. */
+  realCost: (day: string, costName: string) => number | null;
   interval: Interval;
 };
 
@@ -118,7 +118,7 @@ export function compare(inputs: ComparisonInputs) {
     const p1 = price1.get(r.costName) ?? null;
     const p2 = price2.get(r.costName) ?? null;
     const ours = r.costSource === "platform" || ORG_KEY_UNITS_ARE_OURS.has(r.costName);
-    const unitReal = ours ? (realCost.get(`${r.day}|${r.costName}`) ?? null) : 0;
+    const unitReal = ours ? realCost(r.day, r.costName) : 0;
     const d: Acc = {
       a1: p1 === null ? 0 : r.quantity * p1,
       a2: p2 === null ? 0 : r.quantity * p2,
