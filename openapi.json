@@ -1463,7 +1463,7 @@
               "email-send-price",
               "pass-through",
               "subscription",
-              "pay-as-you-go-ratio",
+              "api-list-cost",
               "catalogue-vendor-cost",
               "included-at-vendor"
             ]
@@ -1475,9 +1475,6 @@
               "no-email-sent-yet",
               "not-a-subscription-credit",
               "no-real-cost-per-credit",
-              "no-payment-yet",
-              "no-metered-spend-yet",
-              "no-recorded-usage-yet",
               "no-ledger-line",
               "declared-catalogue-vendor-cost",
               "no-vendor-cost",
@@ -3015,7 +3012,18 @@
                           "ratio": {
                             "type": "number",
                             "nullable": true,
-                            "description": "meteredUsdCents / vendorCostRecordedUsdCents"
+                            "description": "meteredUsdCents / vendorCostRecordedUsdCents. Informational: prices no unit (owner rule 2026-10-01, an API is at its list cost)"
+                          },
+                          "vendorCostRecordedAtListUsdCents": {
+                            "type": "number",
+                            "description": "Vendor cost our runs recorded at list price since 2026-01-01"
+                          },
+                          "internalCostUsdCents": {
+                            "type": "number",
+                            "description": "netPaidUsdCents - vendorCostRecordedAtListUsdCents: internal, not billed to clients, never loaded on a unit"
+                          },
+                          "internalCostBasis": {
+                            "type": "string"
                           },
                           "split": {
                             "type": "object",
@@ -3104,6 +3112,9 @@
                           "meteredUsdCents",
                           "vendorCostRecordedUsdCents",
                           "ratio",
+                          "vendorCostRecordedAtListUsdCents",
+                          "internalCostUsdCents",
+                          "internalCostBasis",
                           "split"
                         ]
                       }
@@ -4083,6 +4094,290 @@
           },
           "502": {
             "description": "Bank ledger or runs-service could not answer (named); nothing written",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/real-costs/basis-summary": {
+      "get": {
+        "operationId": "getRealCostBasisSummary",
+        "summary": "The fleet since 2026-01-01 per pricing basis (real cost, at the day's catalogue, at the day's proposed list), and each API vendor's internal cost",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "YYYY-MM-DD, default: latest"
+            },
+            "required": false,
+            "description": "YYYY-MM-DD, default: latest",
+            "name": "day",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Per basis, rendered as is (the reader computes nothing)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "day": {
+                      "type": "string"
+                    },
+                    "asOf": {
+                      "type": "string"
+                    },
+                    "stale": {
+                      "type": "boolean"
+                    },
+                    "perimeter": {
+                      "type": "object",
+                      "properties": {
+                        "grain": {
+                          "type": "string",
+                          "enum": [
+                            "fleet"
+                          ]
+                        },
+                        "since": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "grain",
+                        "since"
+                      ]
+                    },
+                    "lists": {
+                      "type": "object",
+                      "properties": {
+                        "catalogue": {
+                          "type": "string"
+                        },
+                        "proposed": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "catalogue",
+                        "proposed"
+                      ]
+                    },
+                    "rule": {
+                      "type": "string"
+                    },
+                    "bases": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "basis": {
+                            "type": "string",
+                            "enum": [
+                              "email-infrastructure-averaged",
+                              "subscription-averaged",
+                              "api-list-cost",
+                              "pass-through-x1",
+                              "catalogue-vendor-cost-flagged",
+                              "included-at-vendor",
+                              "not-on-the-day-list"
+                            ],
+                            "description": "not-on-the-day-list = consumed under a name the day's list does not carry"
+                          },
+                          "providers": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "itemCount": {
+                            "type": "integer",
+                            "description": "Cost items of the day's list on this basis"
+                          },
+                          "consumedItemCount": {
+                            "type": "integer",
+                            "description": "Of them, items runs-service recorded consumption for"
+                          },
+                          "realCostUsdCents": {
+                            "type": "number",
+                            "description": "Fleet consumption since 2026-01-01 x real cost of one unit (same replay as /internal/price-comparison)"
+                          },
+                          "amountCatalogueUsdCents": {
+                            "type": "number",
+                            "description": "Same consumption at the day's catalogue"
+                          },
+                          "amountProposedUsdCents": {
+                            "type": "number",
+                            "description": "Same consumption at the day's proposed list"
+                          }
+                        },
+                        "required": [
+                          "basis",
+                          "providers",
+                          "itemCount",
+                          "consumedItemCount",
+                          "realCostUsdCents",
+                          "amountCatalogueUsdCents",
+                          "amountProposedUsdCents"
+                        ]
+                      }
+                    },
+                    "totals": {
+                      "type": "object",
+                      "properties": {
+                        "amount1UsdCents": {
+                          "type": "number"
+                        },
+                        "amount2UsdCents": {
+                          "type": "number"
+                        },
+                        "differenceUsdCents": {
+                          "type": "number",
+                          "description": "amount2 - amount1"
+                        },
+                        "differencePct": {
+                          "type": "number",
+                          "nullable": true,
+                          "description": "vs amount1"
+                        },
+                        "realCostUsdCents": {
+                          "type": "number"
+                        },
+                        "margin1UsdCents": {
+                          "type": "number"
+                        },
+                        "margin1Pct": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "margin2UsdCents": {
+                          "type": "number"
+                        },
+                        "margin2Pct": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "billedUsdCents": {
+                          "type": "number",
+                          "description": "Actually billed, gross"
+                        },
+                        "netBilledUsdCents": {
+                          "type": "number",
+                          "description": "Actually billed, net of the per-org discount"
+                        },
+                        "billedPlatformKeyUsdCents": {
+                          "type": "number",
+                          "description": "Platform-key part of billed = runs-service margin read's billed"
+                        },
+                        "netBilledPlatformKeyUsdCents": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "amount1UsdCents",
+                        "amount2UsdCents",
+                        "differenceUsdCents",
+                        "differencePct",
+                        "realCostUsdCents",
+                        "margin1UsdCents",
+                        "margin1Pct",
+                        "margin2UsdCents",
+                        "margin2Pct",
+                        "billedUsdCents",
+                        "netBilledUsdCents",
+                        "billedPlatformKeyUsdCents",
+                        "netBilledPlatformKeyUsdCents"
+                      ],
+                      "description": "Fleet totals, amount1 = catalogue, amount2 = proposed"
+                    },
+                    "unpricedCostNames2": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "realCostUnknownCostNames": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "internalCost": {
+                      "type": "object",
+                      "properties": {
+                        "byVendor": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "provider": {
+                                "type": "string"
+                              },
+                              "netPaidUsdCents": {
+                                "type": "number",
+                                "description": "Bank net paid excluding VAT since 2026-01-01"
+                              },
+                              "vendorCostRecordedAtListUsdCents": {
+                                "type": "number"
+                              },
+                              "internalCostUsdCents": {
+                                "type": "number"
+                              },
+                              "internalCostBasis": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "provider",
+                              "netPaidUsdCents",
+                              "vendorCostRecordedAtListUsdCents",
+                              "internalCostUsdCents",
+                              "internalCostBasis"
+                            ]
+                          }
+                        },
+                        "totalUsdCents": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "byVendor",
+                        "totalUsdCents"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "day",
+                    "asOf",
+                    "stale",
+                    "perimeter",
+                    "lists",
+                    "rule",
+                    "bases",
+                    "totals",
+                    "unpricedCostNames2",
+                    "realCostUnknownCostNames",
+                    "internalCost"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not computed yet",
             "content": {
               "application/json": {
                 "schema": {

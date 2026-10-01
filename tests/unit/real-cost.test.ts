@@ -84,6 +84,7 @@ describe("a vendor whose bank money pays more than the units our runs record", (
       numeratorBasis: "twilio-usage-metered",
       cumulativeVendorRecordedUsdCents: 20,
       ratio: 0.7,
+      cumulativeVendorRecordedAllUsdCents: 20,
     });
     // Before any metered usage, the item falls back to its catalogue vendor cost, flagged.
     expect(ratios.get("twilio")!.get("2026-01-01")!.ratio).toBeNull();
@@ -103,6 +104,8 @@ describe("a vendor whose bank money pays more than the units our runs record", (
       numeratorBasis: "google-cloud-split-metered",
       cumulativeVendorRecordedUsdCents: 20,
       ratio: 1.5,
+      // Internal cost reads every recorded unit, the split window aside: 100 x 2 + 10 x 2.
+      cumulativeVendorRecordedAllUsdCents: 220,
     });
     expect(ratios.get("google")!.get("2026-01-02")!.ratio).toBeNull();
   });
@@ -144,24 +147,22 @@ describe("real cost per unit and proposed price", () => {
       ["apollo", new Map([["2026-01-03", 2.9]])],
       ["explee", new Map<string, number | null>([["2026-01-03", null]])],
     ]),
-    ratios,
   });
   const at = (day: string, name: string) => series.find((r) => r.day === day && r.costName === name)!;
 
-  it("pay-as-you-go: catalogue vendor cost x (net paid / vendor cost recorded), x2", () => {
-    // recorded 1,000,000 x 0.0001 = 100 cents; paid 300 cents on day 2 -> ratio 3
+  it("pay-as-you-go API: its catalogue list cost x2, never a bank/runs ratio (owner rule 2026-10-01)", () => {
+    // recorded 1,000,000 x 0.0001 = 100 cents; paid 300 cents on day 2: the 200 beyond list cost is internal.
     expect(ratios.get("anthropic")!.get("2026-01-02")).toEqual({
       cumulativeNetPaidUsdCents: 300,
       cumulativeMeteredUsdCents: 300,
       numeratorBasis: "ledger-net-paid",
       cumulativeVendorRecordedUsdCents: 100,
       ratio: 3,
+      cumulativeVendorRecordedAllUsdCents: 100,
     });
-    expect(at("2026-01-02", "anthropic-tokens")).toMatchObject({ method: "pay-as-you-go-ratio", ratio: 3, realCost: 0.0003, proposedPrice: 0.0006, proposedBasis: "real-cost-x2", flag: null });
-  });
-
-  it("pay-as-you-go before any payment: catalogue vendor cost, flagged", () => {
-    expect(at("2026-01-01", "anthropic-tokens")).toMatchObject({ method: "catalogue-vendor-cost", flag: "no-payment-yet", realCost: 0.0001, proposedPrice: 0.0002 });
+    for (const day of ["2026-01-01", "2026-01-02"]) {
+      expect(at(day, "anthropic-tokens")).toMatchObject({ method: "api-list-cost", ratio: null, realCost: 0.0001, proposedPrice: 0.0002, proposedBasis: "real-cost-x2", flag: null });
+    }
   });
 
   it("subscription credit: the real cost per credit; a non-credit name of the vendor keeps its vendor cost, flagged", () => {
@@ -264,7 +265,7 @@ describe("replaying consumption at its real cost", () => {
     p("2026-03-01", "email", "email-send-price", 494.7),
     p("2026-10-01", "email", "email-send-price", 3.11),
     p("2026-03-01", "tokens", "catalogue-vendor-cost", 0.0001, null, 0.0001),
-    p("2026-10-01", "tokens", "pay-as-you-go-ratio", 0.0006, 3, 0.0002),
+    p("2026-10-01", "tokens", "api-list-cost", 0.0002, null, 0.0002),
     p("2026-03-01", "zai", "catalogue-vendor-cost", 0.5),
     p("2026-10-01", "zai", "catalogue-vendor-cost", 0.7),
   ]);
@@ -273,9 +274,9 @@ describe("replaying consumption at its real cost", () => {
     expect(real("2026-03-01", "email")).toBe(3.11);
   });
 
-  it("applies the latest paid/recorded ratio to the vendor rate of the consumption day", () => {
-    expect(real("2026-03-01", "tokens")).toBe(0.0003);
-    expect(real("2026-10-01", "tokens")).toBe(0.0006);
+  it("prices an API unit at the list cost of its consumption day, never averaged", () => {
+    expect(real("2026-03-01", "tokens")).toBe(0.0001);
+    expect(real("2026-10-01", "tokens")).toBe(0.0002);
   });
 
   it("keeps the consumption day's own real cost otherwise, and null for a name never priced", () => {

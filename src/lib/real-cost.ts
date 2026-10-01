@@ -9,11 +9,12 @@
  *   2. pass-through line                                 real = catalogue vendor cost(D)        x1
  *   3. subscription credit   (src/lib/subscriptions.ts)  real = real cost per credit(D)
  *      subscription provider, not a credit             real = catalogue vendor cost(D), flagged
- *   4. declared pay-as-you-go vendor                     real = catalogue vendor cost(D) x ratio(D)
- *         ratio(D) = metered spend through D / vendor cost recorded for it through D
- *                    (both since 2026-01-01; recorded = platform-key units x catalogue vendor cost;
- *                    metered = the ledger net paid, unless the vendor declares a `meteredSpend`
- *                    source that splits the bank money: Twilio's usage records)
+ *   4. declared pay-as-you-go API                        real = catalogue vendor cost(D) (list price)
+ *         Owner rule 2026-10-01 (LOCKED): averaging bank money over units is ONLY for what we pay
+ *         as a flat fee (subscriptions, email infrastructure). An API is priced at its list cost,
+ *         never at a bank/runs ratio: "on ne compte que le coût API, le reste c'est hors client".
+ *         What the bank paid beyond the list cost our runs recorded is INTERNAL cost, served per
+ *         vendor (`paygRatios`), never loaded on a unit.
  *   5. anything else                                     real = catalogue vendor cost(D), flagged
  *
  * Whenever the specific figure does not exist yet on D (no payment, no usage, no email sent), the
@@ -39,7 +40,7 @@ export type RealCostMethod =
   | "email-send-price"
   | "pass-through"
   | "subscription"
-  | "pay-as-you-go-ratio"
+  | "api-list-cost"
   | "catalogue-vendor-cost"
   | "included-at-vendor";
 
@@ -47,10 +48,6 @@ export type RealCostFlag =
   | "no-email-sent-yet"
   | "not-a-subscription-credit"
   | "no-real-cost-per-credit"
-  | "no-payment-yet"
-  /** A split vendor (Twilio, Google Cloud) whose split shows no metered spend yet on that day. */
-  | "no-metered-spend-yet"
-  | "no-recorded-usage-yet"
   | "no-ledger-line"
   | "declared-catalogue-vendor-cost"
   | "no-vendor-cost"
@@ -66,7 +63,7 @@ export type RealCostDay = {
   method: RealCostMethod;
   flag: RealCostFlag | null;
   realCost: number | null;
-  /** pay-as-you-go only: net paid / vendor cost recorded, through D. */
+  /** Always null since pay-as-you-go APIs are priced at list cost (kept for the stored shape). */
   ratio: number | null;
   catalogueVendorCost: number | null;
   cataloguePrice: number | null;
@@ -86,7 +83,10 @@ export type PaygRatioDay = {
   cumulativeMeteredUsdCents: number;
   numeratorBasis: PaygNumeratorBasis;
   cumulativeVendorRecordedUsdCents: number;
+  /** Informational: metered / recorded. Prices no unit (owner rule 2026-10-01). */
   ratio: number | null;
+  /** Vendor cost our runs recorded at list price, every day since 2026-01-01 (no split window). */
+  cumulativeVendorRecordedAllUsdCents: number;
 };
 
 const round10 = (x: number) => Math.round(x * 1e10) / 1e10;
@@ -133,9 +133,11 @@ export function paygRatios(
     let paid = 0;
     let num = 0;
     let vendor = 0;
+    let vendorAll = 0;
     const series = new Map<string, PaygRatioDay>();
     for (const day of days) {
       paid += netPaidByProviderDay.get(provider)?.get(day) ?? 0;
+      vendorAll += vendorByProviderDay.get(provider)?.get(day) ?? 0;
       if (day >= from) {
         num += numerator?.get(day) ?? 0;
         vendor += vendorByProviderDay.get(provider)?.get(day) ?? 0;
@@ -146,6 +148,7 @@ export function paygRatios(
         numeratorBasis: basis,
         cumulativeVendorRecordedUsdCents: round10(vendor),
         ratio: num > 0 && vendor > 0 ? round10(num / vendor) : null,
+        cumulativeVendorRecordedAllUsdCents: round10(vendorAll),
       });
     }
     out.set(provider, series);
@@ -161,7 +164,6 @@ export type RealCostInputs = {
   emailPriceByDay: Map<string, number | null>;
   /** Subscription key -> day -> real cost per credit (US cents); null = none yet. */
   costPerCreditByDay: Map<string, Map<string, number | null>>;
-  ratios: Map<string, Map<string, PaygRatioDay>>;
 };
 
 export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
@@ -182,7 +184,7 @@ export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
       let method: RealCostMethod = "catalogue-vendor-cost";
       let flag: RealCostFlag | null = null;
       let realCost: number | null = vendorCost;
-      let ratio: number | null = null;
+      const ratio: number | null = null;
       let keepPrice = false;
 
       const share = EMAIL_SEND_COST_SHARES[costName];
@@ -212,13 +214,8 @@ export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
           }
         }
       } else if (payg.has(version.provider)) {
-        const r = inputs.ratios.get(version.provider)?.get(day);
-        if (r && r.ratio !== null && vendorCost !== null) {
-          method = "pay-as-you-go-ratio";
-          ratio = r.ratio;
-          realCost = round10(vendorCost * r.ratio);
-        } else if (r && r.numeratorBasis !== "ledger-net-paid" && r.cumulativeMeteredUsdCents <= 0) flag = "no-metered-spend-yet";
-        else flag = !r || r.cumulativeMeteredUsdCents <= 0 ? "no-payment-yet" : "no-recorded-usage-yet";
+        // List cost, never a bank/runs ratio: what the bank paid beyond it is internal cost.
+        method = "api-list-cost";
       } else if (CATALOGUE_VENDOR_COST_PROVIDERS[version.provider]) {
         flag = "declared-catalogue-vendor-cost";
       } else {
@@ -337,10 +334,9 @@ export type GoldPoint = {
  * Spend we pay as a lump is spread over EVERY unit since 2026-01-01 at its latest value, so the
  * real cost summed over all units equals what we paid: the email send price and a subscription's
  * cost per credit are since-inception averages whose early values are setup spend over a handful of
- * units (the email price was ~$5 an email on 2026-03-01, over 74 emails), and a pay-as-you-go
- * paid/recorded ratio is the same kind of average. The CATALOGUE vendor rate stays the one in force
- * on the consumption day (a vendor price change is a fact of that day). Every other method uses the
- * consumption day's own real cost.
+ * units (the email price was ~$5 an email on 2026-03-01, over 74 emails). Every other method (an
+ * API at its list cost, a catalogue vendor cost) uses the consumption day's own real cost: a vendor
+ * price change is a fact of that day.
  */
 export function replayRealCost(points: GoldPoint[]): (day: string, costName: string) => number | null {
   const byKey = new Map<string, GoldPoint>();
@@ -356,10 +352,6 @@ export function replayRealCost(points: GoldPoint[]): (day: string, costName: str
     const own = byKey.get(`${day}|${costName}`);
     if (!last) return null;
     if (AMORTIZED.has(last.method)) return last.realCost;
-    if (last.method === "pay-as-you-go-ratio" && last.ratio !== null) {
-      const vendor = own?.catalogueVendorCost ?? last.catalogueVendorCost;
-      return vendor === null ? last.realCost : round10(vendor * last.ratio);
-    }
     return own ? own.realCost : last.realCost;
   };
 }

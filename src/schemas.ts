@@ -995,9 +995,9 @@ const RealCostItemSchema = z
   .object({
     costName: z.string(),
     provider: z.string().nullable(),
-    method: z.enum(["email-send-price", "pass-through", "subscription", "pay-as-you-go-ratio", "catalogue-vendor-cost", "included-at-vendor"]),
+    method: z.enum(["email-send-price", "pass-through", "subscription", "api-list-cost", "catalogue-vendor-cost", "included-at-vendor"]),
     flag: z
-      .enum(["no-email-sent-yet", "not-a-subscription-credit", "no-real-cost-per-credit", "no-payment-yet", "no-metered-spend-yet", "no-recorded-usage-yet", "no-ledger-line", "declared-catalogue-vendor-cost", "no-vendor-cost", "included-in-another-cost", "legacy-name-priced-as-successor"])
+      .enum(["no-email-sent-yet", "not-a-subscription-credit", "no-real-cost-per-credit", "no-ledger-line", "declared-catalogue-vendor-cost", "no-vendor-cost", "included-in-another-cost", "legacy-name-priced-as-successor"])
       .nullable()
       .describe("Why the item fell back to its catalogue vendor cost (or kept its price); null = its specific real cost applies"),
     realCostPerUnitUsdCents: z.number().nullable(),
@@ -1044,7 +1044,10 @@ registry.registerPath({
                 numeratorBasis: z.string().describe("What the ratio's numerator counts: `ledger-net-paid`, or the vendor's own split (`twilio-usage-metered`)"),
                 meteredUsdCents: z.number().describe("The ratio's numerator: metered spend through the day"),
                 vendorCostRecordedUsdCents: z.number(),
-                ratio: z.number().nullable().describe("meteredUsdCents / vendorCostRecordedUsdCents"),
+                ratio: z.number().nullable().describe("meteredUsdCents / vendorCostRecordedUsdCents. Informational: prices no unit (owner rule 2026-10-01, an API is at its list cost)"),
+                vendorCostRecordedAtListUsdCents: z.number().describe("Vendor cost our runs recorded at list price since 2026-01-01"),
+                internalCostUsdCents: z.number().describe("netPaidUsdCents - vendorCostRecordedAtListUsdCents: internal, not billed to clients, never loaded on a unit"),
+                internalCostBasis: z.string(),
                 split: z
                   .object({
                     parts: z.array(
@@ -1216,4 +1219,67 @@ registry.registerComponent("securitySchemes", "ApiKeyAuth", {
   type: "apiKey",
   in: "header",
   name: "X-API-Key",
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/internal/real-costs/basis-summary",
+  operationId: "getRealCostBasisSummary",
+  summary: "The fleet since 2026-01-01 per pricing basis (real cost, at the day's catalogue, at the day's proposed list), and each API vendor's internal cost",
+  security: [{ ApiKeyAuth: [] }],
+  request: { query: z.object({ day: z.string().optional().describe("YYYY-MM-DD, default: latest") }) },
+  responses: {
+    200: {
+      description: "Per basis, rendered as is (the reader computes nothing)",
+      content: {
+        "application/json": {
+          schema: z.object({
+            day: z.string(),
+            asOf: z.string(),
+            stale: z.boolean(),
+            perimeter: z.object({ grain: z.literal("fleet"), since: z.string() }),
+            lists: z.object({ catalogue: z.string(), proposed: z.string() }),
+            rule: z.string(),
+            bases: z.array(
+              z.object({
+                basis: z
+                  .enum([
+                    "email-infrastructure-averaged",
+                    "subscription-averaged",
+                    "api-list-cost",
+                    "pass-through-x1",
+                    "catalogue-vendor-cost-flagged",
+                    "included-at-vendor",
+                    "not-on-the-day-list",
+                  ])
+                  .describe("not-on-the-day-list = consumed under a name the day's list does not carry"),
+                providers: z.array(z.string()),
+                itemCount: z.number().int().describe("Cost items of the day's list on this basis"),
+                consumedItemCount: z.number().int().describe("Of them, items runs-service recorded consumption for"),
+                realCostUsdCents: z.number().describe("Fleet consumption since 2026-01-01 x real cost of one unit (same replay as /internal/price-comparison)"),
+                amountCatalogueUsdCents: z.number().describe("Same consumption at the day's catalogue"),
+                amountProposedUsdCents: z.number().describe("Same consumption at the day's proposed list"),
+              }),
+            ),
+            totals: ComparisonFiguresSchema.describe("Fleet totals, amount1 = catalogue, amount2 = proposed"),
+            unpricedCostNames2: z.array(z.string()),
+            realCostUnknownCostNames: z.array(z.string()),
+            internalCost: z.object({
+              byVendor: z.array(
+                z.object({
+                  provider: z.string(),
+                  netPaidUsdCents: z.number().describe("Bank net paid excluding VAT since 2026-01-01"),
+                  vendorCostRecordedAtListUsdCents: z.number(),
+                  internalCostUsdCents: z.number(),
+                  internalCostBasis: z.string(),
+                }),
+              ),
+              totalUsdCents: z.number(),
+            }),
+          }),
+        },
+      },
+    },
+    503: { description: "Not computed yet", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
 });

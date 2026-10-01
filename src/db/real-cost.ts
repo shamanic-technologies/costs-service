@@ -323,7 +323,7 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
       costPerCreditByDay.set(s.sub, m);
     }
 
-    const series = realCostSeries({ days, catalogue, now, emailPriceByDay, costPerCreditByDay, ratios });
+    const series = realCostSeries({ days, catalogue, now, emailPriceByDay, costPerCreditByDay });
     const ratioRows = [...ratios.entries()].flatMap(([provider, m]) =>
       [...m.entries()].map(([day, r]) => ({
         day,
@@ -332,6 +332,7 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
         cumulativeMeteredUsdCents: r.cumulativeMeteredUsdCents.toFixed(10),
         numeratorBasis: r.numeratorBasis,
         cumulativeVendorRecordedUsdCents: r.cumulativeVendorRecordedUsdCents.toFixed(10),
+        cumulativeVendorRecordedAllUsdCents: r.cumulativeVendorRecordedAllUsdCents.toFixed(10),
         ratio: r.ratio === null ? null : r.ratio.toFixed(10),
       })),
     );

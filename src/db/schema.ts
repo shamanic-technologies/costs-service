@@ -384,7 +384,7 @@ export const consumptionByBrandDaily = pgTable(
   (table) => [index("idx_consumption_by_brand_daily_org_brand").on(table.orgId, table.brandId)],
 );
 
-/** Gold: per declared pay-as-you-go provider and day, the ratio real / catalogue vendor cost. */
+/** Gold: per declared pay-as-you-go provider and day, bank money vs the vendor cost our runs recorded (internal cost). */
 export const paygRatioDaily = pgTable(
   "payg_ratio_daily",
   {
@@ -395,7 +395,10 @@ export const paygRatioDaily = pgTable(
     cumulativeMeteredUsdCents: numeric("cumulative_metered_usd_cents", { precision: 24, scale: 10 }).notNull().default("0"),
     numeratorBasis: text("numerator_basis").notNull().default("ledger-net-paid"),
     cumulativeVendorRecordedUsdCents: numeric("cumulative_vendor_recorded_usd_cents", { precision: 24, scale: 10 }).notNull(),
+    /** Informational since 2026-10-01: an API is priced at its list cost, never at this ratio. */
     ratio: numeric("ratio", { precision: 18, scale: 10 }),
+    /** Vendor cost our runs recorded at list price since 2026-01-01; net paid minus it = internal cost. */
+    cumulativeVendorRecordedAllUsdCents: numeric("cumulative_vendor_recorded_all_usd_cents", { precision: 24, scale: 10 }).notNull().default("0"),
   },
   (table) => [primaryKey({ name: "payg_ratio_daily_pk", columns: [table.day, table.provider] })],
 );
