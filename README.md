@@ -94,6 +94,24 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `google-pro-2.5-tokens-output` | 0.005 | 1M tokens | Output tokens (Gemini 2.5 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-pro-3.1-tokens-input` | 0.001 | 1M tokens | Input tokens (Gemini 3.1 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-pro-3.1-tokens-output` | 0.006 | 1M tokens | Output tokens (Gemini 3.1 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-pro-3.1-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (Gemini 3.1 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-pro-2.5-tokens-cached-input` | 0.0000625 | 1M tokens | Cached input tokens (Gemini 2.5 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.8-tokens-cached-input` | 0.000075 | 1M tokens | Cached input tokens (Gemini 3.8 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.7-tokens-cached-input` | 0.000075 | 1M tokens | Cached input tokens (Gemini 3.7 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.6-tokens-cached-input` | 0.000075 | 1M tokens | Cached input tokens (Gemini 3.6 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3.5-tokens-cached-input` | 0.000075 | 1M tokens | Cached input tokens (Gemini 3.5 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-3-tokens-cached-input` | 0.000025 | 1M tokens | Cached input tokens (Gemini 3 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-lite-3.5-tokens-cached-input` | 0.000015 | 1M tokens | Cached input tokens (Gemini 3.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-lite-3.1-tokens-cached-input` | 0.0000125 | 1M tokens | Cached input tokens (Gemini 3.1 Flash Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-2.5-tokens-cached-input` | 0.000015 | 1M tokens | Cached input tokens (Gemini 2.5 Flash) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-lite-2.5-tokens-cached-input` | 0.000005 | 1M tokens | Cached input tokens (Gemini 2.5 Flash-Lite) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-pro-3.1-long-context-tokens-input` | 0.002 | 1M tokens | Input tokens, prompt over 200k (Gemini 3.1 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-pro-3.1-long-context-tokens-cached-input` | 0.0002 | 1M tokens | Cached input tokens, prompt over 200k (Gemini 3.1 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-pro-3.1-long-context-tokens-output` | 0.009 | 1M tokens | Output tokens, prompt over 200k (Gemini 3.1 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-pro-2.5-long-context-tokens-input` | 0.00125 | 1M tokens | Input tokens, prompt over 200k (Gemini 2.5 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-pro-2.5-long-context-tokens-cached-input` | 0.000125 | 1M tokens | Cached input tokens, prompt over 200k (Gemini 2.5 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-pro-2.5-long-context-tokens-output` | 0.0075 | 1M tokens | Output tokens, prompt over 200k (Gemini 2.5 Pro) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-flash-image-3.1-tokens-text-output` | 0.0015 | 1M tokens | Text and thinking output tokens (Gemini 3.1 Flash Image) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-embedding-001-tokens-input` | 0.000075 | 1M tokens | Input tokens (Gemini Embedding 001) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-search-query` | 7 | query | Search query (grounding) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `scrape-do-credit` | 0.058 | credit | Scrape credit | scrape-do | scrape.do | hobby | monthly | marked-up |
