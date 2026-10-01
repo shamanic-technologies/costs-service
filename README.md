@@ -402,7 +402,7 @@ Read LIVE from Kevin's bank ledger (admin.kevinlourd.com `GET /api/v1/vendors`, 
 |---|---|---|---|
 | GET | `/internal/provider-payment-sources` | Yes | `{ ledgerGeneratedAt, providers: [{ provider, providerDomain, match: "matched" \| "unmatched", ledgerVendors: [{ key, name }], lastPaidOn, paidFrom: [{ accountId, label, institutionDomain, scope: "personal" \| "business", lastPaidOn }] }] }`. Ledger unconfigured / unreachable / refusing / unknown shape = **502** naming the cause, never an empty list |
 
-Matching: a ledger vendor key belongs to the catalogue provider whose name (`google-ads`), domain (`instantly.ai`) or domain label (`instantly`) it STARTS WITH word for word; longest name wins (`google ads` -> `google-ads`, not `google`); a tie attaches it to neither. No alias list: a provider nothing fits is `unmatched`.
+Matching: a ledger vendor key belongs to the catalogue provider whose name (`google-ads`), domain (`instantly.ai`) or domain label (`instantly`) it STARTS WITH word for word, or failing that CONTAINS as whole words (reseller line `paddle net serper` -> `serper-dev`); a prefix fit beats a contained one, then the longest name wins (`google ads` -> `google-ads`, not `google`); a tie attaches it to neither. No alias list: a provider nothing fits is `unmatched`.
 
 ### Other endpoints
 

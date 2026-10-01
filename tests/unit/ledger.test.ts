@@ -53,6 +53,16 @@ describe("matching catalogue providers to bank-ledger vendors", () => {
     expect(m.get("google")!.map((v) => v.key)).toEqual(["google cloud"]);
   });
 
+  it("falls back to whole words inside the key for a reseller line, always below a prefix fit", () => {
+    const m = matchVendors(
+      [...CATALOGUE, { provider: "youtube-ads", providerDomain: "youtube.com" }],
+      [vendor("paddle net serper", [["q", "2026-05-22"]]), vendor("google youtube", [["q", "2026-06-25"]])],
+    );
+    expect(m.get("serper-dev")!.map((v) => v.key)).toEqual(["paddle net serper"]);
+    expect(m.get("google")!.map((v) => v.key)).toEqual(["google youtube"]);
+    expect(m.get("youtube-ads")).toEqual([]);
+  });
+
   it("never matches a prefix inside a word, a single-letter name, or a provider without a match", () => {
     const m = matchVendors(CATALOGUE, [
       vendor("anthropics llc", [["a", "2026-09-01"]]),

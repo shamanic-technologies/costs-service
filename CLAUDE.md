@@ -130,7 +130,7 @@ No default anywhere on the write side: the field is required on `SeedProviderCos
 
 ## "Paid from" is READ from the bank ledger, never stored here
 
-Which of OUR accounts pays each vendor lives in Kevin's bank ledger (admin.kevinlourd.com, repo KevinLourd/kevinlourd.com). `GET /internal/provider-payment-sources` fetches it live per request (`src/lib/ledger.ts`, env `LEDGER_API_URL` + `LEDGER_API_KEY`) and joins it to the catalogue by a word-prefix rule (provider name / domain / domain label, longest wins, tie = neither). Do NOT re-add a table, an alias map or a cache: the owner rejected the hand-edited store (#281, dropped by migration `0011`). Unmatched providers are `match: "unmatched"`; a ledger failure is a 502 naming why. Regressions: `tests/unit/ledger.test.ts`, `tests/integration/internal-payment-sources.test.ts`.
+Which of OUR accounts pays each vendor lives in Kevin's bank ledger (admin.kevinlourd.com, repo KevinLourd/kevinlourd.com). `GET /internal/provider-payment-sources` fetches it live per request (`src/lib/ledger.ts`, env `LEDGER_API_URL` + `LEDGER_API_KEY`) and joins it to the catalogue by a whole-word rule (provider name / domain / domain label; key starting with it beats key containing it, then longest wins, tie = neither). Do NOT re-add a table, an alias map or a cache: the owner rejected the hand-edited store (#281, dropped by migration `0011`). Unmatched providers are `match: "unmatched"`; a ledger failure is a 502 naming why. Regressions: `tests/unit/ledger.test.ts`, `tests/integration/internal-payment-sources.test.ts`.
 
 ## Cold-email infrastructure = DELISTED, not deleted (2026-08)
 

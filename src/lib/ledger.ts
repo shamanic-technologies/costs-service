@@ -110,18 +110,36 @@ export function providerNames(provider: string, providerDomain: string | null): 
   });
 }
 
-function startsWith(haystack: string[], needle: string[]): boolean {
-  return needle.length <= haystack.length && needle.every((t, i) => haystack[i] === t);
+function startsWith(haystack: string[], needle: string[], at = 0): boolean {
+  return at + needle.length <= haystack.length && needle.every((t, i) => haystack[at + i] === t);
+}
+
+function containsWords(haystack: string[], needle: string[]): boolean {
+  for (let at = 1; at + needle.length <= haystack.length; at++) if (startsWith(haystack, needle, at)) return true;
+  return false;
+}
+
+/**
+ * How well one provider name fits a vendor key: a key STARTING with the name beats a key that
+ * only CONTAINS it as whole words further in (a reseller line, "paddle net serper"); within a
+ * tier the longer name wins. 0 = no fit.
+ */
+function fit(key: string[], name: string[]): number {
+  if (startsWith(key, name)) return 1000 + name.length;
+  if (containsWords(key, name)) return name.length;
+  return 0;
 }
 
 export type CatalogueProvider = { provider: string; providerDomain: string | null };
 
 /**
  * Deterministic join: a ledger vendor belongs to the provider whose name its key STARTS WITH,
- * word for word ("instantly ai" -> instantly, "google ads" -> google-ads). When several
- * providers fit, the longest name wins ("google ads" goes to google-ads, not google); a tie
- * between two providers is ambiguous and the vendor is attached to neither. No fuzzy match,
- * no hand-kept alias list: a provider nothing fits stays visibly unmatched.
+ * word for word ("instantly ai" -> instantly, "google ads" -> google-ads), or failing any such
+ * provider, whose name it CONTAINS as whole words ("paddle net serper" -> serper-dev). When
+ * several providers fit, the best `fit` wins ("google ads" goes to google-ads, not google;
+ * "google youtube" goes to google, not youtube-ads); a tie is ambiguous and the vendor is
+ * attached to neither. No fuzzy match, no hand-kept alias list: a provider nothing fits stays
+ * visibly unmatched.
  */
 export function matchVendors(
   providers: CatalogueProvider[],
@@ -135,7 +153,7 @@ export function matchVendors(
     let best = 0;
     let winners: string[] = [];
     for (const { provider, names: candidates } of names) {
-      const len = Math.max(0, ...candidates.filter((n) => startsWith(key, n)).map((n) => n.length));
+      const len = Math.max(0, ...candidates.map((n) => fit(key, n)));
       if (len === 0) continue;
       if (len > best) {
         best = len;
