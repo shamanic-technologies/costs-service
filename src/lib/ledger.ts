@@ -91,6 +91,54 @@ export async function fetchLedgerVendorPayments(
   return ledgerRead(`/api/v1/vendor-payments?${query.toString()}`, LedgerVendorPaymentsResponseSchema);
 }
 
+// --- Google Cloud money split by what it paid for (admin PR KevinLourd/kevinlourd.com#298) ---
+
+const GoogleCloudMonthSchema = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/),
+  export: z
+    .object({
+      coveredFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      coveredTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      partial: z.boolean(),
+      consumption: z.array(z.object({ service: z.string(), netEur: z.number() })),
+      consumptionEur: z.number(),
+      taxEur: z.number(),
+      adjustmentsEur: z.number(),
+      roundingEur: z.number(),
+      invoiceEur: z.number(),
+      prepayments: z.array(z.object({ chargedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), totalEur: z.number() })),
+      prepaidEur: z.number(),
+    })
+    .nullable(),
+  bank: z.object({
+    payments: z.array(z.object({ eurAmount: z.number(), usdAmount: z.number(), direction: z.enum(["payment", "refund"]) })),
+    paidEur: z.number(),
+    prepaidEur: z.number(),
+  }),
+  explainedEur: z.number(),
+  unexplainedEur: z.number(),
+  notes: z.array(z.string()),
+});
+
+const GoogleCloudSplitSchema = z.object({
+  generatedAt: z.string(),
+  vendor: z.literal("google cloud"),
+  currency: z.literal("EUR"),
+  since: z.string(),
+  until: z.string(),
+  months: z.array(GoogleCloudMonthSchema),
+});
+
+export type GoogleCloudSplit = z.infer<typeof GoogleCloudSplitSchema>;
+
+/**
+ * Google Cloud money per invoice month, split by GCP service from the billing export, tax,
+ * adjustments and prepaid top-ups apart, and the bank money the export cannot explain. EUR.
+ */
+export async function fetchGoogleCloudSplit(sinceMonth: string): Promise<{ url: string; body: unknown; data: GoogleCloudSplit }> {
+  return ledgerRead(`/api/v1/vendor-payments/google-cloud?${new URLSearchParams({ since: sinceMonth })}`, GoogleCloudSplitSchema);
+}
+
 /** GET a ledger path; returns the raw body beside the validated one (the raw is kept as bronze). */
 async function ledgerRead<T>(pathAndQuery: string, schema: z.ZodType<T>): Promise<{ url: string; body: unknown; data: T }> {
   const baseUrl = process.env.LEDGER_API_URL;
