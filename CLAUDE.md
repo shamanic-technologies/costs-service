@@ -132,6 +132,15 @@ No default anywhere on the write side: the field is required on `SeedProviderCos
 
 Which of OUR accounts pays each vendor lives in Kevin's bank ledger (admin.kevinlourd.com, repo KevinLourd/kevinlourd.com). `GET /internal/provider-payment-sources` fetches it live per request (`src/lib/ledger.ts`, env `LEDGER_API_URL` + `LEDGER_API_KEY`) and joins it to the catalogue by a whole-word rule (provider name / domain / domain label; key starting with it beats key containing it, then longest wins, tie = neither). Do NOT re-add a table, an alias map or a cache: the owner rejected the hand-edited store (#281, dropped by migration `0011`). Unmatched providers are `match: "unmatched"`; a ledger failure is a 502 naming why. Regressions: `tests/unit/ledger.test.ts`, `tests/integration/internal-payment-sources.test.ts`.
 
+## Email send price = a DISPLAYED staff figure, read from two systems of record (2026-10)
+
+`GET /internal/email-send-price` (staff, api key) serves what ONE cold email to a lead really costs us: everything paid to the email-infrastructure vendors since inception / every `outreach` email since inception, as a dense per-day series (plus the month-alone price). It is **never** read by billing: wiring it into a catalogue price waits for the owner's explicit go.
+
+- **Inputs are READ, never typed**: spend from the bank ledger `GET /api/v1/vendor-payments?vendors=…` (`LEDGER_API_*`), emails from instantly-service `GET /internal/ops/sent-per-period?grain=day` `toLeads` (`INSTANTLY_SERVICE_*`). Which vendors count is declared ONCE in `src/lib/email-infra-vendors.ts` (owner-reviewable; Google Workspace excluded on purpose, pre-first-send Gandi orders included).
+- **Gross paid, refunds served apart, NOT subtracted** — that is the owner's measured figure (3.34c on 2026-10-01). Switching to net is the owner's call.
+- Layering: bronze `email_send_price_raw_reads` (raw bodies, one per day per source), silver `email_infra_spend_daily` + `emails_to_leads_daily`, gold `email_send_price_daily`. A refresh rewrites silver+gold WHOLE in one transaction (late bank lines correct past days; same-day re-run is idempotent). A failed refresh writes only its `failed` attempt row; the previous series stays served with `stale: true`.
+- Scheduler: hourly in-process tick after `listen()`, refreshes when today (UTC) has no succeeded run. Regressions: `tests/unit/email-send-price.test.ts`, `tests/integration/email-send-price.test.ts`.
+
 ## Cold-email infrastructure = DELISTED, not deleted (2026-08)
 
 Instantly subscriptions, MailForge, PrimeForge and the Claude Max seat moved OFF the

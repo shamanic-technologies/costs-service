@@ -9,11 +9,13 @@ import platformCostsRoutes from "./routes/platform-costs.js";
 import platformPricesRoutes from "./routes/platform-prices.js";
 import internalVendorCostsRoutes from "./routes/internal-vendor-costs.js";
 import internalPaymentSourcesRoutes from "./routes/internal-payment-sources.js";
+import internalEmailSendPriceRoutes from "./routes/internal-email-send-price.js";
 import { requireIdentityHeaders } from "./middleware/auth.js";
 import { db, sql } from "./db/index.js";
 import { runMigrationsIfNeeded } from "./db/migrate.js";
 import { seedProvidersCosts, seedPlatformCosts } from "./db/seed.js";
 import { recordVendorCosts } from "./db/vendor-costs.js";
+import { startEmailSendPriceScheduler } from "./db/email-send-price.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,6 +43,7 @@ app.use(platformCostsRoutes);
 app.use(platformPricesRoutes);
 app.use(internalVendorCostsRoutes);
 app.use(internalPaymentSourcesRoutes);
+app.use(internalEmailSendPriceRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Not found" });
@@ -64,6 +67,8 @@ if (process.env.NODE_ENV !== "test") {
     .then(() => {
       app.listen(Number(PORT), "::", () => {
         console.log(`[Costs Service] Service running on port ${PORT}`);
+        // After the port is bound, never awaited: the refresh reads two upstreams over the network.
+        startEmailSendPriceScheduler();
       });
     })
     .catch((err) => {
