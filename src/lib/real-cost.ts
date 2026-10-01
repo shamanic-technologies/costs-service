@@ -203,6 +203,28 @@ export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
         proposedBasis,
       });
     }
+    // A subscription credit runs-service records under a name the catalogue never carried
+    // (apollo-enrichment-credit, scrape-do-render-credit...) is still a credit with a real cost.
+    for (const sub of SUBSCRIPTIONS) {
+      for (const costName of sub.creditCostNames) {
+        if (catalogue.versionAt(costName, at).reason !== "not-in-catalogue") continue;
+        const perCredit = inputs.costPerCreditByDay.get(sub.key)?.get(day) ?? null;
+        out.push({
+          day,
+          costName,
+          provider: sub.provider,
+          method: perCredit === null ? "catalogue-vendor-cost" : "subscription",
+          flag: perCredit === null ? "no-real-cost-per-credit" : null,
+          realCost: perCredit,
+          ratio: null,
+          catalogueVendorCost: null,
+          cataloguePrice: null,
+          multiplier: PROPOSED_MULTIPLIER,
+          proposedPrice: perCredit === null ? null : round10(perCredit * PROPOSED_MULTIPLIER),
+          proposedBasis: perCredit === null ? "no-price" : "real-cost-x2",
+        });
+      }
+    }
   }
   return out;
 }
