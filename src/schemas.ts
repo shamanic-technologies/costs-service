@@ -849,6 +849,136 @@ registry.registerPath({
   },
 });
 
+// --- Real cost per credit of each vendor subscription (staff-only, displayed, never billed) ---
+
+const SubscriptionCostDaySchema = z
+  .object({
+    day: z.string().describe("YYYY-MM-DD; dense, one point per calendar day from 2026-01-01"),
+    paidUsd: z.number().nullable().describe("Paid to the ledger vendor(s) that day, USD; null when the subscription has no ledger line"),
+    netUsd: z.number().nullable().describe("Paid minus refunded that day"),
+    credits: z.number().describe("Credits consumed through our account that UTC day"),
+    cumulativePaidUsd: z.number().nullable(),
+    cumulativeNetUsd: z.number().nullable(),
+    cumulativeCredits: z.number(),
+    costPerCreditUsdCents: z.number().nullable().describe("cumulativeNetUsd*100 / cumulativeCredits; null over zero credits, a negative net, or no ledger line"),
+    grossCostPerCreditUsdCents: z.number().nullable().describe("cumulativePaidUsd*100 / cumulativeCredits (refunds ignored)"),
+  })
+  .openapi("SubscriptionCostDay");
+
+const SubscriptionCostSchema = z
+  .object({
+    key: z.string(),
+    label: z.string(),
+    provider: z.string().describe("Catalogue provider"),
+    ledgerMatched: z.boolean().describe("False = no bank-ledger line declared: money fields are null (unknown), never 0"),
+    ledgerNote: z.string().nullable(),
+    ledgerVendors: z.array(
+      z.object({
+        key: z.string().describe("Bank-ledger vendor key"),
+        firstPaidOn: z.string().nullable(),
+        lastPaidOn: z.string().nullable(),
+        payments: z.number().int(),
+        refunds: z.number().int(),
+        paidUsd: z.number(),
+        refundedUsd: z.number(),
+        netUsd: z.number(),
+      }),
+    ),
+    firstPaymentOn: z.string().nullable(),
+    lastPaymentOn: z.string().nullable(),
+    paidUsd: z.number().nullable().describe("Since 2026-01-01"),
+    refundedUsd: z.number().nullable(),
+    netUsd: z.number().nullable().describe("paidUsd - refundedUsd: the numerator"),
+    creditDefinition: z.string(),
+    orgKeyUnitsCounted: z.boolean().describe("Whether units runs-service tags 'org' (customer key) are counted as our credits"),
+    orgKeyUnitsNote: z.string().describe("Why (evidence when counted)"),
+    credits: z.number().describe("Credits consumed through our account since 2026-01-01: the denominator"),
+    costPerCreditUsdCents: z.number().nullable().describe("Real cost of one credit, US cents, on NET paid"),
+    grossCostPerCreditUsdCents: z.number().nullable(),
+    costPerCreditNullReason: z.enum(["no-ledger-line", "no-credit-consumed", "negative-net-paid"]).nullable(),
+    costItems: z.array(
+      z.object({
+        costName: z.string(),
+        isCredit: z.boolean(),
+        excludedReason: z.string().nullable(),
+        quantityPlatformKey: z.number().describe("Units since 2026-01-01 through our platform key"),
+        quantityOrgKey: z.number().describe("Units since 2026-01-01 runs-service tags as a customer's own key"),
+        creditsCounted: z.number(),
+        unit: z.string().nullable(),
+        billedPricePerUnitInUsdCents: z.number().nullable().describe("Catalogue price in force now"),
+        vendorCostPerUnitInUsdCents: z.number().nullable().describe("Catalogue vendor cost of that version"),
+        catalogueNote: z.string().nullable().describe("Why the catalogue fields are null"),
+      }),
+    ),
+    monthly: z.array(
+      z.object({
+        month: z.string().describe("YYYY-MM"),
+        paidUsd: z.number().nullable(),
+        refundedUsd: z.number().nullable(),
+        netUsd: z.number().nullable(),
+        credits: z.number(),
+        monthCostPerCreditUsdCents: z.number().nullable().describe("This month alone"),
+        cumulativeNetUsd: z.number().nullable(),
+        cumulativeCredits: z.number(),
+        costPerCreditUsdCents: z.number().nullable().describe("Running since 2026-01-01 at the month's last point"),
+        grossCostPerCreditUsdCents: z.number().nullable(),
+      }),
+    ),
+    daily: z.array(SubscriptionCostDaySchema).describe("Oldest first, last point = asOf"),
+  })
+  .openapi("SubscriptionCost");
+
+export const SubscriptionCostsResponseSchema = z
+  .object({
+    formula: z.string(),
+    since: z.string().describe("2026-01-01: owner start date"),
+    asOf: z.string(),
+    refreshedAt: z.string(),
+    stale: z.boolean().describe("True when the served series was not computed today (UTC)"),
+    lastRefresh: RefreshAttemptSchema.nullable(),
+    subscriptions: z.array(SubscriptionCostSchema).describe("Declared in costs-service src/lib/subscriptions.ts"),
+  })
+  .openapi("SubscriptionCostsResponse");
+
+registry.registerPath({
+  method: "get",
+  path: "/internal/subscription-costs",
+  operationId: "getSubscriptionCosts",
+  summary: "Real cost per credit of each vendor subscription: net paid since 2026-01-01 / credits consumed since 2026-01-01, daily series (service api key only)",
+  description:
+    "Displayed figure only, no billed price reads it. Served from the last SUCCEEDED daily refresh; when a refresh fails the previous series stays served (`stale: true`, `lastRefresh.error` says why).",
+  security: [{ ApiKeyAuth: [] }],
+  responses: {
+    200: { description: "The stored series", content: { "application/json": { schema: SubscriptionCostsResponseSchema } } },
+    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
+    503: {
+      description: "Never computed yet",
+      content: { "application/json": { schema: z.object({ error: z.string(), lastRefresh: RefreshAttemptSchema.nullable() }) } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/internal/subscription-costs/refresh",
+  operationId: "refreshSubscriptionCosts",
+  summary: "Recompute the subscription costs now from the bank ledger and runs-service (idempotent per day)",
+  security: [{ ApiKeyAuth: [] }],
+  responses: {
+    200: {
+      description: "Refreshed",
+      content: {
+        "application/json": {
+          schema: z.object({ refreshId: z.string(), asOf: z.string(), days: z.number().int(), subscriptions: z.number().int() }),
+        },
+      },
+    },
+    401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponseSchema } } },
+    409: { description: "A refresh is already running", content: { "application/json": { schema: ErrorResponseSchema } } },
+    502: { description: "The bank ledger or runs-service could not answer (named); nothing was written", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
+});
+
 registry.registerComponent("securitySchemes", "ApiKeyAuth", {
   type: "apiKey",
   in: "header",
