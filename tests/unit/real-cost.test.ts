@@ -107,6 +107,11 @@ describe("real cost per unit and proposed price", () => {
     expect(at("2026-01-03", "explee-credit")).toMatchObject({ flag: "no-real-cost-per-credit", proposedPrice: 5, proposedBasis: "current-price-kept" });
   });
 
+  it("a subscription credit the catalogue never carried still gets its real cost per credit (apollo-enrichment-credit)", () => {
+    expect(at("2026-01-03", "apollo-enrichment-credit")).toMatchObject({ method: "subscription", realCost: 2.9, proposedPrice: 5.8, cataloguePrice: null });
+    expect(at("2026-01-01", "apollo-enrichment-credit")).toMatchObject({ realCost: null, proposedBasis: "no-price" });
+  });
+
   it("Stripe (pass-through) is proposed at its real cost x1", () => {
     expect(at("2026-01-03", "stripe-processing-fee")).toMatchObject({ method: "pass-through", realCost: 1, multiplier: 1, proposedPrice: 1, proposedBasis: "real-cost-x1" });
   });
