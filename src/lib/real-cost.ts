@@ -1,6 +1,6 @@
 /**
  * REAL cost per unit of every catalogue cost item, per day since 2026-01-01, and the PROPOSED
- * price derived from it. DISPLAY ONLY: no billed price reads it. Owner rules and every declared
+ * price derived from it, which is the BILLED catalogue price since 2026-10-02 (src/lib/catalogue-sync.ts). Owner rules and every declared
  * list live in `src/lib/price-lists.ts`; this module only applies them.
  *
  * For a cost name on day D (catalogue read at D's end, `CatalogueHistory`):

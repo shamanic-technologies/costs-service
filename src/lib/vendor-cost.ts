@@ -155,6 +155,8 @@ export type VendorCostDerivation =
   | "pass-through"          // basis pass-through: the billed price IS the vendor rate
   | "seed-vendor-rate"      // billed = a vendor rate the seed states for this name × the markup in force when written
   | "seed-vendor-rate-pre-vat" // same, on a row billed before the vendor's non-recoverable VAT was priced in
+  | "proposed-list"           // a proposed-list version (src/lib/catalogue-sync.ts): the vendor rate of the version it superseded, carried
+  | "proposed-list-real-cost" // a proposed-list version with no vendor rate (email infrastructure, included units): its real cost per unit
   | "unknown";
 
 export type VendorCostUnknownReason =

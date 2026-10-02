@@ -134,7 +134,9 @@ export async function recordVendorCosts(): Promise<void> {
                v.vendor_cost_per_unit_in_usd_cents::text AS vendor, v.derivation, v.unknown_reason
         FROM providers_costs pc
         JOIN provider_cost_vendor_costs v ON v.provider_cost_id = pc.id
+        -- A proposed-list version is stated by the sync that wrote it, never re-derived from the seed.
         WHERE v.derivation NOT IN ('pass-through', 'seed-vendor-rate', 'seed-vendor-rate-pre-vat')
+          AND pc.price_source <> 'proposed-list'
       `);
       let n = 0;
       for (const row of stored) {

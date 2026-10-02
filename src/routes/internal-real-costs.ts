@@ -19,6 +19,7 @@ import {
 } from "../lib/price-lists.js";
 import { utcDay } from "../db/email-send-price.js";
 import { VAT_RULE, vatTakenOut } from "../lib/email-send-price.js";
+import { lastCatalogueSyncs } from "../db/catalogue-sync.js";
 import {
   consumptionByBrand,
   consumptionByOrg,
@@ -38,7 +39,8 @@ import {
 /**
  * Real cost per unit of every cost item, the proposed price list (real x2, x1 for Stripe and
  * media), any price list at a date, and a replay of consumption under two lists. STAFF-ONLY
- * (service api key): it reveals our margin. DISPLAY ONLY: no billed price reads any of it.
+ * (service api key): it reveals our margin. Since 2026-10-02 the day's proposed list IS the billed
+ * catalogue price: each refresh applies it (src/db/catalogue-sync.ts, `/internal/catalogue-syncs`).
  */
 const router = Router();
 router.use("/internal", requireApiKey);
@@ -447,6 +449,15 @@ router.get("/internal/price-comparison", async (req, res) => {
     });
   } catch (err) {
     sendError(res, err, "comparing price lists");
+  }
+});
+
+// GET /internal/catalogue-syncs — the last attempts to bill the proposed list.
+router.get("/internal/catalogue-syncs", async (_req, res) => {
+  try {
+    res.json({ syncs: await lastCatalogueSyncs(10) });
+  } catch (err) {
+    sendError(res, err, "reading catalogue syncs");
   }
 });
 

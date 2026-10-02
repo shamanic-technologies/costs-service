@@ -1023,7 +1023,7 @@ registry.registerPath({
   path: "/internal/real-costs",
   operationId: "getRealCosts",
   summary: "Real cost per unit and proposed price of every cost item on a day (default latest), service api key only",
-  description: "Display only. Query `day=YYYY-MM-DD` (2026-01-01 through asOf). 503 before the first refresh.",
+  description: "The proposed price is the BILLED catalogue price since 2026-10-02 (applied after each refresh, `/internal/catalogue-syncs`). Query `day=YYYY-MM-DD` (2026-01-01 through asOf). 503 before the first refresh.",
   security: [{ ApiKeyAuth: [] }],
   responses: {
     200: {
@@ -1205,6 +1205,21 @@ registry.registerPath({
   },
 });
 
+const CatalogueSyncKeptSchema = z.object({
+  costName: z.string(),
+  reason: z.string().describe("Why the billed price did not follow the proposed list (no proposed price, current price kept)"),
+  billedPriceUsdCents: z.string().nullable(),
+});
+
+const CatalogueSyncOutcomeSchema = z.object({
+  syncId: z.string(),
+  proposedListDay: z.string(),
+  versionsWritten: z.number().int().describe("New `proposed-list` price versions, effective at the sync instant (never retroactive)"),
+  unchanged: z.number().int(),
+  kept: z.array(CatalogueSyncKeptSchema),
+  written: z.array(z.object({ costName: z.string(), previousPriceUsdCents: z.string().nullable(), priceUsdCents: z.string() })),
+});
+
 registry.registerPath({
   method: "post",
   path: "/internal/real-costs/refresh",
@@ -1214,10 +1229,55 @@ registry.registerPath({
   responses: {
     200: {
       description: "Refreshed",
-      content: { "application/json": { schema: z.object({ refreshId: z.string(), asOf: z.string(), days: z.number().int(), costItems: z.number().int() }) } },
+      content: {
+        "application/json": {
+          schema: z.object({
+            refreshId: z.string(),
+            asOf: z.string(),
+            days: z.number().int(),
+            costItems: z.number().int(),
+            catalogueSync: CatalogueSyncOutcomeSchema,
+          }),
+        },
+      },
     },
     409: { description: "A refresh is already running", content: { "application/json": { schema: ErrorResponseSchema } } },
+    500: { description: "The gold was refreshed but the catalogue sync failed (stale input, zero-price guard): the last good catalogue stays billed", content: { "application/json": { schema: ErrorResponseSchema } } },
     502: { description: "Bank ledger or runs-service could not answer (named); nothing written", content: { "application/json": { schema: ErrorResponseSchema } } },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/internal/catalogue-syncs",
+  operationId: "listCatalogueSyncs",
+  summary: "The last attempts to bill the proposed price list (newest first)",
+  description:
+    "Since 2026-10-02 the billed catalogue price of every cost item is the day's proposed price, written after each real-cost refresh as a new `proposed-list` price version. A failed attempt (stale proposed list, failed refresh, zero-price guard) writes no version: the last good catalogue stays billed.",
+  security: [{ ApiKeyAuth: [] }],
+  responses: {
+    200: {
+      description: "Attempts",
+      content: {
+        "application/json": {
+          schema: z.object({
+            syncs: z.array(
+              z.object({
+                id: z.string(),
+                realCostRefreshId: z.string().nullable(),
+                proposedListDay: z.string().nullable(),
+                status: z.enum(["succeeded", "failed"]),
+                error: z.string().nullable(),
+                versionsWritten: z.number().int(),
+                kept: z.array(CatalogueSyncKeptSchema).nullable(),
+                startedAt: z.string(),
+                finishedAt: z.string().nullable(),
+              }),
+            ),
+          }),
+        },
+      },
+    },
   },
 });
 
