@@ -36,6 +36,13 @@ export const COST_RISK_MULTIPLIER = 2;
 export const COST_PROFIT_MULTIPLIER = 2.5;
 
 /**
+ * Since 2026-10-02 these factors NO LONGER DRIVE BILLED PRICES: the billed price of every cost item
+ * is the proposed price list (real cost x2, x1 for pass-through; src/lib/catalogue-sync.ts), written
+ * as `proposed-list` versions after each daily refresh. What COST_DEFAULT_MULTIPLIER still does: it is
+ * the convention the seed literals are written in (vendor rate x 5), so the vendor rate is recovered
+ * from them (`seedVendorCost`, MARKUP_ERAS), and a seed version is billed only from the moment the
+ * seed appends it until the next refresh replaces it with the proposed price (minutes).
+ *
  * DEFAULT markup applied to EVERY marked-up seed cost: risk × profit (2 × 2.5 = 5× everywhere).
  * The helper still accepts a per-cost override, but no cost currently uses one — all
  * rows fall back to this default.
@@ -2532,6 +2539,11 @@ export async function seedProvidersCosts() {
   //   - no row yet           → INSERT with the declared effective_from (first version)
   //   - cost or basis differs → INSERT a NEW row dated now() (the prior row stays as history)
   //   - both equal            → no-op (idempotent across every boot)
+  // "Existing row" excludes the proposed-list versions the daily sync writes (price_source
+  // 'proposed-list'): since the 2026-10-02 switch the BILLED price is the proposed list, and a seed
+  // version only says what the vendor list x COST_DEFAULT_MULTIPLIER is. A seed version the seed
+  // appends (new name, vendor rate or basis change) is billed until the next real-cost refresh,
+  // which the scheduler runs as soon as it sees it (src/db/real-cost.ts).
   // The comparison covers pricing_basis as well as the value: dropping a markup can leave the
   // number unchanged (a 1× line), and that is still a change in what we promise the customer.
   // A price is thus queryable through time: the read path resolves the newest row whose
@@ -2612,6 +2624,10 @@ export async function seedProvidersCosts() {
           FROM providers_costs pc
           WHERE pc.name = cur.name AND pc.plan_tier = cur.plan_tier AND pc.billing_cycle = cur.billing_cycle
             AND pc.effective_from <= now()
+            -- A proposed-list version is the BILLED price the daily sync wrote (src/lib/catalogue-sync.ts);
+            -- the seed states the vendor-list version, so it compares only to its own kind. Comparing to
+            -- a synced row would read every switched price as drift and revert it to the seed's on boot.
+            AND pc.price_source <> 'proposed-list'
           ORDER BY pc.effective_from DESC
           LIMIT 1
         ) latest ON TRUE
