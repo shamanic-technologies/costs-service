@@ -386,6 +386,7 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
             multiplier: r.multiplier.toFixed(2),
             proposedPriceUsdCents: fixed(r.proposedPrice),
             proposedBasis: r.proposedBasis,
+            proposedBeforeFloorUsdCents: fixed(r.proposedBeforeFloor),
             refreshId: attempt.id,
           })),
         );

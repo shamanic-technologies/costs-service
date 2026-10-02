@@ -144,7 +144,7 @@ describe("real cost per unit and proposed price", () => {
     now: NOW,
     emailPriceByDay: new Map([["2026-01-03", 3]]),
     costPerCreditByDay: new Map([
-      ["apollo", new Map([["2026-01-03", 2.9]])],
+      ["apollo", new Map([["2026-01-02", 1], ["2026-01-03", 2.9]])],
       ["explee", new Map<string, number | null>([["2026-01-03", null]])],
     ]),
   });
@@ -168,6 +168,15 @@ describe("real cost per unit and proposed price", () => {
   it("subscription credit: the real cost per credit; a non-credit name of the vendor keeps its vendor cost, flagged", () => {
     expect(at("2026-01-03", "apollo-credit")).toMatchObject({ method: "subscription", realCost: 2.9, proposedPrice: 5.8 });
     expect(at("2026-01-03", "apollo-export-credit")).toMatchObject({ flag: "not-a-subscription-credit", realCost: 0.2, proposedPrice: 0.4 });
+  });
+
+  it("subscription credit is never proposed below its vendor list cost per unit (owner rule 2026-10-02)", () => {
+    // averaged 1 x2 = 2 < list 2.36: proposed AT the list cost, the averaged x2 kept beside it.
+    expect(at("2026-01-02", "apollo-credit")).toMatchObject({ method: "subscription", realCost: 1, proposedPrice: 2.36, proposedBasis: "vendor-list-cost-floor", proposedBeforeFloor: 2, catalogueVendorCost: 2.36 });
+    // averaged 2.9 x2 = 5.8 >= list 2.36: no floor.
+    expect(at("2026-01-03", "apollo-credit")).toMatchObject({ proposedPrice: 5.8, proposedBasis: "real-cost-x2", proposedBeforeFloor: null });
+    // Only subscriptions are floored: an API at list cost is x2 already.
+    expect(series.filter((r) => r.proposedBasis === "vendor-list-cost-floor").every((r) => r.method === "subscription")).toBe(true);
   });
 
   it("subscription with no real cost per credit (Explee) keeps its current price, flagged", () => {

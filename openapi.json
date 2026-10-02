@@ -1519,9 +1519,16 @@
             "enum": [
               "real-cost-x2",
               "real-cost-x1",
+              "vendor-list-cost-floor",
               "current-price-kept",
               "no-price"
-            ]
+            ],
+            "description": "vendor-list-cost-floor: a subscription credit whose averaged real cost x2 sat below the vendor list cost per unit is proposed AT that list cost (owner 2026-10-02)"
+          },
+          "averagedProposedPricePerUnitUsdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "Floored items only: the averaged real cost x2 the floor replaced (compare with catalogueVendorCostPerUnitUsdCents); null otherwise"
           },
           "proposedVsCataloguePct": {
             "type": "number",
@@ -1541,6 +1548,7 @@
           "multiplier",
           "proposedPricePerUnitUsdCents",
           "proposedBasis",
+          "averagedProposedPricePerUnitUsdCents",
           "proposedVsCataloguePct"
         ]
       }
@@ -4211,6 +4219,17 @@
                             "type": "integer",
                             "description": "Of them, items runs-service recorded consumption for"
                           },
+                          "flooredItemCount": {
+                            "type": "integer",
+                            "description": "Items proposed at the vendor list cost floor (proposedBasis vendor-list-cost-floor)"
+                          },
+                          "flooredItems": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Their cost names"
+                          },
                           "realCostUsdCents": {
                             "type": "number",
                             "description": "Fleet consumption since 2026-01-01 x real cost of one unit (same replay as /internal/price-comparison)"
@@ -4229,6 +4248,8 @@
                           "providers",
                           "itemCount",
                           "consumedItemCount",
+                          "flooredItemCount",
+                          "flooredItems",
                           "realCostUsdCents",
                           "amountCatalogueUsdCents",
                           "amountProposedUsdCents"

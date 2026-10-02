@@ -1,0 +1,1 @@
+ALTER TABLE "real_unit_costs_daily" ADD COLUMN "proposed_before_floor_usd_cents" numeric(24, 10);

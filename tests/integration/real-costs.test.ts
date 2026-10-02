@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from "vitest";
+import { and, eq } from "drizzle-orm";
 import { declaredVat } from "../helpers/ledger-vat.js";
 import request from "supertest";
 import { createTestApp } from "../helpers/test-app.js";
@@ -268,6 +269,37 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     expect(vsProposed.body.totals).toMatchObject({ amount2UsdCents: 238, differenceUsdCents: -312, realCostUsdCents: 134, margin2UsdCents: 104 });
     expect(vsProposed.body.perimeter).toEqual({ grain: "org-brand", orgId: ORG, brandId: "brand-1" });
     expect(vsProposed.body.byOrg).toBeNull();
+  });
+
+  it("a subscription credit is never proposed below its vendor list cost: floored, flagged, persisted and counted (owner rule 2026-10-02)", async () => {
+    await seedCatalogue();
+    // apollo-credit lists at 2.36 cents a credit; the averaged real cost per credit today is 1 -> x2 = 2 < 2.36.
+    await insertPlatformCost({ provider: "apollo", planTier: "p", billingCycle: "monthly", effectiveFrom: T0 });
+    const row = await insertTestProviderCost({ name: "apollo-credit", provider: "apollo", planTier: "p", billingCycle: "monthly", costPerUnitInUsdCents: "11.8000000000", pricingBasis: "marked-up", effectiveFrom: T0 });
+    await db.insert(providerCostVendorCosts).values({ providerCostId: row.id, vendorCostPerUnitInUsdCents: "2.3600000000", markupMultiplier: "5.0000", derivation: "seed" });
+    const today = utcDay(new Date());
+    const [sub] = await db.select().from(subscriptionCostRefreshes);
+    await db.insert(subscriptionCostDaily).values({ day: today, subscription: "apollo", creditsMicros: 0, cumulativeCreditsMicros: 1_000_000, costPerCreditUsdCents: "1.000000", refreshId: sub.id });
+    stub();
+    await refreshRealCosts();
+
+    const [gold] = await db.select().from(realUnitCostsDaily).where(and(eq(realUnitCostsDaily.costName, "apollo-credit"), eq(realUnitCostsDaily.day, today)));
+    expect(gold).toMatchObject({ proposedBasis: "vendor-list-cost-floor", proposedPriceUsdCents: "2.3600000000", proposedBeforeFloorUsdCents: "2.0000000000" });
+    const res = await request(app).get("/internal/real-costs").set(API_KEY);
+    expect(res.body.items.find((i: { costName: string }) => i.costName === "apollo-credit")).toMatchObject({
+      method: "subscription",
+      realCostPerUnitUsdCents: 1,
+      catalogueVendorCostPerUnitUsdCents: 2.36,
+      proposedPricePerUnitUsdCents: 2.36,
+      proposedBasis: "vendor-list-cost-floor",
+      averagedProposedPricePerUnitUsdCents: 2,
+    });
+    // An unfloored item serves no averaged figure.
+    expect(res.body.items.find((i: { costName: string }) => i.costName === "anthropic-tokens").averagedProposedPricePerUnitUsdCents).toBeNull();
+    const summary = await request(app).get("/internal/real-costs/basis-summary").set(API_KEY);
+    const basis = (b: string) => summary.body.bases.find((x: { basis: string }) => x.basis === b);
+    expect(basis("subscription-averaged")).toMatchObject({ flooredItemCount: 1, flooredItems: ["apollo-credit"] });
+    expect(basis("api-list-cost")).toMatchObject({ flooredItemCount: 0, flooredItems: [] });
   });
 
   it("Twilio: per-minute real cost uses what Twilio priced the minutes at, the rental, balance and unexplained bank money served apart (x21.4 bug)", async () => {
