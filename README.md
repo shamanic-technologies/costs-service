@@ -197,6 +197,7 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `openai-gpt-5.6-terra-tokens-output` | 0.006 | 1M tokens | Output tokens (GPT-5.6 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `typesafe-jev-1.13-tokens-input` | 0.000021 | 1M tokens | Input tokens (Jev 1.13) | typesafe | typesafe.ai | pay-as-you-go | monthly | marked-up |
 | `x-post-create` | 7.5 | post | X API v2 post create (pay-per-use) | x | x.com | pay-as-you-go | monthly | marked-up |
+| `x-post-create-with-url` | 100 | post | X API v2 post create with URL (pay-per-use) | x | x.com | pay-as-you-go | monthly | marked-up |
 | `google-ads-spend` | 1 | USD cent | Google Ads platform spend | google-ads | ads.google.com | pay-as-you-go | monthly | pass-through |
 | `meta-ads-spend` | 1 | USD cent | Meta Ads platform spend | meta-ads | facebook.com | pay-as-you-go | monthly | pass-through |
 | `linkedin-ads-spend` | 1 | USD cent | LinkedIn Ads platform spend | linkedin-ads | linkedin.com | pay-as-you-go | monthly | pass-through |
