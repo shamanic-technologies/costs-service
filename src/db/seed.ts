@@ -2343,7 +2343,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   // X API v2 — `POST /2/tweets` on the pay-per-use plan. Vendor table, from
   // https://docs.x.com/x-api/getting-started/pricing (read 2026-10-02):
   //   Post: Create            $0.015 per request
-  //   Post: Create (with URL) $0.200 per request  <- never used: the consumer posts no URLs
+  //   Post: Create (with URL) $0.200 per request  <- `x-post-create-with-url` below (quote-reposts)
   //   Post: Create (summoned) $0.010 per request  <- not our case: replies are proactive
   // Consumer: social-service (daily replies as @KevinLourd through Kevin's own X app, published
   // by the box social-scheduler); quantity = 1 per reply posted. $0.015 = 1.5 cents per post.
@@ -2357,6 +2357,22 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("1.5000000000"), // $0.015 = 1.5¢
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2026-10-01T00:00:00Z"),
+  },
+  // X API v2 `POST /2/tweets` when the post text contains a URL: X bills $0.200 per request
+  // (same vendor table as above). Consumer: social-service, quantity = 1 per quote-repost
+  // published by the box social-scheduler (the X quote = the original post URL on the last
+  // line of the text, which is what makes X price it as a URL post). $0.20 = 20 cents per post.
+  {
+    name: "x-post-create-with-url",
+    provider: "x",
+    providerDomain: PROVIDER_DOMAINS.x,
+    type: "X API v2 post create with URL (pay-per-use)",
+    unit: "post",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("20.0000000000"), // $0.200 = 20¢
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2026-10-01T00:00:00Z"),
   },
