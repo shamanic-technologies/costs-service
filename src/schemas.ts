@@ -1007,7 +1007,13 @@ const RealCostItemSchema = z
     catalogueMarkupOnRealCost: z.number().nullable().describe("catalogue price / real cost"),
     multiplier: z.number().describe("2 for production tools, 1 for pass-through (Stripe, media)"),
     proposedPricePerUnitUsdCents: z.number().nullable(),
-    proposedBasis: z.enum(["real-cost-x2", "real-cost-x1", "current-price-kept", "no-price"]),
+    proposedBasis: z
+      .enum(["real-cost-x2", "real-cost-x1", "vendor-list-cost-floor", "current-price-kept", "no-price"])
+      .describe("vendor-list-cost-floor: a subscription credit whose averaged real cost x2 sat below the vendor list cost per unit is proposed AT that list cost (owner 2026-10-02)"),
+    averagedProposedPricePerUnitUsdCents: z
+      .number()
+      .nullable()
+      .describe("Floored items only: the averaged real cost x2 the floor replaced (compare with catalogueVendorCostPerUnitUsdCents); null otherwise"),
     proposedVsCataloguePct: z.number().nullable(),
   })
   .openapi("RealCostItem");
@@ -1256,6 +1262,8 @@ registry.registerPath({
                 providers: z.array(z.string()),
                 itemCount: z.number().int().describe("Cost items of the day's list on this basis"),
                 consumedItemCount: z.number().int().describe("Of them, items runs-service recorded consumption for"),
+                flooredItemCount: z.number().int().describe("Items proposed at the vendor list cost floor (proposedBasis vendor-list-cost-floor)"),
+                flooredItems: z.array(z.string()).describe("Their cost names"),
                 realCostUsdCents: z.number().describe("Fleet consumption since 2026-01-01 x real cost of one unit (same replay as /internal/price-comparison)"),
                 amountCatalogueUsdCents: z.number().describe("Same consumption at the day's catalogue"),
                 amountProposedUsdCents: z.number().describe("Same consumption at the day's proposed list"),

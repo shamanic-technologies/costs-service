@@ -68,6 +68,8 @@ function item(r: GoldRow) {
     multiplier: Number(r.multiplier),
     proposedPricePerUnitUsdCents: proposed,
     proposedBasis: r.proposedBasis,
+    /** Set only when the subscription floor applied: the averaged real cost x2 the vendor list cost replaced. */
+    averagedProposedPricePerUnitUsdCents: num(r.proposedBeforeFloorUsdCents),
     proposedVsCataloguePct: price && proposed !== null ? Math.round(((proposed - price) / price) * 1e6) / 1e4 : null,
   };
 }
@@ -249,6 +251,8 @@ router.get("/internal/real-costs/basis-summary", async (req, res) => {
         providers: [...new Set(items.map((g) => g.provider).filter((p): p is string => p !== null))].sort(),
         itemCount: items.length,
         consumedItemCount: consumed.length,
+        flooredItemCount: items.filter((g) => g.proposedBasis === "vendor-list-cost-floor").length,
+        flooredItems: items.filter((g) => g.proposedBasis === "vendor-list-cost-floor").map((g) => g.costName).sort(),
         realCostUsdCents: r2(consumed.reduce((t, c) => t + c.realCostUsdCents, 0)),
         amountCatalogueUsdCents: r2(consumed.reduce((t, c) => t + c.amount1UsdCents, 0)),
         amountProposedUsdCents: r2(consumed.reduce((t, c) => t + c.amount2UsdCents, 0)),
@@ -261,7 +265,7 @@ router.get("/internal/real-costs/basis-summary", async (req, res) => {
       stale: lastSucceeded.asOf < utcDay(new Date()),
       perimeter: { grain: "fleet", since: REAL_COST_SINCE },
       lists: { catalogue: `catalogue:${day}`, proposed: `proposed:${day}` },
-      rule: "Averaging (bank money / units) only for flat fees: email infrastructure and vendor subscriptions. Every pay-as-you-go API at its catalogue list cost; proposed = real cost x2, x1 for pass-through (Stripe, media). What the bank paid an API vendor beyond its list cost is internal, outside clients.",
+      rule: "Averaging (bank money / units) only for flat fees: email infrastructure and vendor subscriptions. Every pay-as-you-go API at its catalogue list cost; proposed = real cost x2, x1 for pass-through (Stripe, media). A subscription credit is never proposed below its vendor list cost per unit (floored, proposedBasis vendor-list-cost-floor). What the bank paid an API vendor beyond its list cost is internal, outside clients.",
       bases,
       totals: result.totals,
       unpricedCostNames2: result.unpricedCostNames2,

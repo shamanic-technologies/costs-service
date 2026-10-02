@@ -419,6 +419,8 @@ export const realUnitCostsDaily = pgTable(
     multiplier: numeric("multiplier", { precision: 6, scale: 2 }).notNull(),
     proposedPriceUsdCents: numeric("proposed_price_usd_cents", { precision: 18, scale: 10 }),
     proposedBasis: text("proposed_basis").notNull(),
+    /** `vendor-list-cost-floor` rows only: the averaged real cost x2 the vendor list cost replaced. */
+    proposedBeforeFloorUsdCents: numeric("proposed_before_floor_usd_cents", { precision: 24, scale: 10 }),
     refreshId: uuid("refresh_id").notNull(),
   },
   (table) => [primaryKey({ name: "real_unit_costs_daily_pk", columns: [table.day, table.costName] })],
