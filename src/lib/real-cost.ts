@@ -20,7 +20,10 @@
  * Whenever the specific figure does not exist yet on D (no payment, no usage, no email sent), the
  * item falls back to its catalogue vendor cost with a flag naming why — never 0, never a guess.
  *
- *   proposed(D) = real(D) x 2 (x1 for pass-through); a subscription credit with no real cost per
+ *   proposed(D) = real(D) x 2 (x1 for pass-through); a subscription credit is never proposed below
+ *                 its vendor's catalogue list cost per unit (owner rule 2026-10-02): averaged x2 under
+ *                 the list cost is floored at it (basis `vendor-list-cost-floor`, the averaged x2 kept
+ *                 in `proposedBeforeFloor`); a subscription credit with no real cost per
  *                 credit keeps its catalogue price (flag `current-price-kept`); no real cost at all
  *                 also keeps the catalogue price; a delisted line with no real cost has no price.
  */
@@ -54,7 +57,7 @@ export type RealCostFlag =
   | "included-in-another-cost"
   | "legacy-name-priced-as-successor";
 
-export type ProposedBasis = "real-cost-x2" | "real-cost-x1" | "current-price-kept" | "no-price";
+export type ProposedBasis = "real-cost-x2" | "real-cost-x1" | "vendor-list-cost-floor" | "current-price-kept" | "no-price";
 
 export type RealCostDay = {
   day: string;
@@ -70,6 +73,8 @@ export type RealCostDay = {
   multiplier: number;
   proposedPrice: number | null;
   proposedBasis: ProposedBasis;
+  /** Floored items only: the averaged real cost x2 the floor replaced (owner rule 2026-10-02); null otherwise. */
+  proposedBeforeFloor: number | null;
 };
 
 export type PaygNumeratorBasis = "ledger-net-paid" | "twilio-usage-metered" | "google-cloud-split-metered";
@@ -235,6 +240,13 @@ export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
         proposedPrice = round10(realCost! * multiplier);
         proposedBasis = passThrough ? "real-cost-x1" : "real-cost-x2";
       }
+      let proposedBeforeFloor: number | null = null;
+      // A subscription credit is never proposed below what the vendor lists one unit at (owner 2026-10-02).
+      if (method === "subscription" && vendorCost !== null && proposedPrice !== null && proposedPrice < vendorCost) {
+        proposedBeforeFloor = proposedPrice;
+        proposedPrice = vendorCost;
+        proposedBasis = "vendor-list-cost-floor";
+      }
 
       out.push({
         day,
@@ -249,6 +261,7 @@ export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
         multiplier,
         proposedPrice,
         proposedBasis,
+        proposedBeforeFloor,
       });
     }
     // A subscription credit runs-service records under a name the catalogue never carried
@@ -270,6 +283,8 @@ export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
           multiplier: PROPOSED_MULTIPLIER,
           proposedPrice: perCredit === null ? null : round10(perCredit * PROPOSED_MULTIPLIER),
           proposedBasis: perCredit === null ? "no-price" : "real-cost-x2",
+          // Not in the catalogue: no vendor list cost to floor at.
+          proposedBeforeFloor: null,
         });
       }
     }
@@ -316,6 +331,7 @@ function uncataloguedRow(
     multiplier: PROPOSED_MULTIPLIER,
     proposedPrice: realCost === null ? null : round10(realCost * PROPOSED_MULTIPLIER),
     proposedBasis: realCost === null ? "no-price" : "real-cost-x2",
+    proposedBeforeFloor: null,
   };
 }
 

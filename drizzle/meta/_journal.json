@@ -127,6 +127,13 @@
       "when": 1790880038621,
       "tag": "0017_payg_internal_cost",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790881262091,
+      "tag": "0018_proposed_floor",
+      "breakpoints": true
     }
   ]
 }
