@@ -224,16 +224,19 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     const summary = await request(app).get("/internal/real-costs/basis-summary").set(API_KEY);
     expect(summary.status).toBe(200);
     const basis = (b: string) => summary.body.bases.find((x: { basis: string }) => x.basis === b);
-    // anthropic 1,000,000 tokens (list 0.0001, catalogue 0.0005) + twilio 2 minutes (list 2, catalogue 10)
-    expect(basis("api-list-cost")).toMatchObject({ realCostUsdCents: 104, amountCatalogueUsdCents: 520, amountProposedUsdCents: 208, consumedItemCount: 2 });
+    // anthropic 1,000,000 tokens (list 0.0001) + twilio 2 minutes (list 2): since the 2026-10-02 switch the
+    // refresh bills the proposed list, so today's catalogue IS the proposed price (was 0.0005 / 10).
+    expect(basis("api-list-cost")).toMatchObject({ realCostUsdCents: 104, amountCatalogueUsdCents: 208, amountProposedUsdCents: 208, consumedItemCount: 2 });
     expect(basis("api-list-cost").providers).toEqual(expect.arrayContaining(["anthropic", "google", "twilio"]));
     expect(basis("pass-through-x1")).toMatchObject({ providers: ["stripe"], realCostUsdCents: 30, amountCatalogueUsdCents: 30, amountProposedUsdCents: 30 });
-    expect(summary.body.totals).toMatchObject({ amount1UsdCents: 550, amount2UsdCents: 238, realCostUsdCents: 134 });
+    expect(summary.body.totals).toMatchObject({ amount1UsdCents: 238, amount2UsdCents: 238, realCostUsdCents: 134 });
     expect(summary.body.unpricedCostNames2).toEqual([]);
     expect(summary.body.internalCost.byVendor.find((v: { provider: string }) => v.provider === "anthropic")).toMatchObject({ netPaidUsdCents: 300, internalCostUsdCents: 200 });
     const sum = summary.body.bases.reduce((t: number, b: { realCostUsdCents: number }) => t + b.realCostUsdCents, 0);
     expect(sum).toBeCloseTo(summary.body.totals.realCostUsdCents, 6);
 
+    // The first refresh switched today's catalogue price, which the gold records: idempotent from there.
+    await refreshRealCosts();
     const before = await db.select().from(realUnitCostsDaily);
     await refreshRealCosts();
     const after = await db.select().from(realUnitCostsDaily);
@@ -258,7 +261,8 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
 
     const same = await request(app).get(`/internal/price-comparison?list1=catalogue:${today}&list2=catalogue:${today}`).set(API_KEY);
     expect(same.status).toBe(200);
-    expect(same.body.totals).toMatchObject({ differenceUsdCents: 0, amount1UsdCents: 550, billedUsdCents: 550, billedPlatformKeyUsdCents: 550 });
+    // Today's catalogue is the proposed list (switch 2026-10-02); billed is what runs-service charged at the time.
+    expect(same.body.totals).toMatchObject({ differenceUsdCents: 0, amount1UsdCents: 238, billedUsdCents: 550, billedPlatformKeyUsdCents: 550 });
     expect(same.body.byOrg[0].orgId).toBe(ORG);
     expect(same.body.byBrand[0]).toMatchObject({ orgId: ORG, brandId: "brand-1" });
 
@@ -266,7 +270,8 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     expect(vsProposed.status).toBe(200);
     // APIs at list cost x2: anthropic 1,000,000 x 0.0002 = 200 + stripe 30 x 1 = 230 + twilio 2 x 4 = 238 (catalogue 550);
     // real: 1,000,000 x 0.0001 = 100 + stripe 30 + twilio 2 x 2 = 134
-    expect(vsProposed.body.totals).toMatchObject({ amount2UsdCents: 238, differenceUsdCents: -312, realCostUsdCents: 134, margin2UsdCents: 104 });
+    // ... and the catalogue billed today equals it: difference 0.
+    expect(vsProposed.body.totals).toMatchObject({ amount1UsdCents: 238, amount2UsdCents: 238, differenceUsdCents: 0, realCostUsdCents: 134, margin2UsdCents: 104 });
     expect(vsProposed.body.perimeter).toEqual({ grain: "org-brand", orgId: ORG, brandId: "brand-1" });
     expect(vsProposed.body.byOrg).toBeNull();
   });

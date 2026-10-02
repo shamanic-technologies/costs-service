@@ -1,8 +1,9 @@
 /**
  * Owner-reviewable declarations of the REAL cost per unit and the PROPOSED price list
  * (`src/lib/real-cost.ts`, `GET /internal/real-costs`, `/internal/price-lists`,
- * `/internal/price-comparison`). DISPLAY ONLY until the owner's go: nothing here changes a
- * catalogue price, and no billed price reads the proposed list.
+ * `/internal/price-comparison`). BILLED since the owner's go of 2026-10-02: after every refresh the
+ * day's proposed price of each cost item becomes its catalogue price (src/lib/catalogue-sync.ts), so a
+ * change here changes what every customer pays from the next refresh on.
  *
  * Owner rules (2026-10-01):
  * - real cost per unit, per cost item, daily since 2026-01-01:

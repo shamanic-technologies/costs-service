@@ -9,6 +9,8 @@
  * v0.25.0 are not in the table, so an early date resolves to the oldest version that survived.
  */
 export type CatalogueVersion = {
+  /** `providers_costs.id` (absent only in hand-built test histories). */
+  id?: string;
   name: string;
   provider: string;
   planTier: string;

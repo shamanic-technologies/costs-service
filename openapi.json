@@ -2933,7 +2933,7 @@
       "get": {
         "operationId": "getRealCosts",
         "summary": "Real cost per unit and proposed price of every cost item on a day (default latest), service api key only",
-        "description": "Display only. Query `day=YYYY-MM-DD` (2026-01-01 through asOf). 503 before the first refresh.",
+        "description": "The proposed price is the BILLED catalogue price since 2026-10-02 (applied after each refresh, `/internal/catalogue-syncs`). Query `day=YYYY-MM-DD` (2026-01-01 through asOf). 503 before the first refresh.",
         "security": [
           {
             "ApiKeyAuth": []
@@ -4078,13 +4078,87 @@
                     },
                     "costItems": {
                       "type": "integer"
+                    },
+                    "catalogueSync": {
+                      "type": "object",
+                      "properties": {
+                        "syncId": {
+                          "type": "string"
+                        },
+                        "proposedListDay": {
+                          "type": "string"
+                        },
+                        "versionsWritten": {
+                          "type": "integer",
+                          "description": "New `proposed-list` price versions, effective at the sync instant (never retroactive)"
+                        },
+                        "unchanged": {
+                          "type": "integer"
+                        },
+                        "kept": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "costName": {
+                                "type": "string"
+                              },
+                              "reason": {
+                                "type": "string",
+                                "description": "Why the billed price did not follow the proposed list (no proposed price, current price kept)"
+                              },
+                              "billedPriceUsdCents": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "costName",
+                              "reason",
+                              "billedPriceUsdCents"
+                            ]
+                          }
+                        },
+                        "written": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "costName": {
+                                "type": "string"
+                              },
+                              "previousPriceUsdCents": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "priceUsdCents": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "costName",
+                              "previousPriceUsdCents",
+                              "priceUsdCents"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "syncId",
+                        "proposedListDay",
+                        "versionsWritten",
+                        "unchanged",
+                        "kept",
+                        "written"
+                      ]
                     }
                   },
                   "required": [
                     "refreshId",
                     "asOf",
                     "days",
-                    "costItems"
+                    "costItems",
+                    "catalogueSync"
                   ]
                 }
               }
@@ -4100,12 +4174,127 @@
               }
             }
           },
+          "500": {
+            "description": "The gold was refreshed but the catalogue sync failed (stale input, zero-price guard): the last good catalogue stays billed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "502": {
             "description": "Bank ledger or runs-service could not answer (named); nothing written",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/catalogue-syncs": {
+      "get": {
+        "operationId": "listCatalogueSyncs",
+        "summary": "The last attempts to bill the proposed price list (newest first)",
+        "description": "Since 2026-10-02 the billed catalogue price of every cost item is the day's proposed price, written after each real-cost refresh as a new `proposed-list` price version. A failed attempt (stale proposed list, failed refresh, zero-price guard) writes no version: the last good catalogue stays billed.",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attempts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "syncs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "realCostRefreshId": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "proposedListDay": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "succeeded",
+                              "failed"
+                            ]
+                          },
+                          "error": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "versionsWritten": {
+                            "type": "integer"
+                          },
+                          "kept": {
+                            "type": "array",
+                            "nullable": true,
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "costName": {
+                                  "type": "string"
+                                },
+                                "reason": {
+                                  "type": "string",
+                                  "description": "Why the billed price did not follow the proposed list (no proposed price, current price kept)"
+                                },
+                                "billedPriceUsdCents": {
+                                  "type": "string",
+                                  "nullable": true
+                                }
+                              },
+                              "required": [
+                                "costName",
+                                "reason",
+                                "billedPriceUsdCents"
+                              ]
+                            }
+                          },
+                          "startedAt": {
+                            "type": "string"
+                          },
+                          "finishedAt": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "realCostRefreshId",
+                          "proposedListDay",
+                          "status",
+                          "error",
+                          "versionsWritten",
+                          "kept",
+                          "startedAt",
+                          "finishedAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "syncs"
+                  ]
                 }
               }
             }

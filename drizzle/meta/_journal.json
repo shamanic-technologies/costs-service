@@ -134,6 +134,13 @@
       "when": 1790881262091,
       "tag": "0018_proposed_floor",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790917530574,
+      "tag": "0019_proposed_list_billed",
+      "breakpoints": true
     }
   ]
 }

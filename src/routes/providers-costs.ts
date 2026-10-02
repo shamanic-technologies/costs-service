@@ -241,6 +241,7 @@ router.put("/v1/providers-costs/:name", requireApiKey, async (req, res) => {
         regimeHoursUtc: regimeHoursUtc ?? null,
         costPerUnitInUsdCents: String(costPerUnitInUsdCents),
         pricingBasis,
+        priceSource: "api",
         effectiveFrom: effectiveFrom ? new Date(effectiveFrom) : new Date(),
       })
       .returning();

@@ -41,11 +41,18 @@ export const providersCosts = pgTable(
     // true if every line states its own class. Rows that pre-date the column were all marked up,
     // so migration 0007 backfills them to 'marked-up' before locking the constraint.
     pricingBasis: text("pricing_basis").notNull(),
+    // Who wrote this version (owner switch 2026-10-02, see src/lib/catalogue-sync.ts):
+    //   'seed'          = src/db/seed.ts (the vendor list x COST_DEFAULT_MULTIPLIER version);
+    //   'api'           = PUT /v1/providers-costs/:name;
+    //   'proposed-list' = the daily sync that makes the proposed price list the billed price.
+    // The seed compares itself ONLY to non-'proposed-list' rows, so it never reverts a synced price.
+    priceSource: text("price_source").notNull().default("seed"),
     effectiveFrom: timestamp("effective_from", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    check("providers_costs_price_source", sql`${table.priceSource} IN ('seed', 'api', 'proposed-list')`),
     uniqueIndex("idx_providers_costs_name_plan_effective").on(
       table.name,
       table.planTier,
@@ -424,4 +431,29 @@ export const realUnitCostsDaily = pgTable(
     refreshId: uuid("refresh_id").notNull(),
   },
   (table) => [primaryKey({ name: "real_unit_costs_daily_pk", columns: [table.day, table.costName] })],
+);
+
+/**
+ * One attempt to make the proposed price list the billed catalogue price (src/db/catalogue-sync.ts).
+ * A failed attempt (stale proposed list, a refresh that failed, a guard) writes no price version:
+ * the last good catalogue stays billed, and `error` says why.
+ */
+export const catalogueSyncs = pgTable(
+  "catalogue_syncs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    realCostRefreshId: uuid("real_cost_refresh_id"),
+    proposedListDay: date("proposed_list_day"),
+    status: text("status").notNull(),
+    error: text("error"),
+    versionsWritten: integer("versions_written").notNull().default(0),
+    /** Items whose billed price did not follow the proposed list, each with why (current price kept, no price). */
+    kept: jsonb("kept"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("idx_catalogue_syncs_started").on(table.startedAt),
+    check("catalogue_syncs_status", sql`${table.status} IN ('succeeded', 'failed')`),
+  ],
 );

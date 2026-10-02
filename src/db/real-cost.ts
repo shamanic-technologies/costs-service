@@ -26,6 +26,7 @@ import { PAY_AS_YOU_GO_VENDORS, REAL_COST_SINCE, matchesPrefix, type PayAsYouGoV
 import { paygRatios, realCostSeries, type GoldPoint, type MeteredSpend, type PlatformUnits } from "../lib/real-cost.js";
 import type { ConsumptionRow } from "../lib/price-comparison.js";
 import { utcDay } from "./email-send-price.js";
+import { syncCatalogueToProposed, type CatalogueSyncOutcome } from "./catalogue-sync.js";
 
 /**
  * Storage and scheduling of the real cost per unit and the proposed price list (formula:
@@ -53,6 +54,7 @@ export async function loadCatalogueHistory(): Promise<CatalogueHistory> {
   ]);
   return new CatalogueHistory(
     rows.map(({ pc, v }) => ({
+      id: pc.id,
       name: pc.name,
       provider: pc.provider,
       planTier: pc.planTier,
@@ -245,7 +247,14 @@ const silverRow = (d: { day: string; orgId: string | null; costName: string; cos
   netBilledUsdCents: d.netBilledCostInUsdCents,
 });
 
-export type RealCostRefreshOutcome = { refreshId: string; asOf: string; days: number; costItems: number };
+export type RealCostRefreshOutcome = {
+  refreshId: string;
+  asOf: string;
+  days: number;
+  costItems: number;
+  /** The day's proposed list applied to the billed catalogue (src/db/catalogue-sync.ts). */
+  catalogueSync: CatalogueSyncOutcome;
+};
 
 export async function refreshRealCosts(now: Date = new Date()): Promise<RealCostRefreshOutcome> {
   if (running) throw new RealCostRefreshInProgressError("A real cost refresh is already running");
@@ -259,6 +268,7 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
       running = false;
       throw err;
     });
+  let gold: Omit<RealCostRefreshOutcome, "catalogueSync">;
   try {
     const [email, subs] = await Promise.all([
       lastSucceeded(emailSendPriceRefreshes, "email send price"),
@@ -396,7 +406,7 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
         .set({ status: "succeeded", finishedAt: new Date(), emailSendPriceRefreshId: email.id, subscriptionCostRefreshId: subs.id })
         .where(eq(realCostRefreshes.id, attempt.id));
     });
-    return { refreshId: attempt.id, asOf, days: days.length, costItems: new Set(series.map((r) => r.costName)).size };
+    gold = { refreshId: attempt.id, asOf, days: days.length, costItems: new Set(series.map((r) => r.costName)).size };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await db
@@ -407,6 +417,22 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
   } finally {
     running = false;
   }
+  // After the gold is committed: the day's proposed list becomes the billed catalogue price. A
+  // failure here leaves the gold served and the last good catalogue billed, and is thrown loud.
+  return { ...gold, catalogueSync: await syncCatalogueToProposed(now) };
+}
+
+/**
+ * A seed or api version that came into force after the last succeeded refresh (a deploy appended
+ * it, or a scheduled vendor price arrived) is billed at its seed price until the proposed list is
+ * recomputed over it: the hourly tick recomputes as soon as one exists.
+ */
+async function catalogueMovedSince(at: Date): Promise<boolean> {
+  const rows = await db.execute<{ n: number }>(dsql`
+    SELECT count(*)::int AS n FROM providers_costs
+    WHERE price_source <> 'proposed-list' AND effective_from <= now() AND greatest(effective_from, created_at) > ${at.toISOString()}::timestamptz
+  `);
+  return Number((rows as unknown as { n: number }[])[0]?.n ?? 0) > 0;
 }
 
 async function succeededOn(table: typeof realCostRefreshes | typeof emailSendPriceRefreshes | typeof subscriptionCostRefreshes, day: string) {
@@ -432,13 +458,20 @@ export function startRealCostScheduler(intervalMs: number = HOUR_MS): NodeJS.Tim
     if (running) return;
     try {
       const today = utcDay(new Date());
-      if (booted && await succeededOn(realCostRefreshes, today)) return;
+      if (booted && await succeededOn(realCostRefreshes, today)) {
+        const { lastSucceeded: last } = await realCostRefreshState();
+        if (!last?.finishedAt || !(await catalogueMovedSince(last.finishedAt))) return;
+      }
       if (!(await succeededOn(emailSendPriceRefreshes, today)) || !(await succeededOn(subscriptionCostRefreshes, today))) return;
       const outcome = await refreshRealCosts();
       booted = true;
       console.log(`[Costs Service] Real costs refreshed as of ${outcome.asOf} (${outcome.costItems} cost items)`);
+      const sync = outcome.catalogueSync;
+      console.log(
+        `[Costs Service] Catalogue billed at the proposed list of ${sync.proposedListDay}: ${sync.versionsWritten} price version(s) written, ${sync.unchanged} unchanged, ${sync.kept.length} kept (${sync.kept.map((k) => k.costName).join(", ")})`,
+      );
     } catch (err) {
-      console.error("[Costs Service] Real cost refresh FAILED, last series stays served:", err);
+      console.error("[Costs Service] Real cost refresh or catalogue sync FAILED, last series and last good catalogue stay served:", err);
     }
   };
   // First tick after the sibling refreshes had a chance to run on boot.
