@@ -194,6 +194,9 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   treg: "treg.to",
   twilio: "twilio.com",
   typesafe: "typesafe.ai",
+  // X API v2 (pay-per-use developer plan) — posting through our own X app. A different
+  // commercial relationship from `x-ads` (advertising spend we route), so its own provider.
+  x: "x.com",
   // Advertising platforms we route spend to. Each is its own provider: the plan we resolve a
   // price on is per vendor path, and `google` (Gemini) is a different commercial relationship
   // from `google-ads` even though both are Google.
@@ -2337,6 +2340,26 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // X API v2 — `POST /2/tweets` on the pay-per-use plan. Vendor table, from
+  // https://docs.x.com/x-api/getting-started/pricing (read 2026-10-02):
+  //   Post: Create            $0.015 per request
+  //   Post: Create (with URL) $0.200 per request  <- never used: the consumer posts no URLs
+  //   Post: Create (summoned) $0.010 per request  <- not our case: replies are proactive
+  // Consumer: social-service (daily replies as @KevinLourd through Kevin's own X app, published
+  // by the box social-scheduler); quantity = 1 per reply posted. $0.015 = 1.5 cents per post.
+  // Posting is work we perform (not money routed to an ad platform), so marked-up.
+  {
+    name: "x-post-create",
+    provider: "x",
+    providerDomain: PROVIDER_DOMAINS.x,
+    type: "X API v2 post create (pay-per-use)",
+    unit: "post",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.5000000000"), // $0.015 = 1.5¢
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2026-10-01T00:00:00Z"),
+  },
   // Advertising channels — one pass-through line per channel, see ADVERTISING_CHANNELS above.
   ...ADVERTISING_CHANNEL_COSTS,
 ];
@@ -2467,6 +2490,14 @@ export const SEED_PLATFORM_COSTS = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // X API v2 — pay-per-use developer plan. Resolves x-post-create; without this row the name
+  // 500s `No platform cost configured for provider 'x'`.
+  {
+    provider: "x",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2026-10-01T00:00:00Z"),
   },
   // ⚠️ THE `vercel` PLATFORM ROW IS RETIRED — chat-service dropped the AI Gateway in v0.51.0
   // and nothing routes through it. It is removed from this catalog rather than re-pointed:
