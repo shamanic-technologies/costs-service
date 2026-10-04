@@ -762,9 +762,11 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   // table. So the cached-input row carries the vendor's own published figure, exactly like the
   // Z.ai and Moonshot cache-hit rows, and no consumer computes a rate from another row.
   //
-  // Cache WRITES ($12.50/MTok at 5m, $20/MTok at 1h) and the Batch API's 50% discount are not
-  // modelled: they are separate priced dimensions and would each be their own cost name. Adding
-  // them is a new name when a caller actually declares one, never a blend into these three.
+  // Cache WRITES are their own priced dimension, so their own name: `-tokens-cache-write-5m` =
+  // the default ephemeral 5-minute cache, 1.25x base input ($12.50/MTok here; Sonnet 5.5 $2.50,
+  // Opus 5.5 $5, page read 2026-10-04). Seeded 2026-10-04 when chat-service turned prompt caching
+  // on. 1-hour writes ($20/MTok, 2x) and the Batch API's 50% discount are still not modelled: each
+  // is a new name when a caller actually declares one, never a blend into an existing row.
   {
     name: "anthropic-fable-5.1-tokens-input",
     provider: "anthropic",
@@ -790,6 +792,18 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   {
+    name: "anthropic-fable-5.1-tokens-cache-write-5m",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Cache write tokens, 5-minute TTL (Fable 5.1)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0012500000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
     name: "anthropic-fable-5.1-tokens-output",
     provider: "anthropic",
     providerDomain: PROVIDER_DOMAINS.anthropic,
@@ -807,8 +821,9 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   //   Opus 5.5:   input $4 · cache hit $0.20 · output $20  (0.05x — footnote 2 on that page, so
   //               the cached row carries the vendor's own figure, never 0.1x of input)
   // Same scale as the Fable 5.1 rows above ($/MTok / 10,000 before the markup): Sonnet 5.5
-  // input is 2/10 of Fable 5.1 input, Opus 5.5 input 4/10. Cache writes, Batch, fast mode
-  // (Opus 5.5 $8/$40) and US-only inference (1.1x) are separate priced dimensions, not seeded.
+  // input is 2/10 of Fable 5.1 input, Opus 5.5 input 4/10. 5-minute cache writes are
+  // seeded (1.25x input, see the Fable 5.1 note); 1h writes, Batch, fast mode (Opus 5.5
+  // $8/$40) and US-only inference (1.1x) are separate priced dimensions, not seeded.
   {
     name: "anthropic-sonnet-5.5-tokens-input",
     provider: "anthropic",
@@ -830,6 +845,18 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000200000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "anthropic-sonnet-5.5-tokens-cache-write-5m",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Cache write tokens, 5-minute TTL (Sonnet 5.5)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0002500000"),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
@@ -866,6 +893,18 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000200000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "anthropic-opus-5.5-tokens-cache-write-5m",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Cache write tokens, 5-minute TTL (Opus 5.5)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0005000000"),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
