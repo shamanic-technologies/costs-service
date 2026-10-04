@@ -57,12 +57,15 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `anthropic-haiku-4.5-tokens-output` | 0.0025 | 1M tokens | Output tokens (Haiku 4.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-fable-5.1-tokens-input` | 0.005 | 1M tokens | Input tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-fable-5.1-tokens-cached-input` | 0.000125 | 1M tokens | Cached input tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-fable-5.1-tokens-cache-write-5m` | 0.00625 | 1M tokens | Cache write tokens, 5-minute TTL (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-fable-5.1-tokens-output` | 0.025 | 1M tokens | Output tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-sonnet-5.5-tokens-input` | 0.001 | 1M tokens | Input tokens (Sonnet 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-sonnet-5.5-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (Sonnet 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-sonnet-5.5-tokens-cache-write-5m` | 0.00125 | 1M tokens | Cache write tokens, 5-minute TTL (Sonnet 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-sonnet-5.5-tokens-output` | 0.005 | 1M tokens | Output tokens (Sonnet 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-opus-5.5-tokens-input` | 0.002 | 1M tokens | Input tokens (Opus 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-opus-5.5-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (Opus 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-opus-5.5-tokens-cache-write-5m` | 0.0025 | 1M tokens | Cache write tokens, 5-minute TTL (Opus 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-opus-5.5-tokens-output` | 0.01 | 1M tokens | Output tokens (Opus 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-web-search` | 5 | search | Web search | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `featured-api-pitch-submit` | 0.25 | call | API call (pitch submit) | featured | featured.com | pay-as-you-go | monthly | marked-up |

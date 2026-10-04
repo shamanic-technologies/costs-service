@@ -32,6 +32,10 @@ const VENDOR_USD_PER_MTOK: Array<[name: string, usdPerMTok: number]> = [
   ["anthropic-opus-5.5-tokens-input", 4],
   ["anthropic-opus-5.5-tokens-cached-input", 0.2],
   ["anthropic-opus-5.5-tokens-output", 20],
+  // Added 2026-10-04: 5-minute cache writes, 1.25x base input (vendor page read that day).
+  ["anthropic-fable-5.1-tokens-cache-write-5m", 12.5],
+  ["anthropic-sonnet-5.5-tokens-cache-write-5m", 2.5],
+  ["anthropic-opus-5.5-tokens-cache-write-5m", 5],
   ["openai-gpt-6-sol-tokens-input", 2],
   ["openai-gpt-6-sol-tokens-cached-input", 0.2],
   ["openai-gpt-6-sol-tokens-output", 10],
