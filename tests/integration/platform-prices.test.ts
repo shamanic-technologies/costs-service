@@ -206,4 +206,37 @@ describe("Platform Prices (consumer-facing)", () => {
       expect(res.body[0].name).toBe("alpha");
     });
   });
+
+  describe("status: current vs retired (daegu-v2 report 2026-10-06)", () => {
+    it("serves a retired name with its successors and a current name as current, in the list and by name", async () => {
+      await insertPlatformCost({ provider: "instantly", planTier: "basic", billingCycle: "monthly", effectiveFrom: new Date("2025-01-01") });
+      for (const name of ["instantly-email-send", "instantly-account-email-sent"]) {
+        await insertTestProviderCost({
+          name,
+          provider: "instantly",
+          providerDomain: "instantly.ai",
+          type: "Email send",
+          unit: "email",
+          planTier: "basic",
+          billingCycle: "monthly",
+          costPerUnitInUsdCents: "2.9886",
+          effectiveFrom: new Date("2025-01-01"),
+        });
+      }
+
+      const list = await request(app).get("/v1/platform-prices").set(identityHeaders);
+      expect(list.status).toBe(200);
+      const byName = Object.fromEntries(list.body.map((p: { name: string }) => [p.name, p]));
+      expect(byName["instantly-email-send"].status).toBe("retired");
+      expect(byName["instantly-email-send"].supersededBy).toEqual(["instantly-account-email-sent", "instantly-domain-email-sent"]);
+      expect(byName["instantly-account-email-sent"].status).toBe("current");
+      expect(byName["instantly-account-email-sent"].supersededBy).toBeNull();
+
+      const one = await request(app).get("/v1/platform-prices/instantly-email-send").set(identityHeaders);
+      expect(one.status).toBe(200);
+      expect(one.body.status).toBe("retired");
+      // Still priced: spend already declared against it keeps resolving.
+      expect(one.body.pricePerUnitInUsdCents).toBe("2.9886000000");
+    });
+  });
 });

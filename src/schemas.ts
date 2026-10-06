@@ -95,6 +95,16 @@ export const PriceSchema = z
       example: "01:00-04:00,06:00-10:00",
     }),
     effectiveFrom: z.string().datetime(),
+    status: z.enum(["current", "retired"]).openapi({
+      description:
+        "'current' = a name our services run today. 'retired' = no service emits this name any more; its work (if any) is declared under supersededBy. A retired name keeps its price so spend already declared against it still resolves, but a public price list shows only 'current' lines. Idle is not retired: a line nobody used recently is still 'current'.",
+      example: "current",
+    }),
+    supersededBy: z.array(z.string()).nullable().openapi({
+      description:
+        "On a retired name, the current names that took over its work (empty when nothing replaced it). Null on a current name.",
+      example: null,
+    }),
   })
   .openapi("Price");
 

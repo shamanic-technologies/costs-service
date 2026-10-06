@@ -3,6 +3,7 @@ import { eq, lte, desc, and } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { providersCosts, platformCosts } from "../db/schema.js";
 import { getTraceIdentityHeaders, traceEvent } from "../lib/trace-event.js";
+import { costNameStatus } from "../lib/retired-cost-names.js";
 
 const router = Router();
 
@@ -92,6 +93,8 @@ router.get("/v1/platform-prices", async (req, res) => {
         pricingRegime: row.pricingRegime,
         regimeHoursUtc: row.regimeHoursUtc,
         effectiveFrom: row.effectiveFrom,
+        // Retired names stay listed (staff tools read old usage's provider here) but say so.
+        ...costNameStatus(row.name),
       }));
 
     traceEvent({
@@ -179,6 +182,7 @@ router.get("/v1/platform-prices/:name", async (req, res) => {
       pricingRegime: result.pricingRegime,
       regimeHoursUtc: result.regimeHoursUtc,
       effectiveFrom: result.effectiveFrom,
+      ...costNameStatus(result.name),
     });
   } catch (err) {
     console.error("[Costs Service] Error getting platform price:", err);

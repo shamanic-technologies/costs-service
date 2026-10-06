@@ -234,6 +234,10 @@ account row) is kept in the seed comments as the record of how the frozen rows w
 the spend ever goes back on the rebill, that is a new priced version on the same names — not a
 new name.
 
+## Retired cost names = a DECLARATION, never a runs-idleness rule (2026-10-06)
+
+`GET /v1/platform-prices*` serve `status: current|retired` + `supersededBy` from `RETIRED_COST_NAMES` (`src/lib/retired-cost-names.ts`; every `LEGACY_COST_NAMES` key is retired automatically). The public catalog page shows `current` only. **When you seed a successor (new model replacing one chat-service stops offering, a unit merged or renamed), retire the old name in the same PR.** Do NOT derive retirement from runs-service recency: on 2026-10-06, 33 names idle 45+ days mixed truly retired ones with selectable models (Gemini 3.5/3.6 Flash), opt-in tools (web search) and never-bought ad lines. A retired name keeps its price (runs reconcile + proposed-list sync), and stays in the listing (staff tools read old usage's provider there). Regressions: `tests/unit/retired-cost-names.test.ts` (successors must be seeded + current; retired names must exist), `tests/integration/platform-prices.test.ts`.
+
 ## Migration safety
 
 The seed runs append-only `INSERT ... SELECT` (compare-to-latest, no `ON CONFLICT DO UPDATE`) — it never DELETEs. As a result, **rows whose name is removed from the seed catalog persist forever as orphans** (apollo split, scrape-do split, instantly split, gemini→google rename, anthropic-opus naming all left orphans).

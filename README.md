@@ -16,6 +16,10 @@ Every line states its **basis**, and there are only two:
 
 The basis is on the row and on every public price read (`GET /v1/platform-prices`, `GET /v1/platform-prices/:name`), so a caller — the public pricing page included — can tell the two apart without keeping its own list of names. The column is `NOT NULL` and the write paths require it: a line whose class cannot be resolved fails loudly rather than defaulting to either side.
 
+### Retired names (`status: "retired"`)
+
+Every public price read (`GET /v1/platform-prices`, `GET /v1/platform-prices/:name`) carries `status` (`current` | `retired`) and `supersededBy`. A **retired** name is one no service of ours emits any more (a replaced model, a renamed or merged unit, e.g. `instantly-email-send` → `instantly-account-email-sent` + `instantly-domain-email-sent`). It keeps its price, so spend already declared against it still resolves, but a public price list shows only `current` lines. Idle is not retired: a selectable model or an opt-in tool nobody used this month stays `current`. The list is declared in `src/lib/retired-cost-names.ts`, written in the same PR that seeds or adopts the successor.
+
 ### Delisted lines (no billable price)
 
 A line can also have **no price at all**. When a cost we still incur stops being rebilled to customers, its newest version carries a `null` price: it leaves this table and `GET /v1/platform-prices`, while `GET /v1/platform-prices/:name` still answers `200` with `pricePerUnitInUsdCents: null` and `billable: false`, and `/v1/providers-costs/:name/history` still returns every price it ever had. Nothing is deleted and nothing is re-priced — spend already declared against the name reads back at the price it was written with.
@@ -355,7 +359,7 @@ Consumer endpoints for getting resolved platform prices. No auth required. These
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/v1/platform-prices` | No | List current platform price for every cost name |
+| GET | `/v1/platform-prices` | No | List current platform price for every cost name, each with `status` (`current` \| `retired`) + `supersededBy` |
 | GET | `/v1/platform-prices/:name` | No | Get current platform price for one cost name |
 
 ### Providers costs (catalog)
