@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { eq, lte, desc, and } from "drizzle-orm";
+import { eq, lte, desc, and, gt, max, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { providersCosts, platformCosts } from "../db/schema.js";
+import { providersCosts, platformCosts, consumptionByOrgDaily, realCostRefreshes } from "../db/schema.js";
+import { bundleOf } from "../lib/price-bundles.js";
 import { getTraceIdentityHeaders, traceEvent } from "../lib/trace-event.js";
 import { costNameStatus } from "../lib/retired-cost-names.js";
 
@@ -37,6 +38,30 @@ async function getCurrentPlatformCost(provider: string) {
   return cost ?? null;
 }
 
+/**
+ * When each cost name was last used, from the runs-service consumption costs-service already
+ * holds (silver `consumption_by_org_daily`, every org and key source, rewritten whole by the
+ * daily real-cost refresh). `usageReadAt` = when that refresh read it: a consumer measures
+ * idleness against it, not against today, so a stalled refresh never makes live lines look idle.
+ */
+async function lastUse(): Promise<{ lastUsedOn: Map<string, string>; usageReadAt: Date | null }> {
+  const rows = await db
+    .select({ costName: consumptionByOrgDaily.costName, day: max(consumptionByOrgDaily.day) })
+    .from(consumptionByOrgDaily)
+    .where(gt(consumptionByOrgDaily.quantity, sql`0`))
+    .groupBy(consumptionByOrgDaily.costName);
+  const [refresh] = await db
+    .select({ finishedAt: realCostRefreshes.finishedAt })
+    .from(realCostRefreshes)
+    .where(eq(realCostRefreshes.status, "succeeded"))
+    .orderBy(desc(realCostRefreshes.finishedAt))
+    .limit(1);
+  return {
+    lastUsedOn: new Map(rows.filter((r) => r.day !== null).map((r) => [r.costName, r.day as string])),
+    usageReadAt: refresh?.finishedAt ?? null,
+  };
+}
+
 // GET /v1/platform-prices — list current platform prices for all cost names
 router.get("/v1/platform-prices", async (req, res) => {
   try {
@@ -63,6 +88,8 @@ router.get("/v1/platform-prices", async (req, res) => {
       .where(lte(providersCosts.effectiveFrom, now))
       .orderBy(providersCosts.name, desc(providersCosts.effectiveFrom));
 
+    const usage = await lastUse();
+
     // 3. Filter by matching platform cost config, deduplicate per name.
     //
     // A name whose newest in-force row on the active plan carries a NULL price is DELISTED:
@@ -71,7 +98,7 @@ router.get("/v1/platform-prices", async (req, res) => {
     // priced version can never be served in its place, which would resurrect a price we
     // stopped charging. The name stays resolvable at `/v1/platform-prices/:name`.
     const seen = new Set<string>();
-    const prices = allCosts
+    const listed = allCosts
       .filter((row) => {
         if (seen.has(row.name)) return false;
         const plan = planMap.get(row.provider);
@@ -95,7 +122,11 @@ router.get("/v1/platform-prices", async (req, res) => {
         effectiveFrom: row.effectiveFrom,
         // Retired names stay listed (staff tools read old usage's provider here) but say so.
         ...costNameStatus(row.name),
+        lastUsedOn: usage.lastUsedOn.get(row.name) ?? null,
+        usageReadAt: usage.usageReadAt,
       }));
+    const currentPrices = new Map(listed.map((p) => [p.name, p.pricePerUnitInUsdCents]));
+    const prices = listed.map((p) => ({ ...p, bundle: bundleOf(p.name, currentPrices) }));
 
     traceEvent({
       runId: req.headers["x-run-id"] as string | undefined,

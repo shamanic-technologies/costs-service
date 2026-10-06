@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
 import { createTestApp, getIdentityHeaders } from "../helpers/test-app.js";
 import { cleanTestData, insertTestProviderCost, insertPlatformCost, closeDb } from "../helpers/test-db.js";
+import { db } from "../../src/db/index.js";
+import { consumptionByOrgDaily, realCostRefreshes } from "../../src/db/schema.js";
 
 describe("Platform Prices (consumer-facing)", () => {
   const app = createTestApp();
@@ -237,6 +239,47 @@ describe("Platform Prices (consumer-facing)", () => {
       expect(one.body.status).toBe("retired");
       // Still priced: spend already declared against it keeps resolving.
       expect(one.body.pricePerUnitInUsdCents).toBe("2.9886000000");
+    });
+  });
+
+  describe("lastUsedOn + bundle on the list (daegu-v2 asks 2026-10-06)", () => {
+    beforeEach(async () => {
+      await db.delete(consumptionByOrgDaily);
+      await db.delete(realCostRefreshes);
+    });
+
+    it("serves last use per name from runs consumption, and the price of one email on both email rows", async () => {
+      await insertPlatformCost({ provider: "instantly", planTier: "basic", billingCycle: "monthly", effectiveFrom: new Date("2025-01-01") });
+      for (const name of ["instantly-account-email-sent", "instantly-domain-email-sent"]) {
+        await insertTestProviderCost({
+          name, provider: "instantly", providerDomain: "instantly.ai", type: "Email send", unit: "email",
+          planTier: "basic", billingCycle: "monthly", costPerUnitInUsdCents: "2.9886", effectiveFrom: new Date("2025-01-01"),
+        });
+      }
+      const row = (day: string, quantity: string) => ({
+        day, orgId: "org-1", costName: "instantly-account-email-sent", costSource: "platform", quantity, billedUsdCents: "0", netBilledUsdCents: "0",
+      });
+      // A later day with zero units is not a use.
+      await db.insert(consumptionByOrgDaily).values([row("2026-09-01", "3"), row("2026-09-20", "1"), row("2026-09-25", "0")]);
+      const finishedAt = new Date("2026-10-06T06:00:00Z");
+      await db.insert(realCostRefreshes).values([
+        { asOf: "2026-10-06", status: "succeeded", finishedAt },
+        { asOf: "2026-10-07", status: "failed", finishedAt: new Date("2026-10-07T06:00:00Z") },
+      ]);
+
+      const res = await request(app).get("/v1/platform-prices").set(identityHeaders);
+      expect(res.status).toBe(200);
+      const byName = Object.fromEntries(res.body.map((p: { name: string }) => [p.name, p]));
+      expect(byName["instantly-account-email-sent"].lastUsedOn).toBe("2026-09-20");
+      expect(byName["instantly-domain-email-sent"].lastUsedOn).toBeNull();
+      expect(byName["instantly-account-email-sent"].usageReadAt).toBe(finishedAt.toISOString());
+      for (const n of ["instantly-account-email-sent", "instantly-domain-email-sent"]) {
+        expect(byName[n].bundle).toEqual({
+          name: "email-sent", unit: "email",
+          members: ["instantly-account-email-sent", "instantly-domain-email-sent"],
+          pricePerUnitInUsdCents: "5.9772000000",
+        });
+      }
     });
   });
 });
