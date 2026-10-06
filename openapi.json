@@ -295,6 +295,73 @@
           "deleted"
         ]
       },
+      "ListedPrice": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Price"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "lastUsedOn": {
+                "type": "string",
+                "nullable": true,
+                "description": "UTC day (YYYY-MM-DD) this cost name was last used by any run, from runs-service consumption as read by the daily refresh. Null = never used. Compare it to usageReadAt, not to today.",
+                "example": "2026-10-05"
+              },
+              "usageReadAt": {
+                "type": "string",
+                "nullable": true,
+                "format": "date-time",
+                "description": "When the usage behind lastUsedOn was read from runs-service (latest succeeded daily refresh). Null = never read."
+              },
+              "bundle": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "unit": {
+                    "type": "string"
+                  },
+                  "members": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "pricePerUnitInUsdCents": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "name",
+                  "unit",
+                  "members",
+                  "pricePerUnitInUsdCents"
+                ],
+                "description": "Set when this row is only PART of what a client pays for one outcome: one email sent is declared as one instantly-account-email-sent unit plus one instantly-domain-email-sent unit. pricePerUnitInUsdCents is the price of the whole outcome (sum of member prices x units per outcome), null when a member has no current price. Null on a standalone row.",
+                "example": {
+                  "name": "email-sent",
+                  "unit": "email",
+                  "members": [
+                    "instantly-account-email-sent",
+                    "instantly-domain-email-sent"
+                  ],
+                  "pricePerUnitInUsdCents": "5.9772000000"
+                }
+              }
+            },
+            "required": [
+              "lastUsedOn",
+              "usageReadAt",
+              "bundle"
+            ]
+          }
+        ]
+      },
       "Price": {
         "type": "object",
         "properties": {
@@ -2151,7 +2218,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Price"
+                    "$ref": "#/components/schemas/ListedPrice"
                   }
                 }
               }
