@@ -108,6 +108,30 @@ export const PriceSchema = z
   })
   .openapi("Price");
 
+export const ListedPriceSchema = PriceSchema.extend({
+  lastUsedOn: z.string().nullable().openapi({
+    description:
+      "UTC day (YYYY-MM-DD) this cost name was last used by any run, from runs-service consumption as read by the daily refresh. Null = never used. Compare it to usageReadAt, not to today.",
+    example: "2026-10-05",
+  }),
+  usageReadAt: z.string().datetime().nullable().openapi({
+    description: "When the usage behind lastUsedOn was read from runs-service (latest succeeded daily refresh). Null = never read.",
+  }),
+  bundle: z
+    .object({
+      name: z.string(),
+      unit: z.string(),
+      members: z.array(z.string()),
+      pricePerUnitInUsdCents: z.string().nullable(),
+    })
+    .nullable()
+    .openapi({
+      description:
+        "Set when this row is only PART of what a client pays for one outcome: one email sent is declared as one instantly-account-email-sent unit plus one instantly-domain-email-sent unit. pricePerUnitInUsdCents is the price of the whole outcome (sum of member prices x units per outcome), null when a member has no current price. Null on a standalone row.",
+      example: { name: "email-sent", unit: "email", members: ["instantly-account-email-sent", "instantly-domain-email-sent"], pricePerUnitInUsdCents: "5.9772000000" },
+    }),
+}).openapi("ListedPrice");
+
 export const PlatformCostSchema = z
   .object({
     id: z.string().uuid(),
@@ -456,7 +480,7 @@ registry.registerPath({
   responses: {
     200: {
       description: "Current prices resolved via platform plan",
-      content: { "application/json": { schema: z.array(PriceSchema) } },
+      content: { "application/json": { schema: z.array(ListedPriceSchema) } },
     },
     500: {
       description: "Internal server error",
