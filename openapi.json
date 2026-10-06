@@ -349,6 +349,24 @@
           "effectiveFrom": {
             "type": "string",
             "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "current",
+              "retired"
+            ],
+            "description": "'current' = a name our services run today. 'retired' = no service emits this name any more; its work (if any) is declared under supersededBy. A retired name keeps its price so spend already declared against it still resolves, but a public price list shows only 'current' lines. Idle is not retired: a line nobody used recently is still 'current'.",
+            "example": "current"
+          },
+          "supersededBy": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            },
+            "description": "On a retired name, the current names that took over its work (empty when nothing replaced it). Null on a current name.",
+            "example": null
           }
         },
         "required": [
@@ -362,7 +380,9 @@
           "pricingBasis",
           "pricingRegime",
           "regimeHoursUtc",
-          "effectiveFrom"
+          "effectiveFrom",
+          "status",
+          "supersededBy"
         ]
       },
       "PlatformCost": {
