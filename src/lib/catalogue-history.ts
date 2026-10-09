@@ -23,6 +23,8 @@ export type CatalogueVersion = {
   vendorCost: number | null;
   effectiveFrom: Date;
   createdAt: Date;
+  /** `providers_costs.price_source` ('seed' | 'api' | 'proposed-list'); absent in hand-built test histories. */
+  priceSource?: string;
 };
 
 export type CataloguePlan = { provider: string; planTier: string; billingCycle: string; effectiveFrom: Date };
@@ -46,6 +48,11 @@ export class CatalogueHistory {
       this.plansByProvider.set(p.provider, list);
     }
     for (const list of this.plansByProvider.values()) list.sort((a, b) => b.effectiveFrom.getTime() - a.effectiveFrom.getTime());
+  }
+
+  /** Every version of a name, newest first (empty when the name was never catalogued). */
+  versions(name: string): CatalogueVersion[] {
+    return this.byName.get(name) ?? [];
   }
 
   names(): string[] {

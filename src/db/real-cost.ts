@@ -65,6 +65,7 @@ export async function loadCatalogueHistory(): Promise<CatalogueHistory> {
       vendorCost: v?.vendorCostPerUnitInUsdCents == null ? null : Number(v.vendorCostPerUnitInUsdCents),
       effectiveFrom: pc.effectiveFrom,
       createdAt: pc.createdAt,
+      priceSource: pc.priceSource,
     })),
     plans.map((p) => ({ provider: p.provider, planTier: p.planTier, billingCycle: p.billingCycle, effectiveFrom: p.effectiveFrom })),
   );

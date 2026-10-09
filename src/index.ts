@@ -20,6 +20,7 @@ import { recordVendorCosts } from "./db/vendor-costs.js";
 import { startEmailSendPriceScheduler } from "./db/email-send-price.js";
 import { startSubscriptionCostScheduler } from "./db/subscription-cost.js";
 import { startRealCostScheduler } from "./db/real-cost.js";
+import { alignSeedVersionsToProposedList } from "./db/catalogue-sync.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,6 +70,20 @@ if (process.env.NODE_ENV !== "test") {
       // After the seed, in the same boot: a version the seed just appended is stated while the
       // vendor rate it was computed from is the code running (see src/db/vendor-costs.ts).
       return recordVendorCosts();
+    })
+    .then(async () => {
+      // Before the port opens: a version the seed just appended is billed at the proposed list,
+      // never at the seed's vendor x COST_DEFAULT_MULTIPLIER (src/lib/catalogue-sync.ts, versionsToAlign).
+      // A failure leaves the old behaviour (the scheduler's first sync replaces it) and is logged loud.
+      try {
+        const a = await alignSeedVersionsToProposedList();
+        console.log(
+          `[Costs Service] Seed versions aligned to the proposed list before serving: ${a.versionsWritten} written, ${a.unchanged} unchanged, ${a.kept.length} kept, of ${a.candidates} candidate(s)` +
+            (a.written.length ? ` (${a.written.map((w) => `${w.costName} ${w.previousPriceUsdCents} -> ${w.priceUsdCents} at ${w.at}`).join("; ")})` : ""),
+        );
+      } catch (err) {
+        console.error("[Costs Service] Seed alignment to the proposed list FAILED, seed prices stay billed until the first sync:", err);
+      }
     })
     .then(() => {
       app.listen(Number(PORT), "::", () => {
