@@ -77,6 +77,14 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `anthropic-opus-5.5-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (Opus 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-opus-5.5-tokens-cache-write-5m` | 0.0025 | 1M tokens | Cache write tokens, 5-minute TTL (Opus 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-opus-5.5-tokens-output` | 0.01 | 1M tokens | Output tokens (Opus 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-haiku-5.5-tokens-input` | 0.00005 | 1M tokens | Input tokens (Haiku 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-haiku-5.5-tokens-cached-input` | 0.000005 | 1M tokens | Cached input tokens (Haiku 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-haiku-5.5-tokens-cache-write-5m` | 0.0000625 | 1M tokens | Cache write tokens, 5-minute TTL (Haiku 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-haiku-5.5-tokens-output` | 0.00025 | 1M tokens | Output tokens (Haiku 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-haiku-5.5-long-context-tokens-input` | 0.00025 | 1M tokens | Input tokens, prompt over 100k (Haiku 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-haiku-5.5-long-context-tokens-cached-input` | 0.000025 | 1M tokens | Cached input tokens, prompt over 100k (Haiku 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-haiku-5.5-long-context-tokens-cache-write-5m` | 0.0003125 | 1M tokens | Cache write tokens, 5-minute TTL, prompt over 100k (Haiku 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-haiku-5.5-long-context-tokens-output` | 0.00125 | 1M tokens | Output tokens, prompt over 100k (Haiku 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-web-search` | 5 | search | Web search | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `featured-api-pitch-submit` | 0.25 | call | API call (pitch submit) | featured | featured.com | pay-as-you-go | monthly | marked-up |
 | `postmark-email-send` | 0.75 | email | Email send | postmark | postmarkapp.com | basic-10k | monthly | marked-up |
