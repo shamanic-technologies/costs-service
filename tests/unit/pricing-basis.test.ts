@@ -20,6 +20,7 @@ const PASS_THROUGH_PAYMENT_FEES = [
   "stripe-refund-fee",
   "stripe-dispute-fee",
   "stripe-payout-failure-fee",
+  "revolut-acquiring-fee",
 ];
 
 const ADVERTISING_CHANNEL_NAMES = [

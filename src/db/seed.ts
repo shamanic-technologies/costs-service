@@ -188,6 +188,7 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   moonshot: "moonshot.ai",
   openai: "openai.com",
   postmark: "postmarkapp.com",
+  revolut: "revolut.com",
   "scrape-do": "scrape.do",
   "serper-dev": "serper.dev",
   stripe: "stripe.com",
@@ -1613,6 +1614,24 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     pricingBasis: "pass-through",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Revolut Merchant — card acquiring fee. PASS-THROUGH, same basis as stripe-processing-fee.
+  // Revolut is our second acquirer: it reports each payment's fees as `fees[]` entries of type
+  // "acquiring" (USD). stripe-service emits one cost write per acquiring fee, quantity = the fee
+  // in cents, so the unit price is 1 cent of Revolut fee and the org is charged that fee
+  // EXACTLY — we route the money, we do not resell it.
+  // https://www.revolut.com/business/merchant-fees/
+  {
+    name: "revolut-acquiring-fee",
+    provider: "revolut",
+    providerDomain: PROVIDER_DOMAINS.revolut,
+    type: "Card acquiring fee",
+    unit: "USD cent",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: passThroughVendorPrice("1.0000000000"),
+    pricingBasis: "pass-through",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Twilio — SMS: 1.33¢ per message segment (pay-as-you-go)
   // A "segment" is a 160-char (GSM-7) or 70-char (Unicode) chunk; one SMS may span multiple segments.
   // https://www.twilio.com/en-us/sms/pricing/us
@@ -2527,6 +2546,12 @@ export const SEED_PLATFORM_COSTS = [
   },
   {
     provider: "stripe",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    provider: "revolut",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
