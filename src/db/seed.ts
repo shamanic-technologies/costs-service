@@ -921,6 +921,113 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Anthropic Claude Haiku 5.5 (`claude-haiku-5-5`, released 2026-10-07), per 1M tokens, from
+  // https://platform.claude.com/docs/en/about-claude/pricing (read 2026-10-09):
+  //   prompt up to 100k: input $0.10 · 5m cache write $0.125 · cache hit $0.01 · output $0.50
+  //   prompt over 100k:  input $0.50 · 5m cache write $0.625 · cache hit $0.05 · output $2.50
+  // Standard 0.1x cache-hit multiplier. First Anthropic model with a prompt-size tier: "a request
+  // whose prompt is over 100,000 tokens pays higher prices. A request's prompt length counts all
+  // of its input tokens, including cache reads and cache writes. Each request is priced on its
+  // own." So, like the Gemini Pro `-long-context-` rows, the over-100k tier is its own set of
+  // names on EVERY dimension and the consumer (chat-service) picks the set per request.
+  // Same scale as Sonnet 5.5 ($/MTok / 10,000 before the markup): short-tier input is 1/20 of
+  // Sonnet 5.5 input. 1h cache writes ($0.20 / $1) and Batch are not declared, not seeded.
+  {
+    name: "anthropic-haiku-5.5-tokens-input",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Input tokens (Haiku 5.5)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000100000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "anthropic-haiku-5.5-tokens-cached-input",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Cached input tokens (Haiku 5.5)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000010000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "anthropic-haiku-5.5-tokens-cache-write-5m",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Cache write tokens, 5-minute TTL (Haiku 5.5)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000125000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "anthropic-haiku-5.5-tokens-output",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Output tokens (Haiku 5.5)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000500000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "anthropic-haiku-5.5-long-context-tokens-input",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Input tokens, prompt over 100k (Haiku 5.5)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000500000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "anthropic-haiku-5.5-long-context-tokens-cached-input",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Cached input tokens, prompt over 100k (Haiku 5.5)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000050000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "anthropic-haiku-5.5-long-context-tokens-cache-write-5m",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Cache write tokens, 5-minute TTL, prompt over 100k (Haiku 5.5)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000625000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "anthropic-haiku-5.5-long-context-tokens-output",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Output tokens, prompt over 100k (Haiku 5.5)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0002500000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // Anthropic — server-side web search tool: $10/1,000 searches = 1.0¢/search
   // Billed per usage.server_tool_use.web_search_requests; one /complete call can trigger multiple searches
   // https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool
