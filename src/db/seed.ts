@@ -817,10 +817,12 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   // Anthropic Claude Sonnet 5.5 and Claude Opus 5.5, per 1M tokens, from
-  // https://platform.claude.com/docs/en/about-claude/pricing (read 2026-09-29):
-  //   Sonnet 5.5: input $2 · cache hit $0.20 · output $10  (standard 0.1x cache-hit multiplier)
-  //   Opus 5.5:   input $4 · cache hit $0.20 · output $20  (0.05x — footnote 2 on that page, so
-  //               the cached row carries the vendor's own figure, never 0.1x of input)
+  // https://platform.claude.com/docs/en/about-claude/pricing (read 2026-09-29, cache hits re-read 2026-10-09):
+  //   Sonnet 5.5: input $2 · cache hit $0.10 · output $10  (0.05x, footnote 2 on that page)
+  //   Opus 5.5:   input $4 · cache hit $0.20 · output $20  (0.05x, footnote 2 on that page)
+  // Both cached rows carry the vendor's own figure, never 0.1x of input. Sonnet 5.5's was first
+  // seeded at $0.20 (0.1x, wrong) and corrected to $0.10 on 2026-10-09: the $0.20 rate is kept in
+  // HISTORICAL_SEED_VENDOR_RATES so the versions billed under it keep their vendor cost.
   // Same scale as the Fable 5.1 rows above ($/MTok / 10,000 before the markup): Sonnet 5.5
   // input is 2/10 of Fable 5.1 input, Opus 5.5 input 4/10. 5-minute cache writes are
   // seeded (1.25x input, see the Fable 5.1 note); 1h writes, Batch, fast mode (Opus 5.5
@@ -845,7 +847,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     unit: "1M tokens",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
-    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000200000"),
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000100000"),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },

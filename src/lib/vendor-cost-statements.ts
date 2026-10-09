@@ -50,6 +50,9 @@ const HISTORICAL: [string, string, string, string][] = [
   ["openai-gpt-6-astra-tokens-input", "pay-as-you-go", "monthly", "0.0001000000"],
   ["openai-gpt-6-astra-tokens-cached-input", "pay-as-you-go", "monthly", "0.0000100000"],
   ["openai-gpt-6-astra-tokens-output", "pay-as-you-go", "monthly", "0.0005000000"],
+  // Claude Sonnet 5.5 cache hit as first seeded on 2026-09-29 ($0.20/MTok = 0.1x; the vendor
+  // lists 0.05x = $0.10, corrected 2026-10-09)
+  ["anthropic-sonnet-5.5-tokens-cached-input", "pay-as-you-go", "monthly", "0.0000200000"],
   // DeepSeek V4 through the Vercel AI Gateway (retired in v0.46.0)
   ["deepseek-v4-flash-tokens-input", "pay-as-you-go", "monthly", "0.0000440000"],
   ["deepseek-v4-flash-tokens-output", "pay-as-you-go", "monthly", "0.0001320000"],

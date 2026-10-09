@@ -27,7 +27,7 @@ const VENDOR_USD_PER_MTOK: Array<[name: string, usdPerMTok: number]> = [
   ["openai-gpt-6-astra-tokens-output", 50],
   // Added 2026-09-29 (vendor pages read that day).
   ["anthropic-sonnet-5.5-tokens-input", 2],
-  ["anthropic-sonnet-5.5-tokens-cached-input", 0.2],
+  ["anthropic-sonnet-5.5-tokens-cached-input", 0.1],
   ["anthropic-sonnet-5.5-tokens-output", 10],
   ["anthropic-opus-5.5-tokens-input", 4],
   ["anthropic-opus-5.5-tokens-cached-input", 0.2],
@@ -102,7 +102,11 @@ describe("token price scale (regression: Fable 5.1 / GPT-6 Astra 10x under-price
     const cases: Array<[string, string, number]> = [
       ["anthropic-sonnet-5.5-tokens-input", "anthropic-fable-5.1-tokens-input", 2 / 10],
       ["anthropic-sonnet-5.5-tokens-output", "anthropic-fable-5.1-tokens-output", 10 / 50],
-      ["anthropic-sonnet-5.5-tokens-cached-input", "anthropic-fable-5.1-tokens-cached-input", 0.2 / 0.25],
+      ["anthropic-sonnet-5.5-tokens-cached-input", "anthropic-fable-5.1-tokens-cached-input", 0.1 / 0.25],
+      // Sonnet 5.5 and Opus 5.5 share the 0.05x cache-hit multiplier (vendor footnote 2):
+      // half of Sonnet's $2 input is Opus's $4 input, so Sonnet's cache hit is half of Opus's.
+      ["anthropic-sonnet-5.5-tokens-cached-input", "anthropic-opus-5.5-tokens-cached-input", 0.1 / 0.2],
+      ["anthropic-sonnet-5.5-tokens-cached-input", "anthropic-sonnet-5.5-tokens-input", 0.05],
       ["anthropic-opus-5.5-tokens-input", "anthropic-fable-5.1-tokens-input", 4 / 10],
       ["anthropic-opus-5.5-tokens-output", "anthropic-fable-5.1-tokens-output", 20 / 50],
       ["anthropic-opus-5.5-tokens-cached-input", "anthropic-fable-5.1-tokens-cached-input", 0.2 / 0.25],
