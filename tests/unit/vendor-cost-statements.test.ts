@@ -42,6 +42,8 @@ const PRODUCTION_UNKNOWNS: [string, string, string, string, string, string][] = 
   ["featured-api-opportunity-fetch", "premium", "monthly", "0.0000000000", "2026-05-13T07:43:00Z", "0.0000000000"],
   ["anthropic-fable-5.1-tokens-input", "pay-as-you-go", "monthly", "0.0006000000", "2026-09-09T11:10:23Z", "0.0001000000"],
   ["openai-gpt-6-astra-tokens-cached-input", "pay-as-you-go", "monthly", "0.0000600000", "2026-09-09T11:10:23Z", "0.0000100000"],
+  // Sonnet 5.5 cache hit as first seeded at $0.20/MTok (5x era), corrected to $0.10 on 2026-10-09
+  ["anthropic-sonnet-5.5-tokens-cached-input", "pay-as-you-go", "monthly", "0.0001000000", "2026-09-29T12:00:00Z", "0.0000200000"],
   ["deepseek-v4-flash-tokens-input", "pay-as-you-go", "monthly", "0.0001760000", "2026-08-14T10:20:41Z", "0.0000440000"],
   ["deepseek-v4-pro-tokens-output", "pay-as-you-go", "monthly", "0.0013920000", "2026-08-15T10:20:43Z", "0.0003480000"],
 ];
