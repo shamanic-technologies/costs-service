@@ -46,6 +46,19 @@ describe("Stripe fee cost names", { timeout: 30_000 }, () => {
     });
   }
 
+  // Revolut Merchant, our second acquirer: same pass-through basis as the Stripe processing fee.
+  it("GET /v1/platform-prices/revolut-acquiring-fee resolves at the vendor price, no markup", async () => {
+    const res = await request(app).get("/v1/platform-prices/revolut-acquiring-fee").set(identityHeaders);
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe("revolut-acquiring-fee");
+    expect(res.body.pricePerUnitInUsdCents).toBe("1.0000000000");
+    expect(res.body.pricingBasis).toBe("pass-through");
+    expect(res.body.unit).toBe("USD cent");
+    expect(res.body.provider).toBe("revolut");
+    expect(res.body.providerDomain).toBe("revolut.com");
+    expect(res.body.type).toBe("Card acquiring fee");
+  });
+
   it("GET /v1/platform-costs/stripe returns pay-as-you-go / monthly", async () => {
     const res = await request(app).get("/v1/platform-costs/stripe").set(identityHeaders);
     expect(res.status).toBe(200);
