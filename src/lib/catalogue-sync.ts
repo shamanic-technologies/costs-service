@@ -146,3 +146,59 @@ export function markupOfSynced(price: string, vendor: string | null): string | n
   if (vendor === null || Number(vendor) === 0) return null;
   return (Number(price) / Number(vendor)).toFixed(4);
 }
+
+/**
+ * A seed (or api) version the proposed list has not priced yet, and the instant it would start
+ * being billed: `now` for a version in force (a deploy just appended it), its own effective date
+ * for a version scheduled ahead.
+ */
+export type VersionToAlign = { costName: string; versionId: string; at: Date };
+
+/**
+ * The seed writes its versions at the vendor list x COST_DEFAULT_MULTIPLIER (the convention its
+ * literals are written in); since 2026-10-02 the billed price is the proposed list. Before this,
+ * a seed version was BILLED from its deploy until the scheduler's first sync (5 minutes after
+ * boot), or for up to an hour after a scheduled version's date: the 2026-10-09 Sonnet 5.5 cache
+ * read billed 5 rows at the 5x seed price. The boot aligns every such version before the port
+ * opens, and writes the proposed version of a scheduled one at the same instant + 1 microsecond.
+ *
+ * Selected:
+ * - the version in force now, when it is not a proposed-list version and it moved (came into
+ *   force or was written) after the last succeeded sync started: the sync never saw it. A seed
+ *   version the sync saw and KEPT (no proposed price) is left alone, as the sync left it;
+ * - a version scheduled after now, with no proposed-list version after it yet.
+ */
+export function versionsToAlign(catalogue: CatalogueHistory, lastSyncStartedAt: Date, now: Date): VersionToAlign[] {
+  const out: VersionToAlign[] = [];
+  const t = now.getTime();
+  for (const name of catalogue.names()) {
+    const current = catalogue.versionAt(name, now).version;
+    if (
+      current?.id &&
+      current.priceSource !== "proposed-list" &&
+      Math.max(current.effectiveFrom.getTime(), current.createdAt.getTime()) > lastSyncStartedAt.getTime()
+    ) {
+      out.push({ costName: name, versionId: current.id, at: now });
+    }
+    const versions = catalogue.versions(name);
+    for (const v of versions) {
+      if (!v.id || v.priceSource === "proposed-list" || v.effectiveFrom.getTime() <= t) continue;
+      if (catalogue.versionAt(name, v.effectiveFrom).version !== v) continue; // not on the plan in force then
+      const aligned = versions.some((p) => p.priceSource === "proposed-list" && p.effectiveFrom.getTime() > v.effectiveFrom.getTime());
+      if (!aligned) out.push({ costName: name, versionId: v.id, at: v.effectiveFrom });
+    }
+  }
+  return out;
+}
+
+/**
+ * A day's value, or the latest one before it when the day has none yet (a boot before today's
+ * email send price / subscription cost refresh ran): the sync would read today's, and the latest
+ * known is what it is closest to. Null stays null (no price is not a price).
+ */
+export function valueOnOrBefore<V>(byDay: Map<string, V>, day: string): V | undefined {
+  if (byDay.has(day)) return byDay.get(day);
+  let best: string | null = null;
+  for (const d of byDay.keys()) if (d <= day && (best === null || d > best)) best = d;
+  return best === null ? undefined : byDay.get(best);
+}
