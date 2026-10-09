@@ -6,16 +6,20 @@ import { SEED_PROVIDERS_COSTS, SEED_PLATFORM_COSTS } from "../../src/db/seed.js"
 // (https://platform.claude.com/docs/en/about-claude/pricing, read 2026-10-04:
 // Fable 5.1 $12.50, Sonnet 5.5 $2.50, Opus 5.5 $5 per MTok). Without these names chat-service
 // fails loud on an unpriced cost name and cannot send cache_control.
+// Haiku 5.5 (read 2026-10-09) prices by prompt size: $0.125 up to 100k, $0.625 over it, each
+// 1.25x the input row of its own tier.
 const MODELS = [
   { model: "fable-5.1", label: "Fable 5.1" },
   { model: "sonnet-5.5", label: "Sonnet 5.5" },
   { model: "opus-5.5", label: "Opus 5.5" },
+  { model: "haiku-5.5", label: "Haiku 5.5" },
+  { model: "haiku-5.5-long-context", label: "Haiku 5.5", typeSuffix: ", prompt over 100k" },
 ];
 
 const find = (name: string) => SEED_PROVIDERS_COSTS.filter((c) => c.name === name);
 
 describe("Anthropic 5-minute cache-write unit costs", () => {
-  for (const { model, label } of MODELS) {
+  for (const { model, label, typeSuffix = "" } of MODELS) {
     const name = `anthropic-${model}-tokens-cache-write-5m`;
 
     it(`prices ${name} at exactly 1.25x the model's base input row`, () => {
@@ -31,7 +35,7 @@ describe("Anthropic 5-minute cache-write unit costs", () => {
     it(`declares ${name} with the sibling rows' metadata and an active platform plan`, () => {
       const row = find(name)[0];
       const input = find(`anthropic-${model}-tokens-input`)[0];
-      expect(row.type).toBe(`Cache write tokens, 5-minute TTL (${label})`);
+      expect(row.type).toBe(`Cache write tokens, 5-minute TTL${typeSuffix} (${label})`);
       expect(row.provider).toBe("anthropic");
       expect(row.providerDomain).toBe(input.providerDomain);
       expect(row.unit).toBe("1M tokens");
