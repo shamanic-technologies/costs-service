@@ -135,6 +135,7 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `stripe-refund-fee` | 1 | USD cent | Refund fee | stripe | stripe.com | pay-as-you-go | monthly | pass-through |
 | `stripe-dispute-fee` | 1 | USD cent | Dispute fee | stripe | stripe.com | pay-as-you-go | monthly | pass-through |
 | `stripe-payout-failure-fee` | 1 | USD cent | Payout failure fee | stripe | stripe.com | pay-as-you-go | monthly | pass-through |
+| `revolut-acquiring-fee` | 1 | USD cent | Card acquiring fee | revolut | revolut.com | pay-as-you-go | monthly | pass-through |
 | `twilio-sms-segment` | 6.65 | segment | SMS message | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
 | `twilio-whatsapp-message` | 2.5 | message | WhatsApp message | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
 | `twilio-voice-outbound-minute-us` | 7 | minute | Outbound voice minute (US) | twilio | twilio.com | pay-as-you-go | monthly | marked-up |
@@ -337,6 +338,7 @@ Each provider has an active platform cost config that determines which cost tier
 | scrape-do | hobby | monthly |
 | serper-dev | pay-as-you-go | monthly |
 | stripe | pay-as-you-go | monthly |
+| revolut | pay-as-you-go | monthly |
 | twilio | pay-as-you-go | monthly |
 | typesafe | pay-as-you-go | monthly |
 | x | pay-as-you-go | monthly |
