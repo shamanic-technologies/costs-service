@@ -7,9 +7,10 @@ import { seedProvidersCosts, seedPlatformCosts } from "../../src/db/seed.js";
 // Stripe payment-processing fees: stripe-service emits a runs-service cost write per
 // Stripe-incurred fee event (charge processing, refund, dispute, payout failure).
 // Quantity = fee in cents; unit price = "1.0000000000", i.e. one cent per cent of Stripe fee.
-// These are PASS-THROUGH lines — money we route, not work we perform — so the org is charged
-// the Stripe fee EXACTLY. They carried the 4× markup until the pass-through basis shipped;
-// the assertion below is the regression that keeps the markup off.
+// These are PASS-THROUGH lines (no markup). Since 2026-10-13 no org pays them: they are the
+// platform's cost, declared on org-less platform runs, and left out of the current catalogue
+// listings (tests/integration/card-fees-absorbed.test.ts). The by-name price stays as written
+// because runs-service prices every fee cost row from it.
 describe("Stripe fee cost names", { timeout: 30_000 }, () => {
   const app = createTestApp();
   const identityHeaders = getIdentityHeaders();

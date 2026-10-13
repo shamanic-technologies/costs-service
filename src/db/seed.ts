@@ -1667,8 +1667,10 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   },
   // Stripe — payment-processing fees (charge, refund, dispute, payout failure). PASS-THROUGH.
   // stripe-service emits one cost write per Stripe-incurred fee event, with quantity set to the
-  // fee in cents (from balance_transaction.fee). Unit price is therefore 1 cent of Stripe fee,
-  // and the org is charged that fee EXACTLY — we route the money, we do not resell it.
+  // fee in cents (from balance_transaction.fee). Unit price is therefore 1 cent of Stripe fee.
+  // Since 2026-10-13 NO org is charged it: card fees are the platform's cost, declared on
+  // org-less platform runs, and the name is ABSORBED (`src/lib/absorbed-cost-names.ts`), i.e.
+  // left out of the current catalogue listings while the by-name price stays as written.
   //
   // These four rows carried the 4× markup until this version (an org paid 4¢ per 1¢ of Stripe
   // fee). Repricing them to the vendor basis is an append-only price change: the seed inserts a
@@ -1726,8 +1728,8 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   // Revolut Merchant — card acquiring fee. PASS-THROUGH, same basis as stripe-processing-fee.
   // Revolut is our second acquirer: it reports each payment's fees as `fees[]` entries of type
   // "acquiring" (USD). stripe-service emits one cost write per acquiring fee, quantity = the fee
-  // in cents, so the unit price is 1 cent of Revolut fee and the org is charged that fee
-  // EXACTLY — we route the money, we do not resell it.
+  // in cents, so the unit price is 1 cent of Revolut fee. Since 2026-10-13 no org is charged it
+  // (platform cost, ABSORBED like the Stripe fees above).
   // https://www.revolut.com/business/merchant-fees/
   {
     name: "revolut-acquiring-fee",
