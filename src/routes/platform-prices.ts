@@ -5,6 +5,7 @@ import { providersCosts, platformCosts, consumptionByOrgDaily, realCostRefreshes
 import { bundleOf } from "../lib/price-bundles.js";
 import { getTraceIdentityHeaders, traceEvent } from "../lib/trace-event.js";
 import { costNameStatus } from "../lib/retired-cost-names.js";
+import { isAbsorbedCostName } from "../lib/absorbed-cost-names.js";
 
 const router = Router();
 
@@ -97,6 +98,10 @@ router.get("/v1/platform-prices", async (req, res) => {
     // fixed costs). It is dropped from this listing — and `seen` is marked first, so an older
     // priced version can never be served in its place, which would resurrect a price we
     // stopped charging. The name stays resolvable at `/v1/platform-prices/:name`.
+    //
+    // An ABSORBED name (card-acquiring fees, `src/lib/absorbed-cost-names.ts`) keeps its price
+    // (runs-service prices the platform's fee rows off the by-name read) but is not a price any
+    // customer pays, so it is not listed either.
     const seen = new Set<string>();
     const listed = allCosts
       .filter((row) => {
@@ -105,7 +110,7 @@ router.get("/v1/platform-prices", async (req, res) => {
         if (!plan) return false;
         if (row.planTier !== plan.planTier || row.billingCycle !== plan.billingCycle) return false;
         seen.add(row.name);
-        return row.costPerUnitInUsdCents !== null;
+        return row.costPerUnitInUsdCents !== null && !isAbsorbedCostName(row.name);
       })
       .map((row) => ({
         name: row.name,

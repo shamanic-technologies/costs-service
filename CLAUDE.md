@@ -236,6 +236,10 @@ account row) is kept in the seed comments as the record of how the frozen rows w
 the spend ever goes back on the rebill, that is a new priced version on the same names — not a
 new name.
 
+## Card-acquiring fees = ABSORBED, not delisted (2026-10-13)
+
+Owner: a customer pays its campaign spend, nothing on top; Stripe + Revolut fees are the platform's cost for every org. stripe-service KEEPS declaring each fee (org-less platform run, source `platform`, quantity = fee cents) and runs-service prices that row from `GET /v1/platform-prices/:name`, storing `pricePerUnitInUsdCents`. So the delisting above (NULL price) would break every fee write and 5xx Stripe's webhook into a redelivery loop. Instead `ABSORBED_COST_NAMES` (`src/lib/absorbed-cost-names.ts`) drops the five names from `GET /v1/platform-prices` and `GET /v1/providers-costs` only; the price (1¢ per fee cent, pass-through) and every by-name/history read are untouched. Who pays is the run's org (none), never this list. Regressions: `tests/unit/absorbed-cost-names.test.ts`, `tests/integration/card-fees-absorbed.test.ts`.
+
 ## Retired cost names = a DECLARATION, never a runs-idleness rule (2026-10-06)
 
 `GET /v1/platform-prices*` serve `status: current|retired` + `supersededBy` from `RETIRED_COST_NAMES` (`src/lib/retired-cost-names.ts`; every `LEGACY_COST_NAMES` key is retired automatically). The public catalog page shows `current` only. **When you seed a successor (new model replacing one chat-service stops offering, a unit merged or renamed), retire the old name in the same PR.** Do NOT derive retirement from runs-service recency: on 2026-10-06, 33 names idle 45+ days mixed truly retired ones with selectable models (Gemini 3.5/3.6 Flash), opt-in tools (web search) and never-bought ad lines. A retired name keeps its price (runs reconcile + proposed-list sync), and stays in the listing (staff tools read old usage's provider there). Regressions: `tests/unit/retired-cost-names.test.ts` (successors must be seeded + current; retired names must exist), `tests/integration/platform-prices.test.ts`.

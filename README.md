@@ -42,6 +42,10 @@ Delisted 2026-08 — the cold-email infrastructure (Instantly subscriptions, Mai
 
 The `instantly` platform-cost row below is deliberately KEPT: without an active plan for the provider, every by-name read of these three names would 500 instead of resolving.
 
+### Absorbed lines (priced, recorded, never a customer price)
+
+Card-acquiring fees (`stripe-processing-fee`, `stripe-refund-fee`, `stripe-dispute-fee`, `stripe-payout-failure-fee`, `revolut-acquiring-fee`) are the platform's cost for every org since 2026-10-13: a customer pays its campaign spend, nothing on top. stripe-service still declares every fee on an org-less platform run (quantity = fee in cents), so they keep their price (1 cent per cent of fee) and `GET /v1/platform-prices/:name` is unchanged, but they are left out of `GET /v1/platform-prices` and `GET /v1/providers-costs`. Declared in `src/lib/absorbed-cost-names.ts`. A null price (the delisting above) would break those fee writes, which is why this is a separate mechanism.
+
 A routed line is priced at **1 cent per USD cent of vendor spend**, so the consumer reports `quantity` = the amount the platform charged, in cents, and the org is charged that amount exactly. Generating the creative for one of those campaigns is a separate, marked-up line — buying the placement is routing, making the ad is work.
 
 | Name | Cost (USD cents/unit) | Unit | Type | Provider | Domain | Plan | Billing | Basis |
