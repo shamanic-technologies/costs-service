@@ -6,6 +6,7 @@ import { resolveVendorCostFromSeed } from "../db/vendor-costs.js";
 import { requireApiKey } from "../middleware/auth.js";
 import { PutProviderCostBodySchema } from "../schemas.js";
 import { getTraceIdentityHeaders, traceEvent } from "../lib/trace-event.js";
+import { isAbsorbedCostName } from "../lib/absorbed-cost-names.js";
 
 const router = Router();
 
@@ -61,7 +62,8 @@ router.get("/v1/providers-costs", async (req, res) => {
       if (!plan) return false;
       if (row.planTier !== plan.planTier || row.billingCycle !== plan.billingCycle) return false;
       seen.add(row.name);
-      return row.costPerUnitInUsdCents !== null;
+      // Absorbed names (card-acquiring fees) keep their price but are not a customer price.
+      return row.costPerUnitInUsdCents !== null && !isAbsorbedCostName(row.name);
     });
 
     traceEvent({

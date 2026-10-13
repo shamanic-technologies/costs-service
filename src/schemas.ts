@@ -325,7 +325,7 @@ registry.registerPath({
   request: { headers: identityHeaders },
   responses: {
     200: {
-      description: "List of current provider costs",
+      description: "List of current provider costs. Excludes delisted (null-priced) lines and costs the platform absorbs (card-acquiring fees), which stay resolvable by name.",
       content: { "application/json": { schema: z.array(ProviderCostSchema) } },
     },
     500: {
@@ -479,7 +479,7 @@ registry.registerPath({
   summary: "List current platform prices for all cost names (public, no identity headers required)",
   responses: {
     200: {
-      description: "Current prices resolved via platform plan",
+      description: "Current prices resolved via platform plan. Excludes delisted (null-priced) lines and costs the platform absorbs (card-acquiring fees: stripe-*-fee, revolut-acquiring-fee), which no customer pays; both stay resolvable at /v1/platform-prices/{name}.",
       content: { "application/json": { schema: z.array(ListedPriceSchema) } },
     },
     500: {
