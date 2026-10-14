@@ -123,12 +123,29 @@ export const ListedPriceSchema = PriceSchema.extend({
       unit: z.string(),
       members: z.array(z.string()),
       pricePerUnitInUsdCents: z.string().nullable(),
+      label: z.string().describe("What the client pays for, in words, e.g. \"Email sent, address verified catch-all by BounceVerify\""),
+      emailVerification: z
+        .object({
+          provider: z.string().describe("The email verifier whose verdict prices the email (BounceVerify)"),
+          verdict: z.enum(["valid", "catch_all", "unknown"]),
+          priceMultipleOfValid: z.number().describe("This email's price = the valid email's price x this (1 valid, 2 catch_all, 3 unknown)"),
+          validBundle: z.string().describe("Name of the valid-verdict bundle this price is a multiple of"),
+        })
+        .nullable()
+        .describe("Set on the email-sent bundles: the address verdict the price applies to. Null on other bundles."),
     })
     .nullable()
     .openapi({
       description:
-        "Set when this row is only PART of what a client pays for one outcome: one email sent is declared as one instantly-account-email-sent unit plus one instantly-domain-email-sent unit. pricePerUnitInUsdCents is the price of the whole outcome (sum of member prices x units per outcome), null when a member has no current price. Null on a standalone row.",
-      example: { name: "email-sent", unit: "email", members: ["instantly-account-email-sent", "instantly-domain-email-sent"], pricePerUnitInUsdCents: "5.9772000000" },
+        "Set when this row is only PART of what a client pays for one outcome: one email sent is declared as one instantly-account-email-sent unit plus one instantly-domain-email-sent unit (with a -catch-all / -unknown suffix when the address's BounceVerify verdict is catch_all / unknown). pricePerUnitInUsdCents is the price of the whole outcome (sum of member prices x units per outcome), null when a member has no current price. Null on a standalone row.",
+      example: {
+        name: "email-sent-catch-all",
+        unit: "email",
+        members: ["instantly-account-email-sent-catch-all", "instantly-domain-email-sent-catch-all"],
+        pricePerUnitInUsdCents: "11.4600000000",
+        label: "Email sent, address verified catch-all by BounceVerify",
+        emailVerification: { provider: "BounceVerify", verdict: "catch_all", priceMultipleOfValid: 2, validBundle: "email-sent" },
+      },
     }),
 }).openapi("ListedPrice");
 
@@ -1042,8 +1059,8 @@ const RealCostItemSchema = z
     multiplier: z.number().describe("2 for production tools, 1 for pass-through (Stripe, media)"),
     proposedPricePerUnitUsdCents: z.number().nullable(),
     proposedBasis: z
-      .enum(["real-cost-x2", "real-cost-x1", "vendor-list-cost-floor", "current-price-kept", "no-price"])
-      .describe("vendor-list-cost-floor: a subscription credit whose averaged real cost x2 sat below the vendor list cost per unit is proposed AT that list cost (owner 2026-10-02)"),
+      .enum(["real-cost-x2", "real-cost-x2-verdict-multiple", "real-cost-x1", "vendor-list-cost-floor", "current-price-kept", "no-price"])
+      .describe("real-cost-x2-verdict-multiple: an email to a catch-all (x2) or unknown (x3) BounceVerify address, real cost x2 x that multiple of the valid price (owner 2026-10-14). vendor-list-cost-floor: a subscription credit whose averaged real cost x2 sat below the vendor list cost per unit is proposed AT that list cost (owner 2026-10-02)"),
     averagedProposedPricePerUnitUsdCents: z
       .number()
       .nullable()
