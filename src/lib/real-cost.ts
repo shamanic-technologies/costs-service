@@ -20,7 +20,8 @@
  * Whenever the specific figure does not exist yet on D (no payment, no usage, no email sent), the
  * item falls back to its catalogue vendor cost with a flag naming why — never 0, never a guess.
  *
- *   proposed(D) = real(D) x 2 (x1 for pass-through); a subscription credit is never proposed below
+ *   proposed(D) = real(D) x 2 (x1 for pass-through; an email to a catch-all / unknown address x 2 x its
+ *                 verdict multiple, EMAIL_VERDICTS); a subscription credit is never proposed below
  *                 its vendor's catalogue list cost per unit (owner rule 2026-10-02): averaged x2 under
  *                 the list cost is floored at it (basis `vendor-list-cost-floor`, the averaged x2 kept
  *                 in `proposedBeforeFloor`); a subscription credit with no real cost per
@@ -31,6 +32,7 @@ import { CatalogueHistory, endOfDay } from "./catalogue-history.js";
 import {
   CATALOGUE_VENDOR_COST_PROVIDERS,
   EMAIL_SEND_COST_SHARES,
+  emailVerdictOf,
   INCLUDED_AT_VENDOR,
   LEGACY_COST_NAMES,
   PASS_THROUGH_MULTIPLIER,
@@ -57,7 +59,7 @@ export type RealCostFlag =
   | "included-in-another-cost"
   | "legacy-name-priced-as-successor";
 
-export type ProposedBasis = "real-cost-x2" | "real-cost-x1" | "vendor-list-cost-floor" | "current-price-kept" | "no-price";
+export type ProposedBasis = "real-cost-x2" | "real-cost-x2-verdict-multiple" | "real-cost-x1" | "vendor-list-cost-floor" | "current-price-kept" | "no-price";
 
 export type RealCostDay = {
   day: string;
@@ -184,7 +186,9 @@ export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
       if (!version) continue; // nothing in force yet: no list line on this day
       const vendorCost = version.vendorCost;
       const passThrough = version.pricingBasis === "pass-through";
-      const multiplier = passThrough ? PASS_THROUGH_MULTIPLIER : PROPOSED_MULTIPLIER;
+      // An email to a catch-all / unknown address is billed a stated multiple of a valid one (owner 2026-10-14).
+      const verdictMultiple = emailVerdictOf(costName)?.priceMultipleOfValid ?? 1;
+      const multiplier = passThrough ? PASS_THROUGH_MULTIPLIER : PROPOSED_MULTIPLIER * verdictMultiple;
 
       let method: RealCostMethod = "catalogue-vendor-cost";
       let flag: RealCostFlag | null = null;
@@ -238,7 +242,7 @@ export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
         proposedBasis = version.price === null ? "no-price" : "current-price-kept";
       } else {
         proposedPrice = round10(realCost! * multiplier);
-        proposedBasis = passThrough ? "real-cost-x1" : "real-cost-x2";
+        proposedBasis = passThrough ? "real-cost-x1" : verdictMultiple !== 1 ? "real-cost-x2-verdict-multiple" : "real-cost-x2";
       }
       let proposedBeforeFloor: number | null = null;
       // A subscription credit is never proposed below what the vendor lists one unit at (owner 2026-10-02).
@@ -318,6 +322,8 @@ function uncataloguedRow(
   flag: RealCostFlag | null,
   realCost: number | null,
 ): RealCostDay {
+  const verdictMultiple = emailVerdictOf(costName)?.priceMultipleOfValid ?? 1;
+  const multiplier = PROPOSED_MULTIPLIER * verdictMultiple;
   return {
     day,
     costName,
@@ -328,9 +334,9 @@ function uncataloguedRow(
     ratio: null,
     catalogueVendorCost: null,
     cataloguePrice: null,
-    multiplier: PROPOSED_MULTIPLIER,
-    proposedPrice: realCost === null ? null : round10(realCost * PROPOSED_MULTIPLIER),
-    proposedBasis: realCost === null ? "no-price" : "real-cost-x2",
+    multiplier,
+    proposedPrice: realCost === null ? null : round10(realCost * multiplier),
+    proposedBasis: realCost === null ? "no-price" : verdictMultiple !== 1 ? "real-cost-x2-verdict-multiple" : "real-cost-x2",
     proposedBeforeFloor: null,
   };
 }

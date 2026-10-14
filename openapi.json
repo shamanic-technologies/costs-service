@@ -334,23 +334,69 @@
                   "pricePerUnitInUsdCents": {
                     "type": "string",
                     "nullable": true
+                  },
+                  "label": {
+                    "type": "string",
+                    "description": "What the client pays for, in words, e.g. \"Email sent, address verified catch-all by BounceVerify\""
+                  },
+                  "emailVerification": {
+                    "type": "object",
+                    "nullable": true,
+                    "properties": {
+                      "provider": {
+                        "type": "string",
+                        "description": "The email verifier whose verdict prices the email (BounceVerify)"
+                      },
+                      "verdict": {
+                        "type": "string",
+                        "enum": [
+                          "valid",
+                          "catch_all",
+                          "unknown"
+                        ]
+                      },
+                      "priceMultipleOfValid": {
+                        "type": "number",
+                        "description": "This email's price = the valid email's price x this (1 valid, 2 catch_all, 3 unknown)"
+                      },
+                      "validBundle": {
+                        "type": "string",
+                        "description": "Name of the valid-verdict bundle this price is a multiple of"
+                      }
+                    },
+                    "required": [
+                      "provider",
+                      "verdict",
+                      "priceMultipleOfValid",
+                      "validBundle"
+                    ],
+                    "description": "Set on the email-sent bundles: the address verdict the price applies to. Null on other bundles."
                   }
                 },
                 "required": [
                   "name",
                   "unit",
                   "members",
-                  "pricePerUnitInUsdCents"
+                  "pricePerUnitInUsdCents",
+                  "label",
+                  "emailVerification"
                 ],
-                "description": "Set when this row is only PART of what a client pays for one outcome: one email sent is declared as one instantly-account-email-sent unit plus one instantly-domain-email-sent unit. pricePerUnitInUsdCents is the price of the whole outcome (sum of member prices x units per outcome), null when a member has no current price. Null on a standalone row.",
+                "description": "Set when this row is only PART of what a client pays for one outcome: one email sent is declared as one instantly-account-email-sent unit plus one instantly-domain-email-sent unit (with a -catch-all / -unknown suffix when the address's BounceVerify verdict is catch_all / unknown). pricePerUnitInUsdCents is the price of the whole outcome (sum of member prices x units per outcome), null when a member has no current price. Null on a standalone row.",
                 "example": {
-                  "name": "email-sent",
+                  "name": "email-sent-catch-all",
                   "unit": "email",
                   "members": [
-                    "instantly-account-email-sent",
-                    "instantly-domain-email-sent"
+                    "instantly-account-email-sent-catch-all",
+                    "instantly-domain-email-sent-catch-all"
                   ],
-                  "pricePerUnitInUsdCents": "5.9772000000"
+                  "pricePerUnitInUsdCents": "11.4600000000",
+                  "label": "Email sent, address verified catch-all by BounceVerify",
+                  "emailVerification": {
+                    "provider": "BounceVerify",
+                    "verdict": "catch_all",
+                    "priceMultipleOfValid": 2,
+                    "validBundle": "email-sent"
+                  }
                 }
               }
             },
@@ -1605,12 +1651,13 @@
             "type": "string",
             "enum": [
               "real-cost-x2",
+              "real-cost-x2-verdict-multiple",
               "real-cost-x1",
               "vendor-list-cost-floor",
               "current-price-kept",
               "no-price"
             ],
-            "description": "vendor-list-cost-floor: a subscription credit whose averaged real cost x2 sat below the vendor list cost per unit is proposed AT that list cost (owner 2026-10-02)"
+            "description": "real-cost-x2-verdict-multiple: an email to a catch-all (x2) or unknown (x3) BounceVerify address, real cost x2 x that multiple of the valid price (owner 2026-10-14). vendor-list-cost-floor: a subscription credit whose averaged real cost x2 sat below the vendor list cost per unit is proposed AT that list cost (owner 2026-10-02)"
           },
           "averagedProposedPricePerUnitUsdCents": {
             "type": "number",

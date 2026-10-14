@@ -4,10 +4,11 @@ import { EMAIL_SEND_COST_SHARES } from "../../src/lib/price-lists.js";
 import { costNameStatus } from "../../src/lib/retired-cost-names.js";
 
 describe("price bundles (what a client pays per outcome)", () => {
-  it("one email sent = the whole email send price: member shares x units per email sum to 1", () => {
-    const email = PRICE_BUNDLES.find((b) => b.name === "email-sent")!;
-    const total = email.members.reduce((s, m) => s + EMAIL_SEND_COST_SHARES[m.costName] * m.unitsPerBundle, 0);
-    expect(total).toBe(1);
+  it("one email sent = the whole email send price: member shares x units per email sum to 1, for every verdict", () => {
+    for (const email of PRICE_BUNDLES.filter((b) => b.name.startsWith("email-sent"))) {
+      const total = email.members.reduce((s, m) => s + EMAIL_SEND_COST_SHARES[m.costName] * m.unitsPerBundle, 0);
+      expect(total, email.name).toBe(1);
+    }
   });
 
   it("every bundle member is a current name", () => {
@@ -24,6 +25,8 @@ describe("price bundles (what a client pays per outcome)", () => {
       unit: "email",
       members: ["instantly-account-email-sent", "instantly-domain-email-sent"],
       pricePerUnitInUsdCents: "5.9772000000",
+      label: "Email sent, address verified valid by BounceVerify",
+      emailVerification: { provider: "BounceVerify", verdict: "valid", priceMultipleOfValid: 1, validBundle: "email-sent" },
     });
   });
 

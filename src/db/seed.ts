@@ -1,6 +1,8 @@
 // Note: db/drizzle imports kept for test compatibility; seed functions
 // use raw postgres.js (sql.begin) to bypass drizzle-orm/pgbouncer issues.
 
+import { EMAIL_SENT_BASE_NAMES, EMAIL_VERDICTS, EMAIL_VERIFIER } from "../lib/price-lists.js";
+
 const USD_CENTS_DECIMAL_SCALE = 10;
 
 /**
@@ -171,6 +173,38 @@ export function passThroughVendorPrice(costPerUnitInUsdCents: string): string {
  */
 export function noLongerBillable(): null {
   return null;
+}
+
+/**
+ * Seed price for a line with no vendor list rate to write at the seed's markup: the email-sent
+ * names (the price is the email send price, measured from the bank ledger, src/lib/real-cost.ts).
+ * The seed version carries no price; the boot's proposed-list alignment (before the port opens)
+ * and every daily sync write the billed price. Same null as `noLongerBillable()`, named for why.
+ */
+export function pricedByProposedListOnly(): null {
+  return null;
+}
+
+/**
+ * One email-sent name per sending side (account, domain) for each BounceVerify verdict other than
+ * valid (`EMAIL_VERDICTS`, owner 2026-10-14): billed at a stated multiple of the valid email's
+ * price by the proposed list. Only on the instantly plan in force (hypergrowth/monthly).
+ */
+function emailVerdictCosts(): SeedProviderCost[] {
+  return EMAIL_VERDICTS.filter((v) => v.priceMultipleOfValid !== 1).flatMap((v) =>
+    EMAIL_SENT_BASE_NAMES.map((base) => ({
+      name: `${base}${v.nameSuffix}`,
+      provider: "instantly",
+      providerDomain: PROVIDER_DOMAINS.instantly,
+      type: `Email sent, address verified ${v.label} by ${EMAIL_VERIFIER} (per ${base.includes("account") ? "account" : "domain"})`,
+      unit: "email",
+      planTier: "hypergrowth",
+      billingCycle: "monthly",
+      costPerUnitInUsdCents: pricedByProposedListOnly(),
+      pricingBasis: "marked-up" as const,
+      effectiveFrom: new Date("2026-10-14T00:00:00Z"),
+    })),
+  );
 }
 
 // Domain mapping per provider (used by logo.dev on the public pricing page).
@@ -1633,6 +1667,8 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Email sent to a catch-all (x2) / unknown (x3) BounceVerify address, per account and per domain.
+  ...emailVerdictCosts(),
   // Serper.dev — search query (web, news, batch): $0.001/query = 0.1¢/query
   // All search types billed identically; batch bills per individual query
   // No free tier tracked — we bill from the first call

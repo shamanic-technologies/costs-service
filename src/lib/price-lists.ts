@@ -37,9 +37,35 @@ export const X1_RULE = "Every pass-through line (Stripe processing fees and medi
  * evenly between them: a unit of each, together, costs one email. Before that split, each email
  * was one `instantly-email-send` unit: the whole price.
  */
+/**
+ * The price of one email depends on how sure we are the address exists: its verdict from our email
+ * verifier, BounceVerify (owner 2026-10-14: « Le prix qu'on a donné et qu'on calcule aujourd'hui doit
+ * correspondre aux valid [...] Si un user nous utilise pour un catch all, on x2 ce prix dans notre
+ * catalogue. Si un unknown on x3. »). `valid` is the email send price as it always was, under the
+ * original names; every other verdict is a STATED multiple of it, so a change of the valid price moves
+ * all of them. invalid, risky and no verdict are never sent: they have no name and no price.
+ * The real cost of an email is the same whatever the verdict; only the proposed (billed) price moves.
+ */
+export const EMAIL_VERIFIER = "BounceVerify";
+export type EmailVerdict = { verdict: "valid" | "catch_all" | "unknown"; label: string; nameSuffix: string; priceMultipleOfValid: number };
+export const EMAIL_VERDICTS: readonly EmailVerdict[] = [
+  { verdict: "valid", label: "valid", nameSuffix: "", priceMultipleOfValid: 1 },
+  { verdict: "catch_all", label: "catch-all", nameSuffix: "-catch-all", priceMultipleOfValid: 2 },
+  { verdict: "unknown", label: "unknown", nameSuffix: "-unknown", priceMultipleOfValid: 3 },
+];
+/** The two names one email is declared under (one per sending account, one per sending domain). */
+export const EMAIL_SENT_BASE_NAMES = ["instantly-account-email-sent", "instantly-domain-email-sent"] as const;
+
+/** The verdict a cost name prices (`valid` for the base names), or null for a non-email name. */
+export function emailVerdictOf(costName: string): EmailVerdict | null {
+  for (const v of EMAIL_VERDICTS) {
+    if (EMAIL_SENT_BASE_NAMES.some((b) => `${b}${v.nameSuffix}` === costName)) return v;
+  }
+  return null;
+}
+
 export const EMAIL_SEND_COST_SHARES: Readonly<Record<string, number>> = {
-  "instantly-account-email-sent": 0.5,
-  "instantly-domain-email-sent": 0.5,
+  ...Object.fromEntries(EMAIL_VERDICTS.flatMap((v) => EMAIL_SENT_BASE_NAMES.map((b) => [`${b}${v.nameSuffix}`, 0.5]))),
   "instantly-email-send": 1,
 };
 
