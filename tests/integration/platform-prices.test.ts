@@ -278,6 +278,8 @@ describe("Platform Prices (consumer-facing)", () => {
           name: "email-sent", unit: "email",
           members: ["instantly-account-email-sent", "instantly-domain-email-sent"],
           pricePerUnitInUsdCents: "5.9772000000",
+          label: "Email sent, address verified valid by BounceVerify",
+          emailVerification: { provider: "BounceVerify", verdict: "valid", priceMultipleOfValid: 1, validBundle: "email-sent" },
         });
       }
     });

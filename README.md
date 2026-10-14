@@ -24,7 +24,19 @@ Every public price read (`GET /v1/platform-prices`, `GET /v1/platform-prices/:na
 
 Each `GET /v1/platform-prices` row also carries:
 - `lastUsedOn`: the last UTC day any run used the name (from runs-service consumption, read by the daily refresh; `null` = never), and `usageReadAt`, when that usage was read. Measure idleness against `usageReadAt`, not today.
-- `bundle`: set when the row is only part of one outcome a client pays for. One email sent is one `instantly-account-email-sent` unit plus one `instantly-domain-email-sent` unit, so both rows carry `bundle: { name: "email-sent", unit: "email", pricePerUnitInUsdCents }` with the price of the whole email. Declared in `src/lib/price-bundles.ts`.
+- `bundle`: set when the row is only part of one outcome a client pays for. One email sent is one `instantly-account-email-sent` unit plus one `instantly-domain-email-sent` unit, so both rows carry `bundle: { name: "email-sent", unit: "email", pricePerUnitInUsdCents }` with the price of the whole email. Declared in `src/lib/price-bundles.ts`. Each bundle also carries `label` (in words) and `emailVerification` (below).
+
+### Email sent: price per BounceVerify verdict (owner 2026-10-14)
+
+The price of one email depends on how sure we are the address exists, i.e. its verdict from our email verifier BounceVerify. The valid price is the email send price as it always was (real cost x2); every other verdict we send to is a stated multiple of it, so a change of the valid price moves all three. invalid, risky and no verdict are never sent and have no name and no price.
+
+| Verdict | Names (instantly-service declares both per email) | Bundle | Price |
+|---|---|---|---|
+| valid | `instantly-account-email-sent`, `instantly-domain-email-sent` | `email-sent` | valid price |
+| catch_all | `instantly-account-email-sent-catch-all`, `instantly-domain-email-sent-catch-all` | `email-sent-catch-all` | valid x2 |
+| unknown | `instantly-account-email-sent-unknown`, `instantly-domain-email-sent-unknown` | `email-sent-unknown` | valid x3 |
+
+Worked example: valid $0.0573/email, catch_all $0.1146, unknown $0.1719. Each bundle serves `label` ("Email sent, address verified catch-all by BounceVerify") and `emailVerification: { provider: "BounceVerify", verdict, priceMultipleOfValid, validBundle: "email-sent" }`. The real cost of an email is the same whatever the verdict; only the proposed (billed) price carries the multiple (`proposedBasis: real-cost-x2-verdict-multiple`). The verdict names are seeded with no price (`pricedByProposedListOnly()`): the boot's proposed-list alignment prices them before the port opens. Declared in `src/lib/price-lists.ts` (`EMAIL_VERDICTS`).
 
 ### Delisted lines (no billable price)
 
