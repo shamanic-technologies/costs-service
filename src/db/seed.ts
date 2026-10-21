@@ -2517,6 +2517,50 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // GPT-6 Luna on the DECISIONS API (`POST /v1/decisions`, public beta 2026-10-06): a typed
+  // judgment endpoint, priced APART from the same model's chat/responses price ($0.10 in,
+  // $0.01 cached, $0.50 out). Hence the `-decisions-` segment: a future chat-completions
+  // `openai-gpt-6-luna-tokens-*` row must never collide with these.
+  //
+  // https://developers.openai.com/api/docs/guides/decisions (raw page read 2026-10-21):
+  //   "With gpt-6-luna, input costs $0.10 per 1M tokens. You pay only for input tokens: there
+  //   are no cache-read, cache-write, or output-token charges. Regional processing premiums
+  //   and long-context input pricing multipliers apply."
+  // https://developers.openai.com/api/docs/models/gpt-6-luna (read 2026-10-21):
+  //   "Prompts with more than 272K input tokens are priced at 2x input and cache rates and
+  //   1.5x output for the full request."
+  //
+  // So TWO names, input only (same reasoning as the TypeSafe Jev row below: an output or
+  // cache row would bill something no invoice carries, even though the response reports
+  // `cache_write_tokens`):
+  //   - `...-tokens-input`               $0.10/MTok, prompt <= 272K input tokens
+  //   - `...-long-context-tokens-input`  $0.20/MTok (2x), prompt > 272K: the WHOLE request's
+  //                                      input tokens go under this name, never split.
+  // Regional processing (+10%) is not used by us, so it is not seeded.
+  {
+    name: "openai-gpt-6-luna-decisions-tokens-input",
+    provider: "openai",
+    providerDomain: PROVIDER_DOMAINS.openai,
+    type: "Input tokens (GPT-6 Luna, Decisions API)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000100000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    name: "openai-gpt-6-luna-decisions-long-context-tokens-input",
+    provider: "openai",
+    providerDomain: PROVIDER_DOMAINS.openai,
+    type: "Input tokens (GPT-6 Luna, Decisions API), prompt over 272K tokens",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000200000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
   // TypeSafe (typesafe.ai) — direct vendor account, first-ever TypeSafe spend. Jev is served
   // through chat-service like every other model.
   //
