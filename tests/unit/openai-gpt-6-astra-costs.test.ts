@@ -112,10 +112,14 @@ describe("OpenAI GPT-6 Astra unit costs (new direct vendor)", () => {
     }
   });
 
-  it("seeds no long-context openai row — the tier has no published threshold", () => {
+  it("seeds no long-context row for a model whose tier has no published threshold", () => {
     const rows = SEED_PROVIDERS_COSTS.filter((c) => c.provider === "openai").map((c) => c.name);
     expect(rows).toEqual(expect.arrayContaining([...ASTRA_NAMES]));
     // Other OpenAI models (GPT-6 Sol, GPT-5.6 Sol/Terra, 2026-09-29) are short-context only too.
-    expect(rows.filter((n) => n.includes("long-context"))).toEqual([]);
+    // The one exception is GPT-6 Luna on the Decisions API: its model page states the
+    // threshold (> 272K input tokens, whole request at 2x), so its long-context name exists.
+    expect(rows.filter((n) => n.includes("long-context"))).toEqual([
+      "openai-gpt-6-luna-decisions-long-context-tokens-input",
+    ]);
   });
 });
