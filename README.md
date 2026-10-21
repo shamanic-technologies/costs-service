@@ -236,6 +236,8 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `openai-gpt-6-luna-decisions-tokens-input` | 0.00005 | 1M tokens | Input tokens (GPT-6 Luna, Decisions API) | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `openai-gpt-6-luna-decisions-long-context-tokens-input` | 0.0001 | 1M tokens | Input tokens (GPT-6 Luna, Decisions API), prompt over 272K tokens | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `typesafe-jev-1.13-tokens-input` | 0.000021 | 1M tokens | Input tokens (Jev 1.13) | typesafe | typesafe.ai | pay-as-you-go | monthly | marked-up |
+| `cloudflare-clef-tokens-input` | 0.00012 | 1M tokens | Input tokens (Cloudflare Clef, Workers AI) | cloudflare | cloudflare.com | pay-as-you-go | monthly | marked-up |
+| `cloudflare-clef-flash-tokens-input` | 0.000019 | 1M tokens | Input tokens (Cloudflare Clef Flash, Workers AI) | cloudflare | cloudflare.com | pay-as-you-go | monthly | marked-up |
 | `x-post-create` | 7.5 | post | X API v2 post create (pay-per-use) | x | x.com | pay-as-you-go | monthly | marked-up |
 | `x-post-create-with-url` | 100 | post | X API v2 post create with URL (pay-per-use) | x | x.com | pay-as-you-go | monthly | marked-up |
 | `google-ads-spend` | 1 | USD cent | Google Ads platform spend | google-ads | ads.google.com | pay-as-you-go | monthly | pass-through |

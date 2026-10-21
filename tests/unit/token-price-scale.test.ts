@@ -64,6 +64,9 @@ const VENDOR_USD_PER_MTOK: Array<[name: string, usdPerMTok: number]> = [
   ["anthropic-opus-4.6-tokens-input", 5],
   // TypeSafe Jev 1.13 — input only ($0.042/MTok); the vendor charges nothing for output.
   ["typesafe-jev-1.13-tokens-input", 0.042],
+  // Cloudflare Workers AI Clef decision models — input only.
+  ["cloudflare-clef-tokens-input", 0.24],
+  ["cloudflare-clef-flash-tokens-input", 0.038],
 ];
 
 /** Vendor dollars per 1M tokens -> the raw cents-per-token literal the seed carries. */
@@ -132,6 +135,8 @@ describe("token price scale (regression: Fable 5.1 / GPT-6 Astra 10x under-price
       ["openai-gpt-5.6-terra-tokens-cached-input", "openai-gpt-6-astra-tokens-cached-input", 0.2 / 1],
       ["openai-gpt-6-luna-decisions-tokens-input", "openai-gpt-6-astra-tokens-input", 0.1 / 10],
       ["openai-gpt-6-luna-decisions-long-context-tokens-input", "openai-gpt-6-luna-decisions-tokens-input", 2],
+      ["cloudflare-clef-tokens-input", "openai-gpt-6-luna-decisions-tokens-input", 0.24 / 0.1],
+      ["cloudflare-clef-flash-tokens-input", "typesafe-jev-1.13-tokens-input", 0.038 / 0.042],
     ];
     for (const [a, b, r] of cases) expect(ratio(a, b), `${a} / ${b}`).toBeCloseTo(r, 9);
     // The bug: Fable 5.1's $10/MTok input sat at Haiku 4.5's $1/MTok number.
