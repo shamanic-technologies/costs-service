@@ -2589,6 +2589,43 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
+  // Cloudflare Workers AI — Clef decision models (`@cf/cloudflare/clef`, `@cf/cloudflare/clef-flash`,
+  // released 2026-10-01), reached by chat-service as typed-judgment judges. Same family as the
+  // Jev / Luna Decisions rows above: they return probabilities, no text.
+  //
+  // Vendor prices, read 2026-10-21 from our own account's Workers AI model catalog
+  // (`GET /accounts/<id>/ai/models/search?search=clef`, property `price`):
+  //   @cf/cloudflare/clef        $0.24  per 1M input tokens, $0.00 per 1M output tokens
+  //   @cf/cloudflare/clef-flash  $0.038 per 1M input tokens, $0.00 per 1M output tokens
+  // The response reports `usage.input_tokens`. No cache dimension and no long-context tier is
+  // published, so ONE input row per model: an output or cache row would bill something no
+  // invoice carries. The model id names the vendor only in its `@cf/cloudflare/` path, so the
+  // name takes the `cloudflare-` vendor prefix like the R2 rows. `clef-omni` ($0.15/M) is not
+  // used, so not seeded. Dated at the release: neither model existed before it.
+  {
+    name: "cloudflare-clef-tokens-input",
+    provider: "cloudflare",
+    providerDomain: PROVIDER_DOMAINS.cloudflare,
+    type: "Input tokens (Cloudflare Clef, Workers AI)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000240000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2026-10-01T00:00:00Z"),
+  },
+  {
+    name: "cloudflare-clef-flash-tokens-input",
+    provider: "cloudflare",
+    providerDomain: PROVIDER_DOMAINS.cloudflare,
+    type: "Input tokens (Cloudflare Clef Flash, Workers AI)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000038000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2026-10-01T00:00:00Z"),
+  },
   // X API v2 — `POST /2/tweets` on the pay-per-use plan. Vendor table, from
   // https://docs.x.com/x-api/getting-started/pricing (read 2026-10-02):
   //   Post: Create            $0.015 per request
