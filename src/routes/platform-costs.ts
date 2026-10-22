@@ -5,6 +5,7 @@ import { platformCosts } from "../db/schema.js";
 import { requireApiKey } from "../middleware/auth.js";
 import { PutPlatformCostBodySchema } from "../schemas.js";
 import { getTraceIdentityHeaders, traceEvent } from "../lib/trace-event.js";
+import { pgErrorCode } from "../lib/pg-error.js";
 
 const router = Router();
 
@@ -114,7 +115,7 @@ router.put("/v1/platform-costs/:provider", requireApiKey, async (req, res) => {
 
     res.json(inserted);
   } catch (err: any) {
-    if (err?.code === "23505") {
+    if (pgErrorCode(err) === "23505") {
       res.status(409).json({ error: "Platform cost for this provider and effective_from already exists" });
       return;
     }
