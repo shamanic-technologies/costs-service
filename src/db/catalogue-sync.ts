@@ -22,6 +22,7 @@ import {
   type ProposedItem,
 } from "../lib/catalogue-sync.js";
 import { realCostSeries } from "../lib/real-cost.js";
+import { errorReason } from "../lib/pg-error.js";
 
 /**
  * Applies the day's proposed price list to the billed catalogue (plan: src/lib/catalogue-sync.ts).
@@ -146,7 +147,7 @@ export async function syncCatalogueToProposed(now: Date = new Date()): Promise<C
       written: plan.writes.map((w) => ({ costName: w.costName, previousPriceUsdCents: w.previousPriceUsdCents, priceUsdCents: w.priceUsdCents })),
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorReason(err);
     await db.insert(catalogueSyncs).values({
       realCostRefreshId: refreshId,
       proposedListDay: today,

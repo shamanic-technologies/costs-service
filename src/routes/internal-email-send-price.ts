@@ -5,6 +5,7 @@ import { monthlyRollup, VAT_RULE, vatServed } from "../lib/email-send-price.js";
 import { LedgerError } from "../lib/ledger.js";
 import { InstantlyServiceError } from "../lib/instantly-service.js";
 import { readStoredSeries, refreshEmailSendPrice, RefreshInProgressError, utcDay } from "../db/email-send-price.js";
+import { errorReason } from "../lib/pg-error.js";
 
 /**
  * The price of one cold email sent to a lead — STAFF-ONLY (service api key), read by dashboard v2
@@ -127,7 +128,7 @@ router.post("/internal/email-send-price/refresh", async (_req, res) => {
       return;
     }
     console.error("[Costs Service] Email send price refresh failed:", err);
-    res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
+    res.status(500).json({ error: err instanceof Error ? errorReason(err) : "Internal server error" });
   }
 });
 

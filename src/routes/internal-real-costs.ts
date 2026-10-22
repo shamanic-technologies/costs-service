@@ -35,6 +35,7 @@ import {
   RealCostRefreshInProgressError,
   type GoldRow,
 } from "../db/real-cost.js";
+import { errorReason } from "../lib/pg-error.js";
 
 /**
  * Real cost per unit of every cost item, the proposed price list (real x2, x1 for Stripe and
@@ -476,7 +477,7 @@ router.post("/internal/real-costs/refresh", async (_req, res) => {
       return;
     }
     console.error("[Costs Service] Real cost refresh failed:", err);
-    res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
+    res.status(500).json({ error: err instanceof Error ? errorReason(err) : "Internal server error" });
   }
 });
 

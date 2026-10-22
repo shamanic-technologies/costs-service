@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { errorReason } from "./pg-error.js";
 
 /**
  * Units consumed per UTC day per cost name, fleet-wide, read from runs-service's service-auth
@@ -94,7 +95,7 @@ async function runsRead<T>(pathAndQuery: string, schema: z.ZodType<T>): Promise<
   try {
     res = await fetch(url, { headers: { "x-api-key": apiKey!, Accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS) });
   } catch (err) {
-    throw new RunsServiceError(`runs-service unreachable at ${url}: ${err instanceof Error ? err.message : String(err)}`);
+    throw new RunsServiceError(`runs-service unreachable at ${url}: ${errorReason(err)}`);
   }
   const text = await res.text();
   if (!res.ok) throw new RunsServiceError(`runs-service refused ${url}: HTTP ${res.status} ${text.slice(0, 300)}`);
