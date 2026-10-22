@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { errorReason } from "./pg-error.js";
 
 /**
  * Emails sent to leads per UTC day, read from instantly-service's staff ops read
@@ -43,7 +44,7 @@ export async function fetchEmailsToLeadsPerDay(): Promise<{ url: string; body: u
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (err) {
-    throw new InstantlyServiceError(`instantly-service unreachable at ${url}: ${err instanceof Error ? err.message : String(err)}`);
+    throw new InstantlyServiceError(`instantly-service unreachable at ${url}: ${errorReason(err)}`);
   }
   const text = await res.text();
   if (!res.ok) {

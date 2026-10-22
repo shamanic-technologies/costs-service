@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { errorReason } from "./pg-error.js";
 
 /**
  * What Twilio itself says our account CONSUMED, per day and usage category, and the prepaid balance
@@ -56,7 +57,7 @@ async function platformCredentials(): Promise<{ accountSid: string; authToken: s
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (err) {
-    throw new TwilioUsageError(`key-service unreachable for the Twilio platform key: ${err instanceof Error ? err.message : String(err)}`);
+    throw new TwilioUsageError(`key-service unreachable for the Twilio platform key: ${errorReason(err)}`);
   }
   const text = await res.text();
   if (!res.ok) throw new TwilioUsageError(`key-service refused the Twilio platform key: HTTP ${res.status} ${text.slice(0, 300)}`);
@@ -77,7 +78,7 @@ async function twilioGet<T>(path: string, auth: string, schema: z.ZodType<T>): P
   try {
     res = await fetch(`${TWILIO_API}${path}`, { headers: { Authorization: auth, Accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS) });
   } catch (err) {
-    throw new TwilioUsageError(`Twilio unreachable: ${err instanceof Error ? err.message : String(err)}`);
+    throw new TwilioUsageError(`Twilio unreachable: ${errorReason(err)}`);
   }
   const text = await res.text();
   if (!res.ok) throw new TwilioUsageError(`Twilio refused ${path.split("?")[0].replace(/AC[0-9a-f]{32}/, "<account>")}: HTTP ${res.status} ${text.slice(0, 300)}`);

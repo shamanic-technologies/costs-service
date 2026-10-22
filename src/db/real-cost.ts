@@ -27,6 +27,7 @@ import { paygRatios, realCostSeries, type GoldPoint, type MeteredSpend, type Pla
 import type { ConsumptionRow } from "../lib/price-comparison.js";
 import { utcDay } from "./email-send-price.js";
 import { syncCatalogueToProposed, type CatalogueSyncOutcome } from "./catalogue-sync.js";
+import { errorReason } from "../lib/pg-error.js";
 
 /**
  * Storage and scheduling of the real cost per unit and the proposed price list (formula:
@@ -409,7 +410,7 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
     });
     gold = { refreshId: attempt.id, asOf, days: days.length, costItems: new Set(series.map((r) => r.costName)).size };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorReason(err);
     await db
       .update(realCostRefreshes)
       .set({ status: "failed", error: message.slice(0, 2000), finishedAt: new Date() })
