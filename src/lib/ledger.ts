@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { errorReason } from "./pg-error.js";
 
 /**
  * Money facts READ from Kevin's bank ledger (admin.kevinlourd.com), never typed by hand here:
@@ -184,7 +185,7 @@ async function ledgerRead<T>(pathAndQuery: string, schema: z.ZodType<T>): Promis
       signal: AbortSignal.timeout(LEDGER_TIMEOUT_MS),
     });
   } catch (err) {
-    throw new LedgerError(`Bank ledger unreachable at ${url}: ${err instanceof Error ? err.message : String(err)}`);
+    throw new LedgerError(`Bank ledger unreachable at ${url}: ${errorReason(err)}`);
   }
 
   const text = await res.text();

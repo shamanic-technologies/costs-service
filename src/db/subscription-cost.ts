@@ -24,6 +24,7 @@ import {
   type SubscriptionGoldDay,
 } from "../lib/subscription-cost.js";
 import { utcDay } from "./email-send-price.js";
+import { errorReason } from "../lib/pg-error.js";
 
 /**
  * Storage and scheduling of the real cost per credit of each subscription (formula and layering:
@@ -115,7 +116,7 @@ export async function refreshSubscriptionCosts(now: Date = new Date()): Promise<
     const days = new Set(series.map((p) => p.day)).size;
     return { refreshId: attempt.id, asOf, days, subscriptions: SUBSCRIPTIONS.length };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorReason(err);
     await db
       .update(subscriptionCostRefreshes)
       .set({ status: "failed", error: message.slice(0, 2000), finishedAt: new Date() })

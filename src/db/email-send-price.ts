@@ -11,6 +11,7 @@ import { EMAIL_INFRA_VENDORS } from "../lib/email-infra-vendors.js";
 import { fetchLedgerVendorPayments } from "../lib/ledger.js";
 import { fetchEmailsToLeadsPerDay } from "../lib/instantly-service.js";
 import { emailsPerDay, priceSeries, spendPerDayAndVendor, type GoldDay, type SilverSpendDay } from "../lib/email-send-price.js";
+import { errorReason } from "../lib/pg-error.js";
 
 /**
  * Storage and scheduling of the email send price (formula and layering: src/lib/email-send-price.ts).
@@ -98,7 +99,7 @@ export async function refreshEmailSendPrice(now: Date = new Date()): Promise<Ref
     });
     return { refreshId: attempt.id, asOf, days: series.length };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorReason(err);
     await db
       .update(emailSendPriceRefreshes)
       .set({ status: "failed", error: message.slice(0, 2000), finishedAt: new Date() })
