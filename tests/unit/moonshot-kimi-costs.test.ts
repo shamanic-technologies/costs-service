@@ -17,6 +17,9 @@ const MOONSHOT_NAMES = [
   "moonshot-kimi-k3-tokens-input",
   "moonshot-kimi-k3-tokens-cached-input",
   "moonshot-kimi-k3-tokens-output",
+  "moonshot-kimi-k3.1-pro-tokens-input",
+  "moonshot-kimi-k3.1-pro-tokens-cached-input",
+  "moonshot-kimi-k3.1-pro-tokens-output",
 ];
 
 describe("Moonshot Kimi unit costs (direct vendor)", () => {

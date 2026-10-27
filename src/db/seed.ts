@@ -517,6 +517,79 @@ export const GOOGLE_GEMINI_CACHE_AND_LONG_CONTEXT_COSTS: SeedProviderCost[] = [
   googleGeminiCost("google-flash-image-3.1-tokens-text-output", "Text and thinking output tokens (Gemini 3.1 Flash Image)", "0.0003000000"),
 ];
 
+/**
+ * LLM heads moved 2026-10-27 (LLM-HEADS-1027) + the two OpenAI price dimensions chat-service
+ * was not declaring. Full vendor LIST price only, never an intro/promo rate (owner 2026-10-27:
+ * a vendor discount is our margin).
+ *
+ * - GPT-6.1 Sol / GPT-6.1 Terra (developers.openai.com/api/docs/models/<id>, read 2026-10-27).
+ * - CACHE WRITES, every OpenAI chat model: OpenAI bills the prompt tokens it WRITES to its cache
+ *   at 1.25x the uncached input rate, reported as `usage.prompt_tokens_details.cache_write_tokens`
+ *   (probed live 2026-10-27: 4,204 of a 4,207-token prompt on the first call, then 4,204 cached
+ *   on the second). Before these rows chat-service billed them at the plain input rate.
+ * - LONG CONTEXT: a request with more than 272K input tokens is billed 2x input, cache read and
+ *   cache write, and 1.5x output, for the WHOLE request. The threshold is now published on
+ *   every model page, which settles the "no threshold stated" note on the GPT-6 Astra rows.
+ * - Kimi K3.1 Pro: Moonshot's own row on OpenRouter's endpoints API (2026-10-27) $2 / cache hit
+ *   $0.20 / $10, same figures on every listing found; Moonshot prices no cache write.
+ * - Gemini 4 Argon: $4 / cache $0.20 / $20, Google's standard rate from 2026-12-01; the
+ *   $2/$10 until 2026-11-30 is an introductory rate and is NOT seeded. No long-context tier.
+ */
+function openAiTokenCost(name: string, type: string, vendorUsdPerMTok: number): SeedProviderCost {
+  return {
+    name,
+    provider: "openai",
+    providerDomain: PROVIDER_DOMAINS.openai,
+    type,
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier((vendorUsdPerMTok / 10_000).toFixed(10)),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  };
+}
+
+const OPENAI_CHAT_MODELS: Array<{ prefix: string; label: string; input: number; cached: number; output: number; newBase: boolean }> = [
+  { prefix: "openai-gpt-6.1-sol", label: "GPT-6.1 Sol", input: 2, cached: 0.1, output: 10, newBase: true },
+  { prefix: "openai-gpt-6.1-terra", label: "GPT-6.1 Terra", input: 1, cached: 0.05, output: 5, newBase: true },
+  { prefix: "openai-gpt-6-astra", label: "GPT-6 Astra", input: 10, cached: 1, output: 50, newBase: false },
+  { prefix: "openai-gpt-6-sol", label: "GPT-6 Sol", input: 2, cached: 0.2, output: 10, newBase: false },
+  { prefix: "openai-gpt-5.6-sol", label: "GPT-5.6 Sol", input: 4, cached: 0.4, output: 20, newBase: false },
+  { prefix: "openai-gpt-5.6-terra", label: "GPT-5.6 Terra", input: 2, cached: 0.2, output: 12, newBase: false },
+];
+
+export const OPENAI_CACHE_WRITE_AND_LONG_CONTEXT_COSTS: SeedProviderCost[] = OPENAI_CHAT_MODELS.flatMap((m) => [
+  ...(m.newBase
+    ? [
+        openAiTokenCost(`${m.prefix}-tokens-input`, `Input tokens (${m.label})`, m.input),
+        openAiTokenCost(`${m.prefix}-tokens-cached-input`, `Cached input tokens (${m.label})`, m.cached),
+        openAiTokenCost(`${m.prefix}-tokens-output`, `Output tokens (${m.label})`, m.output),
+      ]
+    : []),
+  openAiTokenCost(`${m.prefix}-tokens-cache-write`, `Cache write tokens (${m.label})`, m.input * 1.25),
+  openAiTokenCost(`${m.prefix}-long-context-tokens-input`, `Input tokens, prompt over 272K (${m.label})`, m.input * 2),
+  openAiTokenCost(`${m.prefix}-long-context-tokens-cached-input`, `Cached input tokens, prompt over 272K (${m.label})`, m.cached * 2),
+  openAiTokenCost(`${m.prefix}-long-context-tokens-cache-write`, `Cache write tokens, prompt over 272K (${m.label})`, m.input * 1.25 * 2),
+  openAiTokenCost(`${m.prefix}-long-context-tokens-output`, `Output tokens, prompt over 272K (${m.label})`, m.output * 1.5),
+]);
+
+function moonshotTokenCost(name: string, type: string, vendorUsdPerMTok: number): SeedProviderCost {
+  return { ...openAiTokenCost(name, type, vendorUsdPerMTok), provider: "moonshot", providerDomain: PROVIDER_DOMAINS.moonshot };
+}
+
+export const KIMI_K3_1_PRO_COSTS: SeedProviderCost[] = [
+  moonshotTokenCost("moonshot-kimi-k3.1-pro-tokens-input", "Input tokens (Kimi K3.1 Pro)", 2),
+  moonshotTokenCost("moonshot-kimi-k3.1-pro-tokens-cached-input", "Cached input tokens (Kimi K3.1 Pro)", 0.2),
+  moonshotTokenCost("moonshot-kimi-k3.1-pro-tokens-output", "Output tokens (Kimi K3.1 Pro)", 10),
+];
+
+export const GEMINI_4_ARGON_COSTS: SeedProviderCost[] = [
+  googleGeminiCost("google-argon-4-tokens-input", "Input tokens (Gemini 4 Argon)", "0.0004000000"),
+  googleGeminiCost("google-argon-4-tokens-cached-input", "Cached input tokens (Gemini 4 Argon)", "0.0000200000"),
+  googleGeminiCost("google-argon-4-tokens-output", "Output tokens (Gemini 4 Argon)", "0.0020000000"),
+];
+
 export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   // Apollo — unified credit: Basic plan $59/mo ÷ 2,500 credits = 2.36¢/credit
   // Covers enrichment + person match. Quantity comes from Apollo webhook (credits_consumed).
@@ -1504,6 +1577,9 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
   ...GOOGLE_GEMINI_CACHE_AND_LONG_CONTEXT_COSTS,
+  ...OPENAI_CACHE_WRITE_AND_LONG_CONTEXT_COSTS,
+  ...KIMI_K3_1_PRO_COSTS,
+  ...GEMINI_4_ARGON_COSTS,
   // Google Gemini Embedding 001: $0.15/MTok input (standard tier).
   // Synchronous batchEmbedContents bills at standard tier, NOT the $0.075 Batch API
   // (async 24h jobs). Embeddings bill input only — the vector output is not token-billed.
@@ -2354,14 +2430,9 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   // other token row — see the Fable 5.1 block above for the arithmetic and for the 10x-low
   // launch values these three rows correct.
   //
-  // Those are the SHORT-CONTEXT figures. That page also lists a long-context column ($20 /
-  // $2 / $75) and states NO threshold at which a request crosses into it — no token count, no
-  // footnote, nothing a caller could evaluate. A cost name has to say when it applies (the
-  // same requirement that made DeepSeek's peak/off-peak rows carry `regimeHoursUtc`), and
-  // there is no honest rule to attach here, so the long-context tier is deliberately NOT
-  // seeded rather than guessed at. Consequence, stated plainly: a long-context call declares
-  // the short-context name and is under-charged. When OpenAI publishes the threshold, that
-  // becomes its own pair of names (`-long-context-` segment), not a reprice of these three.
+  // Those are the SHORT-CONTEXT figures. The long-context tier (>272K input tokens, whole
+  // request) and the cache-write dimension are seeded in OPENAI_CACHE_WRITE_AND_LONG_CONTEXT_COSTS
+  // (LLM-HEADS-1027), once OpenAI published the threshold on every model page.
   {
     name: "openai-gpt-6-astra-tokens-input",
     provider: "openai",
@@ -2408,7 +2479,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   // figures are exactly the GPT-5.6 rows, and OpenAI lists no `gpt-6-terra` at all, so the
   // GPT-5.6 pair is seeded under its real model ids AND the real `gpt-6-sol` is seeded at its
   // own price: whichever model id the caller wires, its name resolves at the vendor's rate.
-  // Long-context columns are not seeded, for the reason stated on the GPT-6 Astra rows above.
+  // Cache-write and long-context rows: OPENAI_CACHE_WRITE_AND_LONG_CONTEXT_COSTS (LLM-HEADS-1027).
   {
     name: "openai-gpt-6-sol-tokens-input",
     provider: "openai",
