@@ -233,6 +233,48 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `openai-gpt-5.6-terra-tokens-input` | 0.001 | 1M tokens | Input tokens (GPT-5.6 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `openai-gpt-5.6-terra-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (GPT-5.6 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `openai-gpt-5.6-terra-tokens-output` | 0.006 | 1M tokens | Output tokens (GPT-5.6 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-sol-tokens-input` | 0.001 | 1M tokens | Input tokens (GPT-6.1 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-sol-tokens-cached-input` | 0.00005 | 1M tokens | Cached input tokens (GPT-6.1 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-sol-tokens-output` | 0.005 | 1M tokens | Output tokens (GPT-6.1 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-sol-tokens-cache-write` | 0.00125 | 1M tokens | Cache write tokens (GPT-6.1 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-sol-long-context-tokens-input` | 0.002 | 1M tokens | Input tokens, prompt over 272K (GPT-6.1 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-sol-long-context-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens, prompt over 272K (GPT-6.1 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-sol-long-context-tokens-cache-write` | 0.0025 | 1M tokens | Cache write tokens, prompt over 272K (GPT-6.1 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-sol-long-context-tokens-output` | 0.0075 | 1M tokens | Output tokens, prompt over 272K (GPT-6.1 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-terra-tokens-input` | 0.0005 | 1M tokens | Input tokens (GPT-6.1 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-terra-tokens-cached-input` | 0.000025 | 1M tokens | Cached input tokens (GPT-6.1 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-terra-tokens-output` | 0.0025 | 1M tokens | Output tokens (GPT-6.1 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-terra-tokens-cache-write` | 0.000625 | 1M tokens | Cache write tokens (GPT-6.1 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-terra-long-context-tokens-input` | 0.001 | 1M tokens | Input tokens, prompt over 272K (GPT-6.1 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-terra-long-context-tokens-cached-input` | 0.00005 | 1M tokens | Cached input tokens, prompt over 272K (GPT-6.1 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-terra-long-context-tokens-cache-write` | 0.00125 | 1M tokens | Cache write tokens, prompt over 272K (GPT-6.1 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6.1-terra-long-context-tokens-output` | 0.00375 | 1M tokens | Output tokens, prompt over 272K (GPT-6.1 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-astra-tokens-cache-write` | 0.00625 | 1M tokens | Cache write tokens (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-astra-long-context-tokens-input` | 0.01 | 1M tokens | Input tokens, prompt over 272K (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-astra-long-context-tokens-cached-input` | 0.001 | 1M tokens | Cached input tokens, prompt over 272K (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-astra-long-context-tokens-cache-write` | 0.0125 | 1M tokens | Cache write tokens, prompt over 272K (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-astra-long-context-tokens-output` | 0.0375 | 1M tokens | Output tokens, prompt over 272K (GPT-6 Astra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-sol-tokens-cache-write` | 0.00125 | 1M tokens | Cache write tokens (GPT-6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-sol-long-context-tokens-input` | 0.002 | 1M tokens | Input tokens, prompt over 272K (GPT-6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-sol-long-context-tokens-cached-input` | 0.0002 | 1M tokens | Cached input tokens, prompt over 272K (GPT-6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-sol-long-context-tokens-cache-write` | 0.0025 | 1M tokens | Cache write tokens, prompt over 272K (GPT-6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-6-sol-long-context-tokens-output` | 0.0075 | 1M tokens | Output tokens, prompt over 272K (GPT-6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-sol-tokens-cache-write` | 0.0025 | 1M tokens | Cache write tokens (GPT-5.6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-sol-long-context-tokens-input` | 0.004 | 1M tokens | Input tokens, prompt over 272K (GPT-5.6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-sol-long-context-tokens-cached-input` | 0.0004 | 1M tokens | Cached input tokens, prompt over 272K (GPT-5.6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-sol-long-context-tokens-cache-write` | 0.005 | 1M tokens | Cache write tokens, prompt over 272K (GPT-5.6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-sol-long-context-tokens-output` | 0.015 | 1M tokens | Output tokens, prompt over 272K (GPT-5.6 Sol) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-terra-tokens-cache-write` | 0.00125 | 1M tokens | Cache write tokens (GPT-5.6 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-terra-long-context-tokens-input` | 0.002 | 1M tokens | Input tokens, prompt over 272K (GPT-5.6 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-terra-long-context-tokens-cached-input` | 0.0002 | 1M tokens | Cached input tokens, prompt over 272K (GPT-5.6 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-terra-long-context-tokens-cache-write` | 0.0025 | 1M tokens | Cache write tokens, prompt over 272K (GPT-5.6 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `openai-gpt-5.6-terra-long-context-tokens-output` | 0.009 | 1M tokens | Output tokens, prompt over 272K (GPT-5.6 Terra) | openai | openai.com | pay-as-you-go | monthly | marked-up |
+| `moonshot-kimi-k3.1-pro-tokens-input` | 0.001 | 1M tokens | Input tokens (Kimi K3.1 Pro) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
+| `moonshot-kimi-k3.1-pro-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (Kimi K3.1 Pro) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
+| `moonshot-kimi-k3.1-pro-tokens-output` | 0.005 | 1M tokens | Output tokens (Kimi K3.1 Pro) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
+| `google-argon-4-tokens-input` | 0.002 | 1M tokens | Input tokens (Gemini 4 Argon) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-argon-4-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (Gemini 4 Argon) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-argon-4-tokens-output` | 0.01 | 1M tokens | Output tokens (Gemini 4 Argon) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `openai-gpt-6-luna-decisions-tokens-input` | 0.00005 | 1M tokens | Input tokens (GPT-6 Luna, Decisions API) | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `openai-gpt-6-luna-decisions-long-context-tokens-input` | 0.0001 | 1M tokens | Input tokens (GPT-6 Luna, Decisions API), prompt over 272K tokens | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `typesafe-jev-1.13-tokens-input` | 0.000021 | 1M tokens | Input tokens (Jev 1.13) | typesafe | typesafe.ai | pay-as-you-go | monthly | marked-up |
