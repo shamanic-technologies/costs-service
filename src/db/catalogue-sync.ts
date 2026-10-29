@@ -239,6 +239,10 @@ export async function alignSeedVersionsToProposedList(now: Date = new Date()): P
       ),
     });
     const names = new Map(group.map((c) => [c.costName, c.versionId]));
+    // A version aligned only for its missing x1 price keeps its grandfathered price as it is.
+    const keptPrice = new Map(
+      group.filter((c) => c.standardOnly).map((c) => [c.costName, catalogue.versionAt(c.costName, at).version?.price ?? null]),
+    );
     const items: ProposedItem[] = series
       .filter((r) => names.has(r.costName))
       .map((r) => ({
@@ -246,7 +250,7 @@ export async function alignSeedVersionsToProposedList(now: Date = new Date()): P
         method: r.method,
         flag: r.flag,
         proposedBasis: r.proposedBasis,
-        proposedPriceUsdCents: fixed(r.proposedPrice),
+        proposedPriceUsdCents: keptPrice.has(r.costName) ? fixed(keptPrice.get(r.costName)!) : fixed(r.proposedPrice),
         standardPriceUsdCents: fixed(r.standardPrice),
         realCostUsdCents: fixed(r.realCost),
       }));

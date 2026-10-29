@@ -34,8 +34,8 @@ describe("versionsToAlign", () => {
       plans,
     );
     expect(versionsToAlign(cat, LAST_SYNC, NOW)).toEqual([
-      { costName: "haiku-input", versionId: fresh.id, at: NOW },
-      { costName: "sonnet-cached", versionId: repriced.id, at: NOW },
+      { costName: "haiku-input", versionId: fresh.id, at: NOW, standardOnly: false },
+      { costName: "sonnet-cached", versionId: repriced.id, at: NOW, standardOnly: false },
     ]);
   });
 
@@ -56,7 +56,7 @@ describe("versionsToAlign", () => {
     const scheduled = v("deepseek-input", 0.0003, at, "seed", new Date("2026-10-01T00:00:00Z"));
     const base = [v("deepseek-input", 0.0004, T0, "seed"), v("deepseek-input", 0.00016, new Date("2026-10-02T05:20:44Z"), "proposed-list")];
     expect(versionsToAlign(new CatalogueHistory([...base, scheduled], plans), LAST_SYNC, NOW)).toEqual([
-      { costName: "deepseek-input", versionId: scheduled.id, at },
+      { costName: "deepseek-input", versionId: scheduled.id, at, standardOnly: false },
     ]);
     const aligned = v("deepseek-input", 0.00012, new Date(at.getTime() + 1), "proposed-list");
     expect(versionsToAlign(new CatalogueHistory([...base, scheduled, aligned], plans), LAST_SYNC, NOW)).toEqual([]);
