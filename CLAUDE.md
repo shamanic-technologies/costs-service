@@ -169,6 +169,16 @@ Supersedes the 2026-08-24 decision (instantly-service #622: absorb the email inf
 - **`COST_DEFAULT_MULTIPLIER` no longer drives billed prices**: it remains the convention the seed literals are written in (vendor x 5), from which the vendor rate is recovered (`seedVendorCost`, `MARKUP_ERAS`). Changing it changes only the transient seed versions. To change what customers pay, change `src/lib/price-lists.ts` / `src/lib/real-cost.ts` (a billing change: every customer, from the next refresh).
 - A `PUT /v1/providers-costs/:name` row (`price_source 'api'`) is overridden by the next sync like a seed row.
 
+## Two price lists: standard x1 for new orgs, grandfathered x2 for older ones (owner 2026-10-29, PRICE-X1-1029)
+
+Owner: « On baisse nos prix de refacturation de 2x -> 1x. On enlève notre marge » + « Les clients actuels sont aussi grandfathered avec le pricing x2 ». costs-service OWNS the rule.
+
+- **Every billed version carries both prices**: `cost_per_unit_in_usd_cents` = grandfathered (real cost x `PROPOSED_MULTIPLIER` 2), `standard_price_per_unit_in_usd_cents` = standard (real cost x `STANDARD_MULTIPLIER` 1, same pass-through, verdict multiples, subscription floor at the vendor list cost; a kept item = its vendor cost). Both come from `realCostSeries` (`standardPrice`), gold `real_unit_costs_daily.standard_price_usd_cents`, and the sync writes a version when EITHER moves (`planCatalogueSync`). A proposed price with no standard one throws `MissingStandardPriceError`. The boot aligns every priced in-force version with no standard price (`versionsToAlign`) before `listen()`.
+- **Which list an org pays** = client-service `orgs.created_at` vs `STANDARD_PRICE_LIST_FROM` (`2026-10-29T14:00Z`, never move it), read from `GET /internal/acquisitions?createdAfter=` (env `CLIENT_SERVICE_URL`/`_API_KEY`), decided ONCE and stored in `org_price_lists`. An org absent from that list is grandfathered (errs toward x2, never undercharges an older org). client-service failing = 502, nothing stored.
+- **Reads**: `GET /v1/platform-prices` = standard (the public catalogue). `GET /v1/platform-prices/:name` = the list of `x-org-id` (api key REQUIRED, else 401, so a misconfigured caller never bills an older org at x1), else standard. `priceList` on every response. A seed/api version not synced yet serves its own price on both lists (as before the sync); a `proposed-list` version without a standard price logs loud.
+- Callers that charge already send org + key (runs-service `resolveUnitCost`, billing-service authorize). An org-less by-name read (lead-service's estimate, runs-service incurred never-charged costs) reads the standard list.
+- Regressions: `tests/unit/org-price-list.test.ts`, `tests/unit/real-cost.test.ts` (x1 list), `tests/unit/catalogue-sync.test.ts`, `tests/integration/org-price-list.test.ts`.
+
 ## Real cost per unit + proposed price list + comparison (2026-10)
 
 `/internal/real-costs`, `/internal/real-costs/basis-summary`, `/internal/price-lists`, `/internal/price-comparison` (staff, api key). The proposed list is the billed price (section above).

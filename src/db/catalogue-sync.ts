@@ -85,6 +85,7 @@ async function insertPlannedVersions(tx: Tx, writes: PlannedVersion[], effective
         regimeHoursUtc: src.regimeHoursUtc,
         pricingBasis: src.pricingBasis,
         costPerUnitInUsdCents: w.priceUsdCents,
+        standardPricePerUnitInUsdCents: w.standardPriceUsdCents,
         priceSource: "proposed-list",
         effectiveFrom: effectiveFrom(w),
       })
@@ -114,6 +115,7 @@ export async function syncCatalogueToProposed(now: Date = new Date()): Promise<C
         flag: g.flag,
         proposedBasis: g.proposedBasis,
         proposedPriceUsdCents: g.proposedPriceUsdCents,
+        standardPriceUsdCents: g.standardPriceUsdCents,
         realCostUsdCents: g.realCostUsdCents,
       })),
       catalogue,
@@ -245,6 +247,7 @@ export async function alignSeedVersionsToProposedList(now: Date = new Date()): P
         flag: r.flag,
         proposedBasis: r.proposedBasis,
         proposedPriceUsdCents: fixed(r.proposedPrice),
+        standardPriceUsdCents: fixed(r.standardPrice),
         realCostUsdCents: fixed(r.realCost),
       }));
     const plan = planCatalogueSync(items, catalogue, at);

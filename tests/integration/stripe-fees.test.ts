@@ -35,7 +35,7 @@ describe("Stripe fee cost names", { timeout: 30_000 }, () => {
 
   for (const { name, type } of STRIPE_COST_NAMES) {
     it(`GET /v1/platform-prices/${name} resolves at the vendor price, no markup`, async () => {
-      const res = await request(app).get(`/v1/platform-prices/${name}`).set(identityHeaders);
+      const res = await request(app).get(`/v1/platform-prices/${name}`);
       expect(res.status).toBe(200);
       expect(res.body.name).toBe(name);
       expect(res.body.pricePerUnitInUsdCents).toBe("1.0000000000");
@@ -49,7 +49,7 @@ describe("Stripe fee cost names", { timeout: 30_000 }, () => {
 
   // Revolut Merchant, our second acquirer: same pass-through basis as the Stripe processing fee.
   it("GET /v1/platform-prices/revolut-acquiring-fee resolves at the vendor price, no markup", async () => {
-    const res = await request(app).get("/v1/platform-prices/revolut-acquiring-fee").set(identityHeaders);
+    const res = await request(app).get("/v1/platform-prices/revolut-acquiring-fee");
     expect(res.status).toBe(200);
     expect(res.body.name).toBe("revolut-acquiring-fee");
     expect(res.body.pricePerUnitInUsdCents).toBe("1.0000000000");

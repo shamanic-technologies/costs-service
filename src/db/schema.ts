@@ -47,6 +47,12 @@ export const providersCosts = pgTable(
     //   'proposed-list' = the daily sync that makes the proposed price list the billed price.
     // The seed compares itself ONLY to non-'proposed-list' rows, so it never reverts a synced price.
     priceSource: text("price_source").notNull().default("seed"),
+    // The STANDARD (x1, no markup) price of this version: what an org created at or after
+    // STANDARD_PRICE_LIST_FROM pays and what the public list shows (owner 2026-10-29). The
+    // price column above stays the GRANDFATHERED (x2) price every older org keeps paying.
+    // Written by the proposed-list sync with the price; NULL on a seed/api version until the
+    // sync prices it (the boot does so before the port opens) and on a delisted version.
+    standardPricePerUnitInUsdCents: numeric("standard_price_per_unit_in_usd_cents", { precision: 18, scale: 10 }),
     effectiveFrom: timestamp("effective_from", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -428,6 +434,8 @@ export const realUnitCostsDaily = pgTable(
     proposedBasis: text("proposed_basis").notNull(),
     /** `vendor-list-cost-floor` rows only: the averaged real cost x2 the vendor list cost replaced. */
     proposedBeforeFloorUsdCents: numeric("proposed_before_floor_usd_cents", { precision: 24, scale: 10 }),
+    /** The STANDARD (x1) list price of the day (owner 2026-10-29); the proposed price is the grandfathered x2 one. */
+    standardPriceUsdCents: numeric("standard_price_usd_cents", { precision: 18, scale: 10 }),
     refreshId: uuid("refresh_id").notNull(),
   },
   (table) => [primaryKey({ name: "real_unit_costs_daily_pk", columns: [table.day, table.costName] })],
@@ -456,4 +464,21 @@ export const catalogueSyncs = pgTable(
     index("idx_catalogue_syncs_started").on(table.startedAt),
     check("catalogue_syncs_status", sql`${table.status} IN ('succeeded', 'failed')`),
   ],
+);
+
+/**
+ * Which price list each org pays (owner 2026-10-29), decided ONCE from client-service's
+ * `orgs.created_at` against STANDARD_PRICE_LIST_FROM and never re-decided: an org's creation
+ * instant does not move. `standard` = x1, `grandfathered` = x2 (src/lib/org-price-list.ts).
+ */
+export const orgPriceLists = pgTable(
+  "org_price_lists",
+  {
+    orgId: uuid("org_id").primaryKey(),
+    priceList: text("price_list").notNull(),
+    /** client-service's created_at when it stated one (orgs created from the cutoff); NULL = created before it. */
+    orgCreatedAt: timestamp("org_created_at", { withTimezone: true }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [check("org_price_lists_price_list", sql`${table.priceList} IN ('standard', 'grandfathered')`)],
 );

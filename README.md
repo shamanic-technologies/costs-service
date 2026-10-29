@@ -8,6 +8,8 @@ Microservice for managing unit costs. Tracks per-unit pricing for external APIs 
 
 > **Billed price = the proposed price list (since 2026-10-02).** The values in the table below are the SEED versions (vendor rate x 5 for `marked-up`, vendor rate for `pass-through`). After every daily real-cost refresh, each cost item's proposed price of the day (real cost x2 for production tools, x1 for Stripe and media; email infrastructure and subscriptions averaged, subscription credits floored at the vendor list cost, APIs at vendor list cost, all excluding VAT) is appended as a new `proposed-list` price version, effective at that instant, whenever it differs from the price in force. That is what `GET /v1/platform-prices/:name` serves and runs-service charges. Never retroactive: a cost row keeps the price it froze. An item with no proposed price keeps its current price (flagged); only a unit declared included at the vendor (`instantly-contact-uploaded`, `apollo-search-credit`) is billed 0. A stale proposed list or a failed refresh writes nothing (`GET /internal/catalogue-syncs`). A seed version a deploy appends (new name, reprice) is never billed: the same boot writes its proposed version before the port opens, from the stored email send price and subscription costs (a scheduled one at its date + 1 microsecond). Rules: `src/lib/price-lists.ts`, `src/lib/real-cost.ts`, `src/lib/catalogue-sync.ts`.
 
+> **Two price lists (owner 2026-10-29, PRICE-X1-1029).** Every billed version carries two prices: `costPerUnitInUsdCents` = the **grandfathered** list (real cost x2, above), what every org created before `2026-10-29T14:00Z` keeps paying; and `standardPricePerUnitInUsdCents` = the **standard** list (the same real cost x1: vendor list price, no markup, same pass-through, verdict multiples and subscription floor), what every org created from then pays and what the public catalogue shows. Which list an org pays is decided once from its client-service `created_at` and stored in `org_price_lists`. `GET /v1/platform-prices` serves the standard list; `GET /v1/platform-prices/:name` serves the list of the org given in `x-org-id` (service api key required; runs-service at cost-write and billing-service at authorize send it), else the standard list. Each response says which in `priceList` (`standard` | `grandfathered`).
+
 Every line states its **basis**, and there are only two:
 
 - **`marked-up`** — work we perform (LLM tokens, embeddings, enrichment, search, creative generation). Price = the vendor rate × `COST_RISK_MULTIPLIER = 2` × `COST_PROFIT_MULTIPLIER = 2.5` = **5×** (risk covers cost under-estimation; profit is the store margin).
@@ -437,8 +439,8 @@ Consumer endpoints for getting resolved platform prices. No auth required. These
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/v1/platform-prices` | No | List current platform price for every cost name, each with `status` (`current` \| `retired`), `supersededBy`, `lastUsedOn`, `usageReadAt`, `bundle` |
-| GET | `/v1/platform-prices/:name` | No | Get current platform price for one cost name |
+| GET | `/v1/platform-prices` | No | List current platform price for every cost name on the standard (x1) list (`priceList: "standard"`), each with `status` (`current` \| `retired`), `supersededBy`, `lastUsedOn`, `usageReadAt`, `bundle` |
+| GET | `/v1/platform-prices/:name` | No (`x-api-key` with `x-org-id`) | Get current platform price for one cost name: the price the org in `x-org-id` pays (`priceList` `standard` x1 or `grandfathered` x2; 401 without the api key, 502 when client-service cannot say when the org was created), else the standard list |
 
 ### Providers costs (catalog)
 
@@ -532,7 +534,7 @@ Matching: a ledger vendor key belongs to the catalogue provider whose name (`goo
 ## Setup
 
 ```bash
-cp .env.example .env   # set COSTS_SERVICE_DATABASE_URL and COSTS_SERVICE_API_KEY
+cp .env.example .env   # set COSTS_SERVICE_DATABASE_URL and COSTS_SERVICE_API_KEY (+ CLIENT_SERVICE_URL / CLIENT_SERVICE_API_KEY for per-org prices)
 npm install
 npm run db:migrate
 npm run dev            # localhost:3011

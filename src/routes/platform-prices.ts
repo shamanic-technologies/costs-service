@@ -6,6 +6,12 @@ import { bundleOf } from "../lib/price-bundles.js";
 import { getTraceIdentityHeaders, traceEvent } from "../lib/trace-event.js";
 import { costNameStatus } from "../lib/retired-cost-names.js";
 import { isAbsorbedCostName } from "../lib/absorbed-cost-names.js";
+import { priceOnList } from "../lib/org-price-list.js";
+import { priceListOfOrg } from "../db/org-price-lists.js";
+import { ClientServiceError } from "../lib/client-service.js";
+import type { PriceListName } from "../lib/price-lists.js";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const router = Router();
 
@@ -63,7 +69,8 @@ async function lastUse(): Promise<{ lastUsedOn: Map<string, string>; usageReadAt
   };
 }
 
-// GET /v1/platform-prices — list current platform prices for all cost names
+// GET /v1/platform-prices — list current platform prices for all cost names, on the STANDARD
+// (x1) list: the public catalogue, what an account created from STANDARD_PRICE_LIST_FROM pays.
 router.get("/v1/platform-prices", async (req, res) => {
   try {
     const now = new Date();
@@ -114,7 +121,8 @@ router.get("/v1/platform-prices", async (req, res) => {
       })
       .map((row) => ({
         name: row.name,
-        pricePerUnitInUsdCents: row.costPerUnitInUsdCents,
+        pricePerUnitInUsdCents: priceOnList("standard", row),
+        priceList: "standard" as PriceListName,
         // Always true here: a listed line is by definition one we still charge for.
         billable: true,
         provider: row.provider,
@@ -147,10 +155,36 @@ router.get("/v1/platform-prices", async (req, res) => {
   }
 });
 
-// GET /v1/platform-prices/:name — current platform price for one cost name
+// GET /v1/platform-prices/:name — current platform price for one cost name, on the price list
+// of the org named by `x-org-id` (service callers, api key required: runs-service at cost-write,
+// billing-service at authorize), else on the STANDARD (x1) list like the public listing.
 router.get("/v1/platform-prices/:name", async (req, res) => {
   try {
     const { name } = req.params;
+    const orgId = req.headers["x-org-id"] as string | undefined;
+    let priceList: PriceListName = "standard";
+    if (orgId !== undefined) {
+      // Which list an org pays is never decided for an unauthenticated caller: a wrong or missing
+      // key with an org is refused, never answered at the public x1 price.
+      if (req.headers["x-api-key"] !== process.env.COSTS_SERVICE_API_KEY) {
+        res.status(401).json({ error: "An org-specific price (x-org-id) requires the service api key" });
+        return;
+      }
+      if (!UUID.test(orgId)) {
+        res.status(400).json({ error: `x-org-id '${orgId}' is not an internal org uuid` });
+        return;
+      }
+      try {
+        priceList = await priceListOfOrg(orgId);
+      } catch (err) {
+        if (err instanceof ClientServiceError) {
+          console.error("[Costs Service] Price list of org unresolvable:", err.message);
+          res.status(502).json({ error: `Price list of org ${orgId} unresolvable: ${err.message}` });
+          return;
+        }
+        throw err;
+      }
+    }
     const now = new Date();
 
     // 1. Find the provider for this cost name, from its NEWEST IN-FORCE row.
@@ -208,7 +242,8 @@ router.get("/v1/platform-prices/:name", async (req, res) => {
     // new spend off it gets null, not a silently wrong number.
     res.json({
       name: result.name,
-      pricePerUnitInUsdCents: result.costPerUnitInUsdCents,
+      pricePerUnitInUsdCents: priceOnList(priceList, result),
+      priceList,
       billable: result.costPerUnitInUsdCents !== null,
       provider: result.provider,
       providerDomain: result.providerDomain,

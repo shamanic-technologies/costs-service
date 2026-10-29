@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
 import { and, asc, eq } from "drizzle-orm";
-import { createTestApp, getIdentityHeaders } from "../helpers/test-app.js";
+import { createTestApp, getIdentityHeaders, TEST_ORG_ID } from "../helpers/test-app.js";
 import { cleanTestData, insertPlatformCost, insertTestProviderCost } from "../helpers/test-db.js";
 import { db } from "../../src/db/index.js";
 import {
   catalogueSyncs,
   emailSendPriceRefreshes,
+  orgPriceLists,
   providerCostVendorCosts,
   providersCosts,
   realCostRefreshes,
@@ -24,7 +25,7 @@ const API_KEY = { "x-api-key": "test-api-key" };
 const T0 = new Date("2025-01-01T00:00:00Z");
 
 async function clean() {
-  for (const t of [catalogueSyncs, realUnitCostsDaily, realCostRefreshes, emailSendPriceRefreshes, subscriptionCostRefreshes, providerCostVendorCosts]) await db.delete(t);
+  for (const t of [orgPriceLists, catalogueSyncs, realUnitCostsDaily, realCostRefreshes, emailSendPriceRefreshes, subscriptionCostRefreshes, providerCostVendorCosts]) await db.delete(t);
   await cleanTestData();
 }
 
@@ -67,6 +68,8 @@ async function proposedList(opts: { asOf?: string; siblingsAsOf?: string; status
     multiplier: "2.00",
     proposedBasis: basis,
     proposedPriceUsdCents: proposed,
+    // The x1 list: the real cost itself (no markup), x1 for routed money too.
+    standardPriceUsdCents: proposed === null ? null : real,
     realCostUsdCents: real,
     refreshId: refresh.id,
   });
@@ -82,10 +85,15 @@ async function proposedList(opts: { asOf?: string; siblingsAsOf?: string; status
 
 describe("catalogue sync: the proposed list is the billed price", { timeout: 30_000 }, () => {
   const app = createTestApp();
-  const headers = getIdentityHeaders();
+  // What an org created before the x1 list pays (grandfathered, x2): the price these tests assert.
+  const headers = { ...getIdentityHeaders(), ...API_KEY };
   const price = async (name: string) => (await request(app).get(`/v1/platform-prices/${name}`).set(headers)).body;
+  const standardPrice = async (name: string) => (await request(app).get(`/v1/platform-prices/${name}`)).body;
 
-  beforeEach(clean);
+  beforeEach(async () => {
+    await clean();
+    await db.insert(orgPriceLists).values({ orgId: TEST_ORG_ID, priceList: "grandfathered" });
+  });
   afterAll(clean);
 
   it("bills every item at today's proposed price from now on, keeping every past version", async () => {
@@ -93,17 +101,24 @@ describe("catalogue sync: the proposed list is the billed price", { timeout: 30_
     await proposedList();
     const before = new Date();
     const outcome = await syncCatalogueToProposed();
-    // Stripe already at x1: unchanged. The other four switch, one of them a name the catalogue never carried.
-    expect(outcome).toMatchObject({ versionsWritten: 4, unchanged: 1, kept: [] });
+    // Every item gets a version: four switch price (one a name the catalogue never carried), and
+    // Stripe, already at x1, gets one at the same price carrying its x1 standard price.
+    expect(outcome).toMatchObject({ versionsWritten: 5, unchanged: 0, kept: [] });
 
     expect(await price("anthropic-sonnet-5.5-tokens-input")).toMatchObject({ pricePerUnitInUsdCents: "0.0004000000", pricingBasis: "marked-up" });
     expect(await price("apollo-credit")).toMatchObject({ pricePerUnitInUsdCents: "5.7178980000" });
     expect(await price("stripe-processing-fee")).toMatchObject({ pricePerUnitInUsdCents: "1.0000000000", pricingBasis: "pass-through" });
     // The delisted email line is billable again, before instantly-service declares it.
     expect(await price("instantly-account-email-sent")).toMatchObject({ pricePerUnitInUsdCents: "3.0519000000", billable: true });
-    expect(await price("apollo-enrichment-credit")).toMatchObject({ pricePerUnitInUsdCents: "5.7178980000", provider: "apollo" });
-    const listed = (await request(app).get("/v1/platform-prices").set(headers)).body.map((p: { name: string }) => p.name);
-    expect(listed).toContain("instantly-account-email-sent");
+    expect(await price("apollo-enrichment-credit")).toMatchObject({ pricePerUnitInUsdCents: "5.7178980000", provider: "apollo", priceList: "grandfathered" });
+    const listedRows = (await request(app).get("/v1/platform-prices")).body as { name: string; pricePerUnitInUsdCents: string; priceList: string }[];
+    expect(listedRows.map((p) => p.name)).toContain("instantly-account-email-sent");
+
+    // PRICE-X1-1029: the same versions carry the x1 list: what a new org pays, and what the public list shows.
+    expect(await standardPrice("anthropic-sonnet-5.5-tokens-input")).toMatchObject({ pricePerUnitInUsdCents: "0.0002000000", priceList: "standard" });
+    expect(await standardPrice("stripe-processing-fee")).toMatchObject({ pricePerUnitInUsdCents: "1.0000000000", priceList: "standard" });
+    expect(await standardPrice("instantly-account-email-sent")).toMatchObject({ pricePerUnitInUsdCents: "1.5259500000" });
+    expect(listedRows.find((p) => p.name === "anthropic-sonnet-5.5-tokens-input")).toMatchObject({ pricePerUnitInUsdCents: "0.0002000000", priceList: "standard" });
 
     // Never retroactive: the old version stays in force up to the switch instant.
     const history = await db.select().from(providersCosts).where(eq(providersCosts.name, "apollo-credit")).orderBy(asc(providersCosts.effectiveFrom));
@@ -136,7 +151,7 @@ describe("catalogue sync: the proposed list is the billed price", { timeout: 30_
     const [email] = await db.insert(emailSendPriceRefreshes).values({ asOf: today, status: "succeeded", finishedAt: new Date() }).returning();
     const [subs] = await db.insert(subscriptionCostRefreshes).values({ asOf: today, status: "succeeded", finishedAt: new Date() }).returning();
     const [refresh] = await db.insert(realCostRefreshes).values({ asOf: today, status: "succeeded", finishedAt: new Date(), emailSendPriceRefreshId: email.id, subscriptionCostRefreshId: subs.id }).returning();
-    await db.insert(realUnitCostsDaily).values({ day: today, costName: seeded.name, provider: seeded.provider, method: "api-list-cost", multiplier: "2.00", proposedBasis: "real-cost-x2", proposedPriceUsdCents: "0.0004000000", realCostUsdCents: "0.0002000000", refreshId: refresh.id });
+    await db.insert(realUnitCostsDaily).values({ day: today, costName: seeded.name, provider: seeded.provider, method: "api-list-cost", multiplier: "2.00", proposedBasis: "real-cost-x2", proposedPriceUsdCents: "0.0004000000", standardPriceUsdCents: "0.0002000000", realCostUsdCents: "0.0002000000", refreshId: refresh.id });
     await syncCatalogueToProposed();
 
     await seedProvidersCosts();
