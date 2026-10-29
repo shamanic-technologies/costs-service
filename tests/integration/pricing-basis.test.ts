@@ -39,7 +39,7 @@ describe("pricing basis on the public price read", { timeout: 60_000 }, () => {
 
   for (const channel of ADVERTISING_CHANNELS) {
     it(`GET /v1/platform-prices/${channel.name} serves the vendor price with no markup`, async () => {
-      const res = await request(app).get(`/v1/platform-prices/${channel.name}`).set(identityHeaders);
+      const res = await request(app).get(`/v1/platform-prices/${channel.name}`);
       expect(res.status).toBe(200);
       expect(res.body.pricePerUnitInUsdCents).toBe("1.0000000000");
       expect(res.body.pricingBasis).toBe("pass-through");
@@ -50,14 +50,14 @@ describe("pricing basis on the public price read", { timeout: 60_000 }, () => {
   }
 
   it("a payment-processing line reads back at the Stripe fee exactly", async () => {
-    const res = await request(app).get("/v1/platform-prices/stripe-processing-fee").set(identityHeaders);
+    const res = await request(app).get("/v1/platform-prices/stripe-processing-fee");
     expect(res.status).toBe(200);
     expect(res.body.pricePerUnitInUsdCents).toBe("1.0000000000");
     expect(res.body.pricingBasis).toBe("pass-through");
   });
 
   it("an LLM line carries the 5x store markup", async () => {
-    const res = await request(app).get("/v1/platform-prices/anthropic-web-search").set(identityHeaders);
+    const res = await request(app).get("/v1/platform-prices/anthropic-web-search");
     expect(res.status).toBe(200);
     // $0.01/search vendor rate = 1¢ × COST_DEFAULT_MULTIPLIER 5.
     expect(res.body.pricePerUnitInUsdCents).toBe("5.0000000000");
@@ -95,7 +95,7 @@ describe("pricing basis on the public price read", { timeout: 60_000 }, () => {
     // Bypass every write-side guard the way a hand-written row would.
     await sql`UPDATE providers_costs SET pricing_basis = 'freebie' WHERE id = ${cost.id}`;
 
-    const res = await request(app).get("/v1/platform-prices/mystery-line").set(identityHeaders);
+    const res = await request(app).get("/v1/platform-prices/mystery-line");
     expect(res.status).toBe(500);
   });
 });

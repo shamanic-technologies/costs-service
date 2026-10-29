@@ -19,6 +19,12 @@ export type CatalogueVersion = {
   pricingBasis: string;
   /** Billed price per unit, US cents; null = delisted (no billable price any more). */
   price: number | null;
+  /**
+   * The STANDARD (x1) price per unit, US cents (owner 2026-10-29); null = not priced on the x1
+   * list yet (a seed/api version the sync has not seen) or delisted. Absent in hand-built test
+   * histories that do not model it.
+   */
+  standardPrice?: number | null;
   /** Vendor cost per unit, US cents; null = not stated. */
   vendorCost: number | null;
   effectiveFrom: Date;

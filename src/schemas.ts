@@ -41,6 +41,11 @@ export const ProviderCostSchema = z
         "The price we charge per unit, or null when this line carries NO billable price any more (a cost we still incur but stopped rebilling — the cold-email infrastructure lines). Null is not zero: zero would assert the line is free, which is false. A null-priced newest version delists the name from the current catalog listing while every by-name read keeps resolving it, so spend already declared against the name stays readable.",
       example: "0.0005000000",
     }),
+    standardPricePerUnitInUsdCents: z.string().nullable().openapi({
+      description:
+        "The standard (x1, vendor list price, no markup) price of this version: what an org created from 2026-10-29T14:00Z pays. costPerUnitInUsdCents is the grandfathered (x2) price older orgs keep paying. Null on a version the daily price sync has not priced yet, or a delisted one.",
+      example: "0.0002500000",
+    }),
     pricingBasis: z.enum(["marked-up", "pass-through"]).openapi({
       description:
         "Whether this line carries a markup. 'pass-through' means the price IS the vendor's — money we merely route (advertising-platform spend, payment-processing fees) reaches the customer at cost, with no markup. 'marked-up' means work we perform (LLM tokens, embeddings, enrichment, search, creative generation), priced at the vendor rate times the store multiplier. Always present: a line's class is never inferred by the caller.",
@@ -67,8 +72,13 @@ export const PriceSchema = z
     name: z.string(),
     pricePerUnitInUsdCents: z.string().nullable().openapi({
       description:
-        "Current price per unit, or null when the line has no billable price any more. Never zero for a delisted line: absence of a price is the honest representation of 'we still pay for this, we just stopped charging for it'.",
+        "Current price per unit on the price list named by `priceList`, or null when the line has no billable price any more. Never zero for a delisted line: absence of a price is the honest representation of 'we still pay for this, we just stopped charging for it'.",
       example: "0.0005000000",
+    }),
+    priceList: z.enum(["standard", "grandfathered"]).openapi({
+      description:
+        "Which price list `pricePerUnitInUsdCents` is on. 'standard' = the vendor list price with no markup (x1): the public catalogue, and what every org created from 2026-10-29T14:00Z pays. 'grandfathered' = x2: what every org created before keeps paying. The listing is always 'standard'; GET /v1/platform-prices/{name} answers the list of the org named by x-org-id (service api key required), else 'standard'.",
+      example: "standard",
     }),
     billable: z.boolean().openapi({
       description:
@@ -510,12 +520,32 @@ registry.registerPath({
   method: "get",
   path: "/v1/platform-prices/{name}",
   operationId: "getPlatformPrice",
-  summary: "Get current platform price for a cost name (public, no identity headers required)",
-  request: { params: z.object({ name: CostNameParam }) },
+  summary: "Get current platform price for a cost name, on the price list of the org given (else the public standard list)",
+  description:
+    "Without x-org-id: public, the standard (x1) price. With x-org-id (internal org uuid) and x-api-key: the price that org pays, `priceList` saying which list. Which list an org is on is decided once from its creation instant at client-service.",
+  request: {
+    params: z.object({ name: CostNameParam }),
+    headers: z.object({
+      "x-org-id": z.string().uuid().optional().openapi({ description: "Internal org uuid whose price is asked. Requires x-api-key." }),
+      "x-api-key": z.string().optional().openapi({ description: "Service api key; required with x-org-id." }),
+    }),
+  },
   responses: {
     200: {
       description: "Current price",
       content: { "application/json": { schema: PriceSchema } },
+    },
+    400: {
+      description: "x-org-id is not an internal org uuid",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: "x-org-id sent without the service api key",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+    502: {
+      description: "client-service could not state which price list the org is on",
+      content: { "application/json": { schema: ErrorResponseSchema } },
     },
     404: {
       description: "Price not found",

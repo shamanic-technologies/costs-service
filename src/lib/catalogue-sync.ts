@@ -12,7 +12,10 @@
  * Rules, per item of the day's proposed list:
  * - no proposed price (`no-price`)                      -> nothing written, the current price stays (kept, flagged)
  * - proposed price 0 on anything but an `included-at-vendor` unit -> the whole sync fails (nothing silently becomes 0)
- * - proposed price = the billed price in force          -> nothing written (current-price-kept items land here)
+ * - proposed price = the billed price in force AND the standard (x1) price = the version's
+ *   standard price                                     -> nothing written (current-price-kept items land here)
+ * - only the standard price differs (a version priced before the x1 list existed, 2026-10-29)
+ *                                                       -> one new version, same grandfathered price, new standard price
  * - otherwise                                           -> one new version, metadata copied from the version it supersedes
  * - a cost name the catalogue never carried (a subscription credit, a legacy or email name runs-service
  *   recorded) gets its first version with the metadata of a TEMPLATE name of the same family, so the
@@ -30,6 +33,8 @@ export type ProposedItem = {
   proposedBasis: string;
   /** numeric(18,10) as text; null = no proposed price. */
   proposedPriceUsdCents: string | null;
+  /** The x1 list price, numeric(18,10) as text; null = no price on the x1 list. */
+  standardPriceUsdCents: string | null;
   realCostUsdCents: string | null;
 };
 
@@ -40,6 +45,8 @@ export type PlannedVersion = {
   /** Set when `from` belongs to another cost name (first version of an uncatalogued name). */
   templateName: string | null;
   priceUsdCents: string;
+  /** The x1 list price of the version written (owner 2026-10-29). */
+  standardPriceUsdCents: string | null;
   previousPriceUsdCents: string | null;
   vendorCostUsdCents: string | null;
   vendorCostDerivation: "proposed-list" | "proposed-list-real-cost" | "unknown";
@@ -50,6 +57,7 @@ export type KeptItem = { costName: string; reason: string; billedPriceUsdCents: 
 export type CatalogueSyncPlan = { writes: PlannedVersion[]; kept: KeptItem[]; unchanged: number };
 
 export class ZeroProposedPriceError extends Error {}
+export class MissingStandardPriceError extends Error {}
 
 const cents = (x: number | string) => Number(x).toFixed(10);
 
@@ -107,7 +115,14 @@ export function planCatalogueSync(items: ProposedItem[], catalogue: CatalogueHis
     if (item.proposedBasis === "current-price-kept") {
       kept.push({ costName: item.costName, reason: `current price kept (${item.flag ?? "no real cost"})`, billedPriceUsdCents: billed });
     }
-    if (billed === proposed) {
+    // A proposed price with no x1 price is a gold written before the x1 list existed: fail loud
+    // rather than write a version new orgs could not be priced on.
+    if (item.standardPriceUsdCents === null) {
+      throw new MissingStandardPriceError(`'${item.costName}' has a proposed price but no standard (x1) price: the proposed list predates the x1 list`);
+    }
+    const standard = cents(item.standardPriceUsdCents);
+    const standardInForce = templateName || from.standardPrice == null ? null : cents(from.standardPrice);
+    if (billed === proposed && standardInForce === standard) {
       unchanged++;
       continue;
     }
@@ -133,6 +148,7 @@ export function planCatalogueSync(items: ProposedItem[], catalogue: CatalogueHis
       from,
       templateName,
       priceUsdCents: proposed,
+      standardPriceUsdCents: standard,
       previousPriceUsdCents: billed,
       vendorCostUsdCents,
       vendorCostDerivation,
@@ -166,6 +182,8 @@ export type VersionToAlign = { costName: string; versionId: string; at: Date };
  * - the version in force now, when it is not a proposed-list version and it moved (came into
  *   force or was written) after the last succeeded sync started: the sync never saw it. A seed
  *   version the sync saw and KEPT (no proposed price) is left alone, as the sync left it;
+ * - the version in force now, when it carries a price but no standard (x1) price: written before
+ *   the x1 list existed (2026-10-29), so an org on the x1 list could not be priced on it;
  * - a version scheduled after now, with no proposed-list version after it yet.
  */
 export function versionsToAlign(catalogue: CatalogueHistory, lastSyncStartedAt: Date, now: Date): VersionToAlign[] {
@@ -175,8 +193,9 @@ export function versionsToAlign(catalogue: CatalogueHistory, lastSyncStartedAt: 
     const current = catalogue.versionAt(name, now).version;
     if (
       current?.id &&
-      current.priceSource !== "proposed-list" &&
-      Math.max(current.effectiveFrom.getTime(), current.createdAt.getTime()) > lastSyncStartedAt.getTime()
+      ((current.priceSource !== "proposed-list" &&
+        Math.max(current.effectiveFrom.getTime(), current.createdAt.getTime()) > lastSyncStartedAt.getTime()) ||
+        (current.price !== null && current.standardPrice === null))
     ) {
       out.push({ costName: name, versionId: current.id, at: now });
     }
