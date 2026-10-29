@@ -101,6 +101,20 @@ describe("boot: seed versions are billed at the proposed list, never at the seed
     expect(await alignSeedVersionsToProposedList()).toMatchObject({ candidates: 0, versionsWritten: 0 });
   });
 
+  it("gives a synced version with no x1 price its x1 price at boot, never moving the grandfathered price (PRICE-X1-1029 v0.85.0 regression)", async () => {
+    // v0.85.0: the price refresh had been failing for 13 days, so the boot re-priced 22 averaged items
+    // to the day's inputs while only meant to add their x1 price. Here: vendor x2 = 0.00002, but the
+    // grandfathered price in force (an older sync's) is 0.00003 and must stay.
+    const syncAt = new Date(Date.now() - 3_600_000);
+    await version("anthropic-opus-tokens-input", "0.0000300000", "0.0000100000", T0, "proposed-list", undefined, null);
+    await db.insert(catalogueSyncs).values({ status: "succeeded", startedAt: syncAt, finishedAt: syncAt });
+
+    expect(await alignSeedVersionsToProposedList()).toMatchObject({ candidates: 1, versionsWritten: 1 });
+    expect(await price("anthropic-opus-tokens-input")).toMatchObject({ pricePerUnitInUsdCents: "0.0000300000", priceList: "grandfathered" });
+    expect(await standardPrice("anthropic-opus-tokens-input")).toMatchObject({ pricePerUnitInUsdCents: "0.0000100000", priceList: "standard" });
+    expect((await alignSeedVersionsToProposedList()).versionsWritten).toBe(0);
+  });
+
   it("prices a scheduled seed version one microsecond after its own date", async () => {
     const syncAt = new Date(Date.now() - 3_600_000);
     await version("deepseek-input", "0.0004000000", "0.0000800000", T0);
