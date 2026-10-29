@@ -20,8 +20,32 @@
 
 export const REAL_COST_SINCE = "2026-01-01";
 
-/** Global multiplier on real cost for every production tool. */
+/**
+ * Global multiplier on real cost for every production tool, on the GRANDFATHERED list: what every
+ * account created before `STANDARD_PRICE_LIST_FROM` keeps paying (owner 2026-10-29: « Les clients
+ * actuels sont aussi grandfathered avec le pricing x2 »). This is the list `providers_costs`
+ * bills by its price column.
+ */
 export const PROPOSED_MULTIPLIER = 2;
+
+/**
+ * Multiplier on real cost on the STANDARD list: what every account created at or after
+ * `STANDARD_PRICE_LIST_FROM` pays, and what the public catalogue shows (owner 2026-10-29: « Free,
+ * hosted for them, 1 user, no markup. On baisse nos prix de refacturation de 2x -> 1x. On enlève
+ * notre marge. »). Same rules as the grandfathered list otherwise: pass-through x1, the email
+ * verdict multiples, a subscription credit never below its vendor list cost, and every support
+ * cost (onboarding LLM calls, chat tokens, payment fees) priced like any other action.
+ */
+export const STANDARD_MULTIPLIER = 1;
+
+/**
+ * The ship instant of the x1 list. An org (client-service `orgs.created_at`) created before it is
+ * GRANDFATHERED at x2; one created at or after it pays the STANDARD list. Never move it: moving it
+ * reprices every org created between the two instants.
+ */
+export const STANDARD_PRICE_LIST_FROM = new Date("2026-10-29T14:00:00.000Z");
+
+export type PriceListName = "standard" | "grandfathered";
 
 /**
  * x1 list: money we ROUTE rather than work we perform. Declared as the catalogue's own

@@ -195,6 +195,30 @@ describe("real cost per unit and proposed price", () => {
     expect(at("2026-01-03", "instantly-contact-uploaded")).toMatchObject({ method: "included-at-vendor", realCost: 0, proposedPrice: 0 });
   });
 
+  it("the x1 standard list: the same real cost with no markup, the verdict multiples and the subscription floor kept (PRICE-X1-1029)", () => {
+    // Worked example: an API whose vendor list cost is 0.0001 is 0.0002 on the grandfathered list, 0.0001 on the standard one.
+    expect(at("2026-01-01", "anthropic-tokens")).toMatchObject({ realCost: 0.0001, proposedPrice: 0.0002, standardPrice: 0.0001 });
+    // A subscription credit is never below its vendor list cost on either list: averaged 1 x1 < 2.36 -> 2.36.
+    expect(at("2026-01-02", "apollo-credit")).toMatchObject({ proposedPrice: 2.36, standardPrice: 2.36 });
+    expect(at("2026-01-03", "apollo-credit")).toMatchObject({ proposedPrice: 5.8, standardPrice: 2.9 });
+    // No real cost per credit: the x1 price is the vendor list cost (the grandfathered list keeps its price).
+    expect(at("2026-01-03", "explee-credit")).toMatchObject({ proposedPrice: 5, standardPrice: 1 });
+    // Routed money is x1 on both lists; a unit included at the vendor is 0 on both.
+    expect(at("2026-01-03", "stripe-processing-fee")).toMatchObject({ proposedPrice: 1, standardPrice: 1 });
+    expect(at("2026-01-03", "apollo-search-credit")).toMatchObject({ proposedPrice: 0, standardPrice: 0 });
+    // Email infrastructure at its real cost; a name the catalogue never carried too.
+    expect(at("2026-01-03", "instantly-email-send")).toMatchObject({ proposedPrice: 6, standardPrice: 3 });
+    expect(at("2026-01-03", "apollo-enrichment-credit")).toMatchObject({ proposedPrice: 5.8, standardPrice: 2.9 });
+    // No real cost and no price: no price on either list.
+    expect(at("2026-01-01", "apollo-enrichment-credit")).toMatchObject({ proposedPrice: null, standardPrice: null });
+    // Every priced item has an x1 price, never above its x2 one.
+    for (const r of series) {
+      if (r.proposedPrice === null) continue;
+      expect(r.standardPrice, r.costName).not.toBeNull();
+      expect(r.standardPrice!, r.costName).toBeLessThanOrEqual(r.proposedPrice);
+    }
+  });
+
   it("Stripe (pass-through) is proposed at its real cost x1", () => {
     expect(at("2026-01-03", "stripe-processing-fee")).toMatchObject({ method: "pass-through", realCost: 1, multiplier: 1, proposedPrice: 1, proposedBasis: "real-cost-x1" });
   });

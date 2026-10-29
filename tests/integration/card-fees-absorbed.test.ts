@@ -50,7 +50,7 @@ describe("card-acquiring fees are absorbed by the platform", { timeout: 60_000 }
 
   it("still price by name exactly as runs-service needs to record the fee", async () => {
     for (const name of CARD_FEES) {
-      const res = await request(app).get(`/v1/platform-prices/${name}`).set(identityHeaders);
+      const res = await request(app).get(`/v1/platform-prices/${name}`);
       expect(res.status, name).toBe(200);
       expect(res.body.name, name).toBe(name);
       expect(res.body.pricePerUnitInUsdCents, name).toBe("1.0000000000");

@@ -39,7 +39,7 @@ describe("Platform Prices (consumer-facing)", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-prices/test-token-input").set(identityHeaders);
+      const res = await request(app).get("/v1/platform-prices/test-token-input");
       expect(res.status).toBe(200);
       expect(res.body.name).toBe("test-token-input");
       expect(res.body.pricePerUnitInUsdCents).toBe("0.0003000000");
@@ -55,7 +55,7 @@ describe("Platform Prices (consumer-facing)", () => {
     });
 
     it("returns 404 for unknown name", async () => {
-      const res = await request(app).get("/v1/platform-prices/nonexistent").set(identityHeaders);
+      const res = await request(app).get("/v1/platform-prices/nonexistent");
       expect(res.status).toBe(404);
     });
 
@@ -69,7 +69,7 @@ describe("Platform Prices (consumer-facing)", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-prices/orphan").set(identityHeaders);
+      const res = await request(app).get("/v1/platform-prices/orphan");
       expect(res.status).toBe(500);
       expect(res.body.error).toContain("No platform cost configured");
     });
@@ -91,7 +91,7 @@ describe("Platform Prices (consumer-facing)", () => {
         effectiveFrom: new Date("2025-01-01"),
       });
 
-      const res = await request(app).get("/v1/platform-prices/wrong_plan").set(identityHeaders);
+      const res = await request(app).get("/v1/platform-prices/wrong_plan");
       expect(res.status).toBe(404);
       expect(res.body.error).toContain("basic/monthly");
     });
@@ -234,7 +234,7 @@ describe("Platform Prices (consumer-facing)", () => {
       expect(byName["instantly-account-email-sent"].status).toBe("current");
       expect(byName["instantly-account-email-sent"].supersededBy).toBeNull();
 
-      const one = await request(app).get("/v1/platform-prices/instantly-email-send").set(identityHeaders);
+      const one = await request(app).get("/v1/platform-prices/instantly-email-send");
       expect(one.status).toBe(200);
       expect(one.body.status).toBe("retired");
       // Still priced: spend already declared against it keeps resolving.

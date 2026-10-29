@@ -27,6 +27,12 @@
  *                 in `proposedBeforeFloor`); a subscription credit with no real cost per
  *                 credit keeps its catalogue price (flag `current-price-kept`); no real cost at all
  *                 also keeps the catalogue price; a delisted line with no real cost has no price.
+ *
+ *   standard(D) = the same formula at x1 (STANDARD_MULTIPLIER, owner 2026-10-29): real(D) x1 x the
+ *                 verdict multiple, a subscription credit floored at its vendor list cost; an item
+ *                 whose price is kept (no real cost) is at its catalogue vendor cost, else its
+ *                 kept price; a delisted line has none. What an account created from
+ *                 STANDARD_PRICE_LIST_FROM pays; `proposed` stays what an older account pays.
  */
 import { CatalogueHistory, endOfDay } from "./catalogue-history.js";
 import {
@@ -38,6 +44,7 @@ import {
   PASS_THROUGH_MULTIPLIER,
   PAY_AS_YOU_GO_VENDORS,
   PROPOSED_MULTIPLIER,
+  STANDARD_MULTIPLIER,
 } from "./price-lists.js";
 import { SUBSCRIPTIONS } from "./subscriptions.js";
 
@@ -77,6 +84,8 @@ export type RealCostDay = {
   proposedBasis: ProposedBasis;
   /** Floored items only: the averaged real cost x2 the floor replaced (owner rule 2026-10-02); null otherwise. */
   proposedBeforeFloor: number | null;
+  /** The STANDARD (x1) list price: what an account created from STANDARD_PRICE_LIST_FROM pays. Null = no price. */
+  standardPrice: number | null;
 };
 
 export type PaygNumeratorBasis = "ledger-net-paid" | "twilio-usage-metered" | "google-cloud-split-metered";
@@ -251,6 +260,12 @@ export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
         proposedPrice = vendorCost;
         proposedBasis = "vendor-list-cost-floor";
       }
+      // The x1 list: the same item at no markup (owner 2026-10-29), never below the vendor list cost.
+      let standardPrice: number | null;
+      if (version.price === null && keepPrice) standardPrice = null;
+      else if (keepPrice) standardPrice = vendorCost ?? version.price;
+      else standardPrice = round10(realCost! * (passThrough ? PASS_THROUGH_MULTIPLIER : STANDARD_MULTIPLIER * verdictMultiple));
+      if (method === "subscription" && vendorCost !== null && standardPrice !== null && standardPrice < vendorCost) standardPrice = vendorCost;
 
       out.push({
         day,
@@ -266,6 +281,7 @@ export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
         proposedPrice,
         proposedBasis,
         proposedBeforeFloor,
+        standardPrice,
       });
     }
     // A subscription credit runs-service records under a name the catalogue never carried
@@ -289,6 +305,7 @@ export function realCostSeries(inputs: RealCostInputs): RealCostDay[] {
           proposedBasis: perCredit === null ? "no-price" : "real-cost-x2",
           // Not in the catalogue: no vendor list cost to floor at.
           proposedBeforeFloor: null,
+          standardPrice: perCredit === null ? null : round10(perCredit * STANDARD_MULTIPLIER),
         });
       }
     }
@@ -338,6 +355,7 @@ function uncataloguedRow(
     proposedPrice: realCost === null ? null : round10(realCost * multiplier),
     proposedBasis: realCost === null ? "no-price" : verdictMultiple !== 1 ? "real-cost-x2-verdict-multiple" : "real-cost-x2",
     proposedBeforeFloor: null,
+    standardPrice: realCost === null ? null : round10(realCost * STANDARD_MULTIPLIER * verdictMultiple),
   };
 }
 

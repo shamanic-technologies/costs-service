@@ -141,6 +141,13 @@
       "when": 1790917530574,
       "tag": "0019_proposed_list_billed",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793277485710,
+      "tag": "0020_standard_price_list",
+      "breakpoints": true
     }
   ]
 }

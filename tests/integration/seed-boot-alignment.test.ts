@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
 import { asc, eq, sql as dsql } from "drizzle-orm";
-import { createTestApp, getIdentityHeaders } from "../helpers/test-app.js";
+import { createTestApp, getIdentityHeaders, TEST_ORG_ID } from "../helpers/test-app.js";
 import { cleanTestData, insertPlatformCost } from "../helpers/test-db.js";
 import { db } from "../../src/db/index.js";
-import { catalogueSyncs, providerCostVendorCosts, providersCosts } from "../../src/db/schema.js";
+import { catalogueSyncs, orgPriceLists, providerCostVendorCosts, providersCosts } from "../../src/db/schema.js";
 import { alignSeedVersionsToProposedList } from "../../src/db/catalogue-sync.js";
 
 // 2026-10-09 (v0.79.0): the Sonnet 5.5 cache-read reprice was billed at the seed's 5x markup
@@ -13,14 +13,23 @@ import { alignSeedVersionsToProposedList } from "../../src/db/catalogue-sync.js"
 const T0 = new Date("2025-01-01T00:00:00Z");
 
 async function clean() {
-  for (const t of [catalogueSyncs, providerCostVendorCosts]) await db.delete(t);
+  for (const t of [orgPriceLists, catalogueSyncs, providerCostVendorCosts]) await db.delete(t);
   await cleanTestData();
 }
 
-async function version(name: string, price: string, vendor: string, effectiveFrom: Date, priceSource: "seed" | "proposed-list" = "seed", createdAt?: Date) {
+async function version(
+  name: string,
+  price: string,
+  vendor: string,
+  effectiveFrom: Date,
+  priceSource: "seed" | "proposed-list" = "seed",
+  createdAt?: Date,
+  // A synced version carries its x1 price (PRICE-X1-1029): the vendor rate.
+  standard: string | null = priceSource === "proposed-list" ? vendor : null,
+) {
   const [row] = await db
     .insert(providersCosts)
-    .values({ name, provider: "anthropic", planTier: "p", billingCycle: "monthly", type: "t", unit: "token", costPerUnitInUsdCents: price, pricingBasis: "marked-up", priceSource, effectiveFrom, ...(createdAt ? { createdAt } : {}) })
+    .values({ name, provider: "anthropic", planTier: "p", billingCycle: "monthly", type: "t", unit: "token", costPerUnitInUsdCents: price, standardPricePerUnitInUsdCents: standard, pricingBasis: "marked-up", priceSource, effectiveFrom, ...(createdAt ? { createdAt } : {}) })
     .returning();
   await db.insert(providerCostVendorCosts).values({
     providerCostId: row.id,
@@ -36,11 +45,14 @@ const history = (name: string) =>
 
 describe("boot: seed versions are billed at the proposed list, never at the seed markup", { timeout: 30_000 }, () => {
   const app = createTestApp();
-  const headers = getIdentityHeaders();
+  // What an org created before the x1 list pays (grandfathered, x2).
+  const headers = { ...getIdentityHeaders(), "x-api-key": "test-api-key" };
   const price = async (name: string) => (await request(app).get(`/v1/platform-prices/${name}`).set(headers)).body;
+  const standardPrice = async (name: string) => (await request(app).get(`/v1/platform-prices/${name}`)).body;
 
   beforeEach(async () => {
     await clean();
+    await db.insert(orgPriceLists).values({ orgId: TEST_ORG_ID, priceList: "grandfathered" });
     await insertPlatformCost({ provider: "anthropic", planTier: "p", billingCycle: "monthly", effectiveFrom: T0 });
   });
   afterAll(clean);
@@ -56,7 +68,7 @@ describe("boot: seed versions are billed at the proposed list, never at the seed
     await version("anthropic-sonnet-5.5-tokens-cached-input", "0.0001250000", "0.0000250000", T0);
     await version("anthropic-sonnet-5.5-tokens-cached-input", "0.0000500000", "0.0000250000", syncAt, "proposed-list");
     // Written by an earlier deploy, before the last sync: the sync saw it and kept it.
-    await version("kept-before-sync", "1.0000000000", "0.2000000000", T0, "seed", new Date(syncAt.getTime() - 60_000));
+    await version("kept-before-sync", "1.0000000000", "0.2000000000", T0, "seed", new Date(syncAt.getTime() - 60_000), "0.2000000000");
     await db.insert(catalogueSyncs).values({ status: "succeeded", proposedListDay: syncAt.toISOString().slice(0, 10), startedAt: syncAt, finishedAt: syncAt });
 
     // The deploy: the seed appends the reprice (dated now) and a new name (backdated, written now).
@@ -71,6 +83,8 @@ describe("boot: seed versions are billed at the proposed list, never at the seed
     expect(await price("anthropic-sonnet-5.5-tokens-cached-input")).toMatchObject({ pricePerUnitInUsdCents: "0.0000200000" });
     expect(await price("anthropic-haiku-5.5-tokens-input")).toMatchObject({ pricePerUnitInUsdCents: "0.0000200000" });
     expect(await price("kept-before-sync")).toMatchObject({ pricePerUnitInUsdCents: "1.0000000000" });
+    // The x1 list of the same versions: the vendor rate, no markup.
+    expect(await standardPrice("anthropic-sonnet-5.5-tokens-cached-input")).toMatchObject({ pricePerUnitInUsdCents: "0.0000100000", priceList: "standard" });
 
     // Append-only, strictly after the seed version, vendor rate carried.
     const rows = await history("anthropic-sonnet-5.5-tokens-cached-input");

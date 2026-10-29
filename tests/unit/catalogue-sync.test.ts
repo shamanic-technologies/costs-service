@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { CatalogueHistory, type CatalogueVersion } from "../../src/lib/catalogue-history.js";
-import { catalogueTemplateName, planCatalogueSync, ZeroProposedPriceError, type ProposedItem } from "../../src/lib/catalogue-sync.js";
+import {
+  catalogueTemplateName,
+  MissingStandardPriceError,
+  planCatalogueSync,
+  versionsToAlign,
+  ZeroProposedPriceError,
+  type ProposedItem,
+} from "../../src/lib/catalogue-sync.js";
 
 // The proposed price list becomes the billed catalogue price (owner go 2026-10-02).
 const T0 = new Date("2025-01-01T00:00:00Z");
@@ -15,6 +22,7 @@ const v = (name: string, provider: string, price: number | null, vendorCost: num
   unit: "unit",
   pricingBasis: "marked-up",
   price,
+  standardPrice: price,
   vendorCost,
   effectiveFrom: T0,
   createdAt: T0,
@@ -40,6 +48,7 @@ const item = (costName: string, proposed: string | null, extra: Partial<Proposed
   flag: null,
   proposedBasis: "real-cost-x2",
   proposedPriceUsdCents: proposed,
+  standardPriceUsdCents: proposed,
   realCostUsdCents: null,
   ...extra,
 });
@@ -124,6 +133,35 @@ describe("planCatalogueSync: the proposed list becomes the billed price", () => 
       ["apollo-search-credit", "apollo-credit", "0.0000000000"],
     ]);
     expect(plan.kept).toEqual([{ costName: "some-unknown-name", reason: "not in the catalogue and no catalogued name of its family to copy", billedPriceUsdCents: null }]);
+  });
+
+  it("writes a version where only the x1 standard price moves, the grandfathered price unchanged (PRICE-X1-1029)", () => {
+    const plan = planCatalogueSync(
+      [item("anthropic-sonnet-5.5-tokens-input", "0.0010000000", { standardPriceUsdCents: "0.0005000000" })],
+      catalogue,
+      NOW,
+    );
+    expect(plan.writes).toHaveLength(1);
+    expect(plan.writes[0]).toMatchObject({ priceUsdCents: "0.0010000000", previousPriceUsdCents: "0.0010000000", standardPriceUsdCents: "0.0005000000" });
+    expect(plan.unchanged).toBe(0);
+  });
+
+  it("refuses a proposed price with no x1 standard price: a stale proposed list never writes a version new orgs cannot be priced on (PRICE-X1-1029)", () => {
+    expect(() =>
+      planCatalogueSync([item("anthropic-sonnet-5.5-tokens-input", "0.0004000000", { standardPriceUsdCents: null })], catalogue, NOW),
+    ).toThrow(MissingStandardPriceError);
+  });
+
+  it("aligns at boot every priced version in force that has no x1 standard price yet, never a delisted one (PRICE-X1-1029)", () => {
+    const history = new CatalogueHistory(
+      [
+        v("a-tokens-input", "anthropic", 0.001, 0.0002, { standardPrice: null, priceSource: "proposed-list" }),
+        v("b-tokens-input", "anthropic", 0.001, 0.0002, { standardPrice: 0.0005, priceSource: "proposed-list" }),
+        v("c-delisted", "anthropic", null, null, { standardPrice: null, priceSource: "proposed-list" }),
+      ],
+      [{ provider: "anthropic", planTier: "p", billingCycle: "monthly", effectiveFrom: T0 }],
+    );
+    expect(versionsToAlign(history, NOW, NOW).map((x) => x.costName)).toEqual(["a-tokens-input"]);
   });
 
   it("template names resolve by family", () => {

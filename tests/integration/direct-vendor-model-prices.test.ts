@@ -95,7 +95,7 @@ describe("Direct-vendor model prices", { timeout: 30_000 }, () => {
     };
 
     for (const [name, price] of Object.entries(expected)) {
-      const res = await request(app).get(`/v1/platform-prices/${name}`).set(identityHeaders);
+      const res = await request(app).get(`/v1/platform-prices/${name}`);
       expect(res.status, `${name} must resolve`).toBe(200);
       expect(res.body.pricePerUnitInUsdCents, name).toBe(price);
     }
@@ -117,7 +117,7 @@ describe("Direct-vendor model prices", { timeout: 30_000 }, () => {
     };
 
     for (const [name, price] of Object.entries(expected)) {
-      const res = await request(app).get(`/v1/platform-prices/${name}`).set(identityHeaders);
+      const res = await request(app).get(`/v1/platform-prices/${name}`);
       expect(res.status, `${name} must resolve`).toBe(200);
       expect(res.body.pricePerUnitInUsdCents, name).toBe(price);
       expect(res.body.provider).toBe("zai");

@@ -63,6 +63,7 @@ export async function loadCatalogueHistory(): Promise<CatalogueHistory> {
       unit: pc.unit,
       pricingBasis: pc.pricingBasis,
       price: pc.costPerUnitInUsdCents === null ? null : Number(pc.costPerUnitInUsdCents),
+      standardPrice: pc.standardPricePerUnitInUsdCents === null ? null : Number(pc.standardPricePerUnitInUsdCents),
       vendorCost: v?.vendorCostPerUnitInUsdCents == null ? null : Number(v.vendorCostPerUnitInUsdCents),
       effectiveFrom: pc.effectiveFrom,
       createdAt: pc.createdAt,
@@ -399,6 +400,7 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
             proposedPriceUsdCents: fixed(r.proposedPrice),
             proposedBasis: r.proposedBasis,
             proposedBeforeFloorUsdCents: fixed(r.proposedBeforeFloor),
+            standardPriceUsdCents: fixed(r.standardPrice),
             refreshId: attempt.id,
           })),
         );
