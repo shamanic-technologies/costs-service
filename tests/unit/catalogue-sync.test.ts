@@ -161,7 +161,8 @@ describe("planCatalogueSync: the proposed list becomes the billed price", () => 
       ],
       [{ provider: "anthropic", planTier: "p", billingCycle: "monthly", effectiveFrom: T0 }],
     );
-    expect(versionsToAlign(history, NOW, NOW).map((x) => x.costName)).toEqual(["a-tokens-input"]);
+    // standardOnly: its grandfathered price is kept as is, only the x1 price is written.
+    expect(versionsToAlign(history, NOW, NOW).map((x) => [x.costName, x.standardOnly])).toEqual([["a-tokens-input", true]]);
   });
 
   it("template names resolve by family", () => {

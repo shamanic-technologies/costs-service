@@ -107,7 +107,8 @@ export function planCatalogueSync(items: ProposedItem[], catalogue: CatalogueHis
       continue;
     }
     const proposed = cents(item.proposedPriceUsdCents);
-    if (Number(proposed) === 0 && item.method !== "included-at-vendor") {
+    // A price already in force is not "becoming" 0: only a move to 0 is refused.
+    if (Number(proposed) === 0 && item.method !== "included-at-vendor" && billed !== proposed) {
       throw new ZeroProposedPriceError(
         `Proposed price of '${item.costName}' is 0 (method ${item.method}): only a unit declared included at the vendor may be billed 0`,
       );
@@ -168,7 +169,18 @@ export function markupOfSynced(price: string, vendor: string | null): string | n
  * being billed: `now` for a version in force (a deploy just appended it), its own effective date
  * for a version scheduled ahead.
  */
-export type VersionToAlign = { costName: string; versionId: string; at: Date };
+export type VersionToAlign = {
+  costName: string;
+  versionId: string;
+  at: Date;
+  /**
+   * True when the version is selected ONLY because it has no x1 standard price: its grandfathered
+   * price is kept exactly as it is, only the standard price is written (owner 2026-10-29: no price
+   * change for any org created before the x1 list). The v0.85.0 boot re-priced 22 averaged items
+   * to the day's inputs because the refresh had been failing for 13 days.
+   */
+  standardOnly: boolean;
+};
 
 /**
  * The seed writes its versions at the vendor list x COST_DEFAULT_MULTIPLIER (the convention its
@@ -191,20 +203,19 @@ export function versionsToAlign(catalogue: CatalogueHistory, lastSyncStartedAt: 
   const t = now.getTime();
   for (const name of catalogue.names()) {
     const current = catalogue.versionAt(name, now).version;
-    if (
-      current?.id &&
-      ((current.priceSource !== "proposed-list" &&
-        Math.max(current.effectiveFrom.getTime(), current.createdAt.getTime()) > lastSyncStartedAt.getTime()) ||
-        (current.price !== null && current.standardPrice === null))
-    ) {
-      out.push({ costName: name, versionId: current.id, at: now });
+    if (current?.id) {
+      const unseen =
+        current.priceSource !== "proposed-list" &&
+        Math.max(current.effectiveFrom.getTime(), current.createdAt.getTime()) > lastSyncStartedAt.getTime();
+      if (unseen) out.push({ costName: name, versionId: current.id, at: now, standardOnly: false });
+      else if (current.price !== null && current.standardPrice === null) out.push({ costName: name, versionId: current.id, at: now, standardOnly: true });
     }
     const versions = catalogue.versions(name);
     for (const v of versions) {
       if (!v.id || v.priceSource === "proposed-list" || v.effectiveFrom.getTime() <= t) continue;
       if (catalogue.versionAt(name, v.effectiveFrom).version !== v) continue; // not on the plan in force then
       const aligned = versions.some((p) => p.priceSource === "proposed-list" && p.effectiveFrom.getTime() > v.effectiveFrom.getTime());
-      if (!aligned) out.push({ costName: name, versionId: v.id, at: v.effectiveFrom });
+      if (!aligned) out.push({ costName: name, versionId: v.id, at: v.effectiveFrom, standardOnly: false });
     }
   }
   return out;
