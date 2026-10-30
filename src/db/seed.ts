@@ -2733,6 +2733,21 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2026-10-01T00:00:00Z"),
   },
+  // X API v2 "User: Read" $0.010 per resource (same vendor table, read 2026-10-30). Consumer:
+  // social-service, quantity = 1 per `GET /2/users/me` when a brand member connects (or reconnects)
+  // an X account: the one read that says WHICH X user logged in (X-ACCOUNTS-1030). Org-billed.
+  {
+    name: "x-user-read",
+    provider: "x",
+    providerDomain: PROVIDER_DOMAINS.x,
+    type: "X API v2 user read (pay-per-use)",
+    unit: "user",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("1.0000000000"), // $0.010 = 1¢
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2026-10-01T00:00:00Z"),
+  },
   // Advertising channels — one pass-through line per channel, see ADVERTISING_CHANNELS above.
   ...ADVERTISING_CHANNEL_COSTS,
 ];
