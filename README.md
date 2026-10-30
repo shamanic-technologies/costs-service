@@ -284,6 +284,7 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `cloudflare-clef-flash-tokens-input` | 0.000019 | 1M tokens | Input tokens (Cloudflare Clef Flash, Workers AI) | cloudflare | cloudflare.com | pay-as-you-go | monthly | marked-up |
 | `x-post-create` | 7.5 | post | X API v2 post create (pay-per-use) | x | x.com | pay-as-you-go | monthly | marked-up |
 | `x-post-create-with-url` | 100 | post | X API v2 post create with URL (pay-per-use) | x | x.com | pay-as-you-go | monthly | marked-up |
+| `x-user-read` | 5 | user | X API v2 user read (pay-per-use) | x | x.com | pay-as-you-go | monthly | marked-up |
 | `google-ads-spend` | 1 | USD cent | Google Ads platform spend | google-ads | ads.google.com | pay-as-you-go | monthly | pass-through |
 | `meta-ads-spend` | 1 | USD cent | Meta Ads platform spend | meta-ads | facebook.com | pay-as-you-go | monthly | pass-through |
 | `linkedin-ads-spend` | 1 | USD cent | LinkedIn Ads platform spend | linkedin-ads | linkedin.com | pay-as-you-go | monthly | pass-through |
