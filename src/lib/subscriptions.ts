@@ -92,17 +92,6 @@ export const SUBSCRIPTIONS: readonly Subscription[] = [
     },
   },
   {
-    key: "postmark",
-    label: "Postmark",
-    provider: "postmark",
-    ledgerVendors: ["postmarkapp com"],
-    ledgerNote: null,
-    creditDefinition: "One transactional email sent",
-    creditCostNames: ["postmark-email-send"],
-    excludedCostNames: [],
-    orgKeyRows: NOT_OURS,
-  },
-  {
     key: "serper",
     label: "Serper",
     provider: "serper-dev",
