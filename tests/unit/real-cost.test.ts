@@ -114,6 +114,19 @@ describe("a vendor whose bank money pays more than the units our runs record", (
     expect(() => paygRatios(DAYS, netPaid, units, c, NOW)).toThrow(/declares a metered spend source but none was read/);
   });
 
+  it("a split the refresh could not read gives no ratio, never the bank total (NEWSLETTER-COST-1107)", () => {
+    const onlyGoogle = new Map([["google", { from: "2026-01-01", byDay: new Map<string, number>() }]]);
+    const ratios = paygRatios(DAYS, netPaid, units, c, NOW, onlyGoogle, new Set(["twilio"]));
+    expect(ratios.get("twilio")!.get("2026-01-03")).toEqual({
+      cumulativeNetPaidUsdCents: 6715,
+      cumulativeMeteredUsdCents: 0,
+      numeratorBasis: "split-unavailable",
+      cumulativeVendorRecordedUsdCents: 20,
+      ratio: null,
+      cumulativeVendorRecordedAllUsdCents: 20,
+    });
+  });
+
   it("declares Twilio's rental apart from its metered categories, top-level only", () => {
     const tw = PAY_AS_YOU_GO_VENDORS.find((p) => p.provider === "twilio")!.meteredSpend!;
     expect(tw.kind).toBe("twilio-usage");

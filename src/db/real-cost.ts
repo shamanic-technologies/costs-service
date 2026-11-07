@@ -130,11 +130,13 @@ export async function readVendorParts(v: PayAsYouGoVendor, asOf: string): Promis
   const parts: VendorPart[] = [];
   const basis = "Twilio usage records";
   for (const [day, d] of [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    // Twilio's own total minus the categories we name. Negative = Twilio's total is BELOW them (a
+    // credit or correction Twilio applied that no named category carries, 2026-10-16: -0.83 cents):
+    // served as a negative `other` part, as Twilio reported it, never a refresh failure.
     const other = round6(d.total - d.metered - d.rental);
-    if (other < -0.01) throw new Error(`Twilio usage on ${day}: categories sum above its total price (${d.metered + d.rental} > ${d.total} cents)`);
     if (d.metered) parts.push({ day, provider: v.provider, part: "metered", usdCents: round6(d.metered), basis: `${basis}: ${src.meteredCategories.join(", ")}` });
     if (d.rental) parts.push({ day, provider: v.provider, part: "rental", usdCents: round6(d.rental), basis: `${basis}: ${src.rentalCategories.join(", ")}` });
-    if (other > 0) parts.push({ day, provider: v.provider, part: "other", usdCents: other, basis: `${basis}: totalprice minus the categories above` });
+    if (other !== 0) parts.push({ day, provider: v.provider, part: "other", usdCents: other, basis: `${basis}: totalprice minus the categories above${other < 0 ? " (negative: Twilio's total is below its categories, a credit no category names)" : ""}` });
   }
   parts.push({ day: asOf, provider: v.provider, part: "unconsumed-balance", usdCents: usage.balanceUsdCents, basis: "Twilio balance, prepaid and not consumed yet" });
   return { parts, raw: usage.raw, url: "twilio usage records + balance", from: REAL_COST_SINCE };
@@ -250,11 +252,16 @@ const silverRow = (d: { day: string; orgId: string | null; costName: string; cos
   netBilledUsdCents: d.netBilledCostInUsdCents,
 });
 
+/** A vendor skipped by a refresh: which input of it failed and the error, verbatim. */
+export type VendorFailure = { provider: string; input: "vendor-split"; error: string };
+
 export type RealCostRefreshOutcome = {
   refreshId: string;
   asOf: string;
   days: number;
   costItems: number;
+  /** Vendors whose own input could not be read: skipped, the others refreshed. Empty = every vendor read. */
+  vendorFailures: VendorFailure[];
   /** The day's proposed list applied to the billed catalogue (src/db/catalogue-sync.ts). */
   catalogueSync: CatalogueSyncOutcome;
 };
@@ -272,6 +279,7 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
       throw err;
     });
   let gold: Omit<RealCostRefreshOutcome, "catalogueSync">;
+  let vendorFailures: VendorFailure[] = [];
   try {
     const [email, subs] = await Promise.all([
       lastSucceeded(emailSendPriceRefreshes, "email send price"),
@@ -284,8 +292,14 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
       fetchGroupedConsumption(false),
       fetchGroupedConsumption(true),
     ]);
+    // One vendor's split that cannot be read (account closed, a figure the vendor contradicts) never
+    // blocks the others: the vendor is recorded on the refresh (`vendorFailures`, red on Monitoring),
+    // its informational ratio is not computed, and nothing of it is loaded on a unit.
     const splitVendors = PAY_AS_YOU_GO_VENDORS.filter((v) => v.meteredSpend);
-    const split = await Promise.all(splitVendors.map((v) => readVendorParts(v, asOf).then((r) => ({ provider: v.provider, ...r }))));
+    const settled = await Promise.allSettled(splitVendors.map((v) => readVendorParts(v, asOf).then((r) => ({ provider: v.provider, ...r }))));
+    const split = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+    vendorFailures = settled.flatMap((r, i) => (r.status === "rejected" ? [{ provider: splitVendors[i].provider, input: "vendor-split", error: errorReason(r.reason).slice(0, 1000) }] : []));
+    for (const f of vendorFailures) console.error(`[Costs Service] Real costs: ${f.provider} split skipped, the other vendors refresh: ${f.error}`);
     const parts = split.flatMap((x) => x.parts);
     const metered = new Map<string, MeteredSpend>(split.map((x) => [x.provider, { from: x.from, byDay: new Map<string, number>() }]));
     for (const p of parts) {
@@ -320,7 +334,7 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
     const days: string[] = [];
     for (let d = REAL_COST_SINCE; d <= asOf; d = addDays(d, 1)) days.push(d);
     const catalogue = await loadCatalogueHistory();
-    const ratios = paygRatios(days, netPaid, [...unitsByKey.values()], catalogue, now, metered);
+    const ratios = paygRatios(days, netPaid, [...unitsByKey.values()], catalogue, now, metered, new Set(vendorFailures.map((f) => f.provider)));
 
     const [emailGold, subGold] = await Promise.all([
       db.select({ day: emailSendPriceDaily.day, price: emailSendPriceDaily.priceUsdCents }).from(emailSendPriceDaily),
@@ -407,10 +421,10 @@ export async function refreshRealCosts(now: Date = new Date()): Promise<RealCost
       }
       await tx
         .update(realCostRefreshes)
-        .set({ status: "succeeded", finishedAt: new Date(), emailSendPriceRefreshId: email.id, subscriptionCostRefreshId: subs.id })
+        .set({ status: "succeeded", finishedAt: new Date(), emailSendPriceRefreshId: email.id, subscriptionCostRefreshId: subs.id, vendorFailures })
         .where(eq(realCostRefreshes.id, attempt.id));
     });
-    gold = { refreshId: attempt.id, asOf, days: days.length, costItems: new Set(series.map((r) => r.costName)).size };
+    gold = { refreshId: attempt.id, asOf, days: days.length, costItems: new Set(series.map((r) => r.costName)).size, vendorFailures };
   } catch (err) {
     const message = errorReason(err);
     await db
@@ -469,7 +483,9 @@ export function startRealCostScheduler(intervalMs: number = HOUR_MS): NodeJS.Tim
       if (!(await succeededOn(emailSendPriceRefreshes, today)) || !(await succeededOn(subscriptionCostRefreshes, today))) return;
       const outcome = await refreshRealCosts();
       booted = true;
-      console.log(`[Costs Service] Real costs refreshed as of ${outcome.asOf} (${outcome.costItems} cost items)`);
+      console.log(
+        `[Costs Service] Real costs refreshed as of ${outcome.asOf} (${outcome.costItems} cost items)${outcome.vendorFailures.length > 0 ? `, SKIPPED: ${outcome.vendorFailures.map((f) => f.provider).join(", ")}` : ""}`,
+      );
       const sync = outcome.catalogueSync;
       console.log(
         `[Costs Service] Catalogue billed at the proposed list of ${sync.proposedListDay}: ${sync.versionsWritten} price version(s) written, ${sync.unchanged} unchanged, ${sync.kept.length} kept (${sync.kept.map((k) => k.costName).join(", ")})`,

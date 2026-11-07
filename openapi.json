@@ -1597,6 +1597,50 @@
           "grossCostPerCreditUsdCents"
         ]
       },
+      "RealCostVendorFailure": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "input": {
+            "type": "string",
+            "description": "Which input of that vendor could not be read (`vendor-split`)"
+          },
+          "error": {
+            "type": "string",
+            "description": "The upstream error, verbatim"
+          }
+        },
+        "required": [
+          "provider",
+          "input",
+          "error"
+        ]
+      },
+      "RealCostRefreshAttempt": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EmailSendPriceRefreshAttempt"
+          },
+          {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "vendorFailures": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RealCostVendorFailure"
+                },
+                "description": "Vendors this refresh SKIPPED because their own input could not be read; every other vendor refreshed. Non-empty = broken (red on Monitoring)"
+              }
+            },
+            "required": [
+              "vendorFailures"
+            ]
+          }
+        ]
+      },
       "RealCostItem": {
         "type": "object",
         "properties": {
@@ -3172,8 +3216,15 @@
                     "stale": {
                       "type": "boolean"
                     },
+                    "vendorFailures": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RealCostVendorFailure"
+                      },
+                      "description": "Vendors this refresh SKIPPED because their own input could not be read; every other vendor refreshed. Non-empty = broken (red on Monitoring)"
+                    },
                     "lastRefresh": {
-                      "$ref": "#/components/schemas/EmailSendPriceRefreshAttempt"
+                      "$ref": "#/components/schemas/RealCostRefreshAttempt"
                     },
                     "payAsYouGo": {
                       "type": "array",
@@ -3211,7 +3262,12 @@
                           },
                           "numeratorBasis": {
                             "type": "string",
-                            "description": "What the ratio's numerator counts: `ledger-net-paid`, or the vendor's own split (`twilio-usage-metered`)"
+                            "description": "What the ratio's numerator counts: `ledger-net-paid`, the vendor's own split (`twilio-usage-metered`), or `split-unavailable` (the split could not be read this refresh: no ratio)"
+                          },
+                          "splitError": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Why this vendor's split could not be read by the served refresh; null when it was"
                           },
                           "meteredUsdCents": {
                             "type": "number",
@@ -3320,6 +3376,7 @@
                           "vatUsdCents",
                           "vatBasis",
                           "numeratorBasis",
+                          "splitError",
                           "meteredUsdCents",
                           "vendorCostRecordedUsdCents",
                           "ratio",
@@ -3344,6 +3401,7 @@
                     "asOf",
                     "refreshedAt",
                     "stale",
+                    "vendorFailures",
                     "lastRefresh",
                     "payAsYouGo",
                     "items"
@@ -4543,6 +4601,13 @@
                     "stale": {
                       "type": "boolean"
                     },
+                    "vendorFailures": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RealCostVendorFailure"
+                      },
+                      "description": "Vendors this refresh SKIPPED because their own input could not be read; every other vendor refreshed. Non-empty = broken (red on Monitoring)"
+                    },
                     "perimeter": {
                       "type": "object",
                       "properties": {
@@ -4776,6 +4841,7 @@
                     "day",
                     "asOf",
                     "stale",
+                    "vendorFailures",
                     "perimeter",
                     "lists",
                     "rule",
