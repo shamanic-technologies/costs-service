@@ -10,6 +10,15 @@ import { STANDARD_PRICE_LIST_FROM, type PriceListName } from "./price-lists.js";
  * the grandfathered list (an org client-service does not list, e.g. a shell), never undercharge an
  * older org.
  */
+/**
+ * Our OWN orgs pay the standard x1 list for every cost name, whatever their creation date (owner
+ * 2026-11-07, NEWSLETTER-COST-1107: "no apply no markup to ourown org"). Same org as
+ * billing-service's platform org (its migration 0057): distribute.you, which sends our newsletter
+ * and runs our own outreach. Checked BEFORE the stored decision, so its 2026-10-29 `grandfathered`
+ * row is overridden. A decision about money: changed in a reviewed PR only.
+ */
+export const OWN_ORGS_AT_COST: ReadonlySet<string> = new Set(["f0420eb5-8f72-4f0a-a150-f473746df1e6"]);
+
 export function decidePriceList(createdAt: Date | undefined): PriceListName {
   if (createdAt === undefined) return "grandfathered";
   return createdAt.getTime() >= STANDARD_PRICE_LIST_FROM.getTime() ? "standard" : "grandfathered";
