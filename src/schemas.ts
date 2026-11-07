@@ -826,6 +826,18 @@ const RefreshAttemptSchema = z
   })
   .openapi("EmailSendPriceRefreshAttempt");
 
+const VendorFailureSchema = z
+  .object({
+    provider: z.string(),
+    input: z.string().describe("Which input of that vendor could not be read (`vendor-split`)"),
+    error: z.string().describe("The upstream error, verbatim"),
+  })
+  .openapi("RealCostVendorFailure");
+const VendorFailuresSchema = z
+  .array(VendorFailureSchema)
+  .describe("Vendors this refresh SKIPPED because their own input could not be read; every other vendor refreshed. Non-empty = broken (red on Monitoring)");
+const RealCostRefreshAttemptSchema = RefreshAttemptSchema.extend({ vendorFailures: VendorFailuresSchema }).openapi("RealCostRefreshAttempt");
+
 const EmailSendPriceDaySchema = z
   .object({
     day: z.string().describe("YYYY-MM-DD; dense, one point per calendar day from the first payment or send"),
@@ -1118,7 +1130,8 @@ registry.registerPath({
             asOf: z.string(),
             refreshedAt: z.string(),
             stale: z.boolean(),
-            lastRefresh: RefreshAttemptSchema.nullable(),
+            vendorFailures: VendorFailuresSchema,
+            lastRefresh: RealCostRefreshAttemptSchema.nullable(),
             payAsYouGo: z.array(
               z.object({
                 provider: z.string(),
@@ -1128,7 +1141,8 @@ registry.registerPath({
                 netPaidUsdCents: z.number().describe("Excluding VAT"),
                 vatUsdCents: z.number().describe("The VAT taken out of what the bank paid (net of refunds)"),
                 vatBasis: z.string().nullable().describe("Where the bank ledger read that VAT: source, rate, evidence"),
-                numeratorBasis: z.string().describe("What the ratio's numerator counts: `ledger-net-paid`, or the vendor's own split (`twilio-usage-metered`)"),
+                numeratorBasis: z.string().describe("What the ratio's numerator counts: `ledger-net-paid`, the vendor's own split (`twilio-usage-metered`), or `split-unavailable` (the split could not be read this refresh: no ratio)"),
+                splitError: z.string().nullable().describe("Why this vendor's split could not be read by the served refresh; null when it was"),
                 meteredUsdCents: z.number().describe("The ratio's numerator: metered spend through the day"),
                 vendorCostRecordedUsdCents: z.number(),
                 ratio: z.number().nullable().describe("meteredUsdCents / vendorCostRecordedUsdCents. Informational: prices no unit (owner rule 2026-10-01, an API is at its list cost)"),
@@ -1384,6 +1398,7 @@ registry.registerPath({
             day: z.string(),
             asOf: z.string(),
             stale: z.boolean(),
+            vendorFailures: VendorFailuresSchema,
             perimeter: z.object({ grain: z.literal("fleet"), since: z.string() }),
             lists: z.object({ catalogue: z.string(), proposed: z.string() }),
             rule: z.string(),

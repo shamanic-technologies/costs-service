@@ -85,6 +85,7 @@ async function servedState() {
     startedAt: lastAttempt.startedAt.toISOString(),
     finishedAt: lastAttempt.finishedAt?.toISOString() ?? null,
     error: lastAttempt.error,
+    vendorFailures: lastAttempt.vendorFailures,
   };
   return { lastSucceeded, lastRefresh };
 }
@@ -194,6 +195,8 @@ router.get("/internal/real-costs", async (req, res) => {
       asOf: lastSucceeded.asOf,
       refreshedAt: lastSucceeded.finishedAt!.toISOString(),
       stale: lastSucceeded.asOf < utcDay(new Date()),
+      /** Vendors the served refresh skipped (input unreadable): every other vendor is fresh. Non-empty = broken, red. */
+      vendorFailures: lastSucceeded.vendorFailures,
       lastRefresh,
       payAsYouGo: ratios.map((r) => {
         const own = spend.filter((s) => s.provider === r.provider && s.day <= day);
@@ -213,7 +216,8 @@ router.get("/internal/real-costs", async (req, res) => {
           vendorCostRecordedUsdCents: Number(r.cumulativeVendorRecordedUsdCents),
           ratio: num(r.ratio),
           ...internalCost(r),
-          split: r.numeratorBasis === "ledger-net-paid" ? null : vendorSplit(r.provider, r.numeratorBasis, day, lastSucceeded.asOf, r.cumulativeNetPaidUsdCents, vat.vatUsdCents, parts),
+          splitError: lastSucceeded.vendorFailures.find((f) => f.provider === r.provider)?.error ?? null,
+          split: r.numeratorBasis === "ledger-net-paid" || r.numeratorBasis === "split-unavailable" ? null : vendorSplit(r.provider, r.numeratorBasis, day, lastSucceeded.asOf, r.cumulativeNetPaidUsdCents, vat.vatUsdCents, parts),
         };
       }),
       items: rows.map(item),
@@ -266,6 +270,7 @@ router.get("/internal/real-costs/basis-summary", async (req, res) => {
       day,
       asOf: lastSucceeded.asOf,
       stale: lastSucceeded.asOf < utcDay(new Date()),
+      vendorFailures: lastSucceeded.vendorFailures,
       perimeter: { grain: "fleet", since: REAL_COST_SINCE },
       lists: { catalogue: `catalogue:${day}`, proposed: `proposed:${day}` },
       rule: "Averaging (bank money / units) only for flat fees: email infrastructure and vendor subscriptions. Every pay-as-you-go API at its catalogue list cost; proposed = real cost x2, x1 for pass-through (Stripe, media). A subscription credit is never proposed below its vendor list cost per unit (floored, proposedBasis vendor-list-cost-floor). What the bank paid an API vendor beyond its list cost is internal, outside clients.",

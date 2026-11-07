@@ -88,7 +88,8 @@ export type RealCostDay = {
   standardPrice: number | null;
 };
 
-export type PaygNumeratorBasis = "ledger-net-paid" | "twilio-usage-metered" | "google-cloud-split-metered";
+/** `split-unavailable`: the vendor declares a split but this refresh could not read it (no ratio, see `vendorFailures`). */
+export type PaygNumeratorBasis = "ledger-net-paid" | "twilio-usage-metered" | "google-cloud-split-metered" | "split-unavailable";
 
 /** A split vendor's metered spend per day (US cents), counted from `from` (the first day the split covers). */
 export type MeteredSpend = { from: string; byDay: Map<string, number> };
@@ -123,12 +124,15 @@ export function paygRatios(
   catalogue: CatalogueHistory,
   now: Date,
   metered: Map<string, MeteredSpend> = new Map(),
+  /** Split vendors whose split this refresh could not read: their ratio is null, never the bank total. */
+  unavailable: ReadonlySet<string> = new Set(),
 ): Map<string, Map<string, PaygRatioDay>> {
   const splitBasis = new Map(
     PAY_AS_YOU_GO_VENDORS.filter((v) => v.meteredSpend).map((v) => [v.provider, `${v.meteredSpend!.kind}-metered` as PaygNumeratorBasis]),
   );
   for (const p of splitBasis.keys()) {
-    if (!metered.has(p)) throw new Error(`Pay-as-you-go vendor ${p} declares a metered spend source but none was read`);
+    if (unavailable.has(p)) splitBasis.set(p, "split-unavailable");
+    else if (!metered.has(p)) throw new Error(`Pay-as-you-go vendor ${p} declares a metered spend source but none was read`);
   }
   const providers = new Set(PAY_AS_YOU_GO_VENDORS.map((v) => v.provider));
   const vendorByProviderDay = new Map<string, Map<string, number>>();
@@ -143,7 +147,8 @@ export function paygRatios(
   for (const provider of providers) {
     const basis = splitBasis.get(provider) ?? "ledger-net-paid";
     const split = metered.get(provider);
-    const numerator = split ? split.byDay : netPaidByProviderDay.get(provider);
+    // An unreadable split counts NO numerator: falling back to the bank total is the x21.4 bug.
+    const numerator = split ? split.byDay : basis === "split-unavailable" ? new Map<string, number>() : netPaidByProviderDay.get(provider);
     // A split numerator only covers days from `from`: the recorded side starts the same day.
     const from = split?.from ?? days[0];
     let paid = 0;
