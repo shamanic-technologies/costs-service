@@ -75,6 +75,16 @@ describe("the price an org pays: x1 for new accounts, x2 grandfathered (PRICE-X1
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("our own org pays x1 for every cost name, its stored grandfathered decision overridden (owner 2026-11-07, NEWSLETTER-COST-1107)", async () => {
+    const OWN = "f0420eb5-8f72-4f0a-a150-f473746df1e6";
+    // Prod stored it grandfathered on 2026-10-29 (created before the cutoff).
+    await db.insert(orgPriceLists).values({ orgId: OWN, priceList: "grandfathered", orgCreatedAt: null });
+    const fetchMock = clientServiceAnswers([]);
+    const res = await request(app).get("/v1/platform-prices/instantly-account-email-sent").set({ ...KEY, "x-org-id": OWN });
+    expect(res.body).toMatchObject({ pricePerUnitInUsdCents: "1.0000000000", priceList: "standard" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("the public read (by name and the listing) serves x1", async () => {
     const fetchMock = clientServiceAnswers([]);
     expect((await request(app).get("/v1/platform-prices/instantly-account-email-sent")).body).toMatchObject({ pricePerUnitInUsdCents: "1.0000000000", priceList: "standard" });
