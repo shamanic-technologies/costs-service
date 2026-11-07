@@ -306,6 +306,8 @@ export const realCostRefreshes = pgTable(
     error: text("error"),
     emailSendPriceRefreshId: uuid("email_send_price_refresh_id"),
     subscriptionCostRefreshId: uuid("subscription_cost_refresh_id"),
+    /** Vendors a refresh skipped (their own input unreadable) while the others refreshed: `[{ provider, input, error }]`. */
+    vendorFailures: jsonb("vendor_failures").$type<{ provider: string; input: string; error: string }[]>().notNull().default([]),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
   },

@@ -101,9 +101,9 @@ const TWILIO_DAILY: Record<string, { start_date: string; price: string }[]> = {
   phonenumbers: [{ start_date: "2026-02-02", price: "1.15" }],
   totalprice: [{ start_date: "2026-02-02", price: "1.182" }],
 };
-const twilioPage = (url: string) => {
+const twilioPage = (url: string, daily = TWILIO_DAILY) => {
   const category = new URL(url).searchParams.get("Category")!;
-  return json({ usage_records: (TWILIO_DAILY[category] ?? []).map((r) => ({ category, price_unit: "usd", ...r })), next_page_uri: null });
+  return json({ usage_records: (daily[category] ?? []).map((r) => ({ category, price_unit: "usd", ...r })), next_page_uri: null });
 };
 
 const money = (billed: string) => ({ billedCostInUsdCents: billed, netBilledCostInUsdCents: billed, refundedCostInUsdCents: "0.0000000000", netRefundedCostInUsdCents: "0.0000000000" });
@@ -118,7 +118,7 @@ const BY_ORG = {
 };
 const BY_BRAND = { ...BY_ORG, groupBy: ["orgId", "brandId"], days: BY_ORG.days.map((d) => ({ ...d, brandId: "brand-1" })) };
 
-function stub(over: Partial<Record<"vendors" | "payments" | "byOrg" | "byBrand" | "twilio" | "twilioAccount" | "google", () => Response>> = {}) {
+function stub(over: Partial<Record<"vendors" | "payments" | "byOrg" | "byBrand" | "twilio" | "twilioAccount" | "google", (url: string) => Response>> = {}) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: string | URL | Request) => {
@@ -127,7 +127,7 @@ function stub(over: Partial<Record<"vendors" | "payments" | "byOrg" | "byBrand" 
       if (url === "https://ledger.test/api/v1/vendor-payments/google-cloud?since=2026-01") return (over.google ?? (() => json(GOOGLE_SPLIT)))();
       if (url.startsWith("https://ledger.test/api/v1/vendor-payments")) return (over.payments ?? (() => json(PAYMENTS)))();
       if (url === "http://keys.test/keys/platform/twilio/decrypt") return json({ provider: "twilio", key: JSON.stringify({ accountSid: "AC1", authToken: "t" }) });
-      if (url.startsWith("https://api.twilio.com/2010-04-01/Accounts/AC1/Usage/Records/Daily.json")) return (over.twilio ?? (() => twilioPage(url)))();
+      if (url.startsWith("https://api.twilio.com/2010-04-01/Accounts/AC1/Usage/Records/Daily.json")) return (over.twilio ?? ((u: string) => twilioPage(u)))(url);
       if (url === "https://api.twilio.com/2010-04-01/Accounts/AC1.json") return (over.twilioAccount ?? (() => json({ sid: "AC1", friendly_name: "Distribute.you" })))();
       if (url === "https://api.twilio.com/2010-04-01/Accounts/AC1/Balance.json") return json({ account_sid: "AC1", balance: "16.67", currency: "USD" });
       if (url.includes("groupBy=orgId%2CbrandId")) return (over.byBrand ?? (() => json(BY_BRAND)))();
@@ -365,14 +365,14 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     expect(res.body.rules.vatRule).toMatch(/EXCLUDING VAT/);
   });
 
-  it("Google: fails loud when the ledger cannot infer a Gemini project's consumption before the export began", async () => {
+  it("Google: a Gemini project's consumption the ledger cannot infer skips Google, named, while the others refresh", async () => {
     await seedCatalogue();
     const feb = GOOGLE_SPLIT.months[1];
     const projects = feb.export!.projects.map((p) => (p.projectId === "mcp-factory-485906" ? { ...p, uncoveredEur: null } : p));
     stub({ google: () => json({ ...GOOGLE_SPLIT, months: [GOOGLE_SPLIT.months[0], { ...feb, export: { ...feb.export!, uncoveredEur: null, projects } }] }) });
     const res = await request(app).post("/internal/real-costs/refresh").set(API_KEY);
-    expect(res.status).toBe(500);
-    expect(res.body.error).toMatch(/cannot infer mcp-factory-485906/);
+    expect(res.status).toBe(200);
+    expect(res.body.vendorFailures).toEqual([{ provider: "google", input: "vendor-split", error: expect.stringMatching(/cannot infer mcp-factory-485906/) }]);
   });
 
   it("Google: a part summed over months converted at different rates names every rate, not only the first", async () => {
@@ -388,28 +388,57 @@ describe("real costs, proposed price list, price list at a date, comparison", ()
     expect(metered.basis).toMatch(/EUR->USD 1\.2000 .* \| .*EUR->USD 1\.1000/);
   });
 
-  it("fails loud when the Google Cloud split cannot be read", async () => {
+  it("an unreadable Google Cloud split skips Google, named loud, and never falls back to the bank total", async () => {
     await seedCatalogue();
     stub({ google: () => json({ error: "boom" }, 500) });
     const res = await request(app).post("/internal/real-costs/refresh").set(API_KEY);
-    expect(res.status).toBe(502);
-    expect(res.body.error).toMatch(/google-cloud/);
+    expect(res.status).toBe(200);
+    expect(res.body.vendorFailures).toEqual([{ provider: "google", input: "vendor-split", error: expect.stringMatching(/google-cloud/) }]);
+    const served = await request(app).get("/internal/real-costs").set(API_KEY);
+    const google = served.body.payAsYouGo.find((p: { provider: string }) => p.provider === "google");
+    expect(google).toMatchObject({ numeratorBasis: "split-unavailable", meteredUsdCents: 0, ratio: null, split: null, splitError: expect.stringMatching(/google-cloud/) });
   });
 
-  it("Twilio: refuses to count another account's usage as ours (owner 2026-10-01: only 'Distribute.you')", async () => {
+  it("Twilio: refuses to count another account's usage as ours (owner 2026-10-01: only 'Distribute.you'): skipped, named", async () => {
     await seedCatalogue();
     stub({ twilioAccount: () => json({ sid: "AC1", friendly_name: "Pressbeat" }) });
     const res = await request(app).post("/internal/real-costs/refresh").set(API_KEY);
-    expect(res.status).toBe(502);
-    expect(res.body.error).toMatch(/opens account 'Pressbeat', not the declared 'Distribute.you'/);
+    expect(res.status).toBe(200);
+    expect(res.body.vendorFailures[0]).toMatchObject({ provider: "twilio", error: expect.stringMatching(/opens account 'Pressbeat', not the declared 'Distribute.you'/) });
+    const served = await request(app).get("/internal/real-costs").set(API_KEY);
+    expect(served.body.payAsYouGo.find((p: { provider: string }) => p.provider === "twilio")).toMatchObject({ numeratorBasis: "split-unavailable", meteredUsdCents: 0, ratio: null, split: null });
   });
 
-  it("fails loud when Twilio cannot answer", async () => {
+  it("NEWSLETTER-COST-1107: a vendor whose input fails (Twilio account closed) never blocks the other vendors' prices", async () => {
     await seedCatalogue();
-    stub({ twilio: () => json({ message: "Authenticate" }, 401) });
+    stub({ twilio: () => json({ code: 20003, message: "authentication failed, account AC1 with status 4 is not active" }, 401) });
     const res = await request(app).post("/internal/real-costs/refresh").set(API_KEY);
-    expect(res.status).toBe(502);
-    expect(res.body.error).toMatch(/Twilio refused/);
+    expect(res.status).toBe(200);
+    expect(res.body.vendorFailures).toEqual([{ provider: "twilio", input: "vendor-split", error: expect.stringMatching(/Twilio refused/) }]);
+    const served = await request(app).get("/internal/real-costs").set(API_KEY);
+    expect(served.body.stale).toBe(false);
+    expect(served.body.vendorFailures).toHaveLength(1);
+    expect(served.body.lastRefresh).toMatchObject({ status: "succeeded", vendorFailures: [expect.objectContaining({ provider: "twilio" })] });
+    // Every other vendor refreshed: Google's split read, Anthropic and Twilio minutes priced at list cost.
+    expect(served.body.payAsYouGo.find((p: { provider: string }) => p.provider === "google").numeratorBasis).toBe("google-cloud-split-metered");
+    expect(served.body.items.find((i: { costName: string }) => i.costName === "anthropic-tokens")).toMatchObject({ method: "api-list-cost", proposedPricePerUnitUsdCents: 0.0002 });
+    expect(served.body.items.find((i: { costName: string }) => i.costName === "twilio-voice-minute")).toMatchObject({ method: "api-list-cost", proposedPricePerUnitUsdCents: 4 });
+    const summary = await request(app).get("/internal/real-costs/basis-summary").set(API_KEY);
+    expect(summary.body.vendorFailures).toHaveLength(1);
+  });
+
+  it("NEWSLETTER-COST-1107: Twilio's total below its categories (2026-10-16, -0.83 cents) is a negative 'other' part, never a failure", async () => {
+    await seedCatalogue();
+    // calls 3 + channels 0.2 + phonenumbers 115 = 118.2 cents, Twilio's total says 117.37.
+    const daily = { ...TWILIO_DAILY, totalprice: [{ start_date: "2026-02-02", price: "1.1737" }] };
+    stub({ twilio: (url) => twilioPage(url, daily) });
+    const res = await request(app).post("/internal/real-costs/refresh").set(API_KEY);
+    expect(res.status).toBe(200);
+    expect(res.body.vendorFailures).toEqual([]);
+    const served = await request(app).get("/internal/real-costs").set(API_KEY);
+    const other = served.body.payAsYouGo.find((p: { provider: string }) => p.provider === "twilio").split.parts.find((p: { part: string }) => p.part === "other");
+    expect(other.usdCents).toBeCloseTo(-0.83, 6);
+    expect(other.basis).toMatch(/negative/);
   });
 
   it("fails loud when runs-service cannot answer and keeps the last series served", async () => {
