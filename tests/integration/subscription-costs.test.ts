@@ -105,7 +105,7 @@ describe("/internal/subscription-costs — real cost per credit of each subscrip
     const today = utcDay(new Date());
     const refresh = await request(app).post("/internal/subscription-costs/refresh").set(API_KEY);
     expect(refresh.status).toBe(200);
-    expect(refresh.body).toMatchObject({ asOf: today, subscriptions: 9 });
+    expect(refresh.body).toMatchObject({ asOf: today, subscriptions: 8 });
 
     const runsCall = fetchMock.mock.calls.find((c) => String(c[0]).includes("consumption"))!;
     const runsUrl = new URL(String(runsCall[0]));

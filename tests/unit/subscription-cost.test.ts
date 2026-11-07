@@ -1,3 +1,4 @@
+import { CATALOGUE_VENDOR_COST_PROVIDERS } from "../../src/lib/price-lists.js";
 import { describe, it, expect } from "vitest";
 import { declaredVat } from "../helpers/ledger-vat.js";
 import { costPerCredit, consumptionPerDay, subscriptionMonthly, subscriptionSeries, toMicros } from "../../src/lib/subscription-cost.js";
@@ -15,9 +16,14 @@ const day = (d: string, costName: string, quantity: string, costSource: "platfor
 });
 
 describe("subscription cost per credit — owner declarations (2026-10-01)", () => {
-  it("declares exactly the owner's nine subscriptions, from 2026-01-01", () => {
-    expect(SUBSCRIPTIONS.map((s) => s.key)).toEqual(["apollo", "scrape-do", "firecrawl", "apify", "postmark", "serper", "featured", "hunter", "explee"]);
+  it("declares exactly the owner's eight subscriptions, from 2026-01-01 (Postmark left on 2026-11-07: free plan, priced at list cost)", () => {
+    expect(SUBSCRIPTIONS.map((s) => s.key)).toEqual(["apollo", "scrape-do", "firecrawl", "apify", "serper", "featured", "hunter", "explee"]);
     expect(SUBSCRIPTIONS_SINCE).toBe("2026-01-01");
+  });
+
+  it("Postmark is priced at its standard list cost, never averaged over past payments (owner 2026-11-07, free plan)", () => {
+    expect(SUBSCRIPTIONS.some((s) => s.provider === "postmark")).toBe(false);
+    expect(CATALOGUE_VENDOR_COST_PROVIDERS.postmark).toMatch(/free plan/);
   });
 
   it("reads the ledger vendors seen in prod, and Explee has none (unknown, never $0)", () => {
@@ -27,7 +33,6 @@ describe("subscription cost per credit — owner declarations (2026-10-01)", () 
       "firecrawl dev",
       "apify inv",
       "apify subscription",
-      "postmarkapp com",
       "paddle net serper",
       "featured terkel",
       "hunter io starter",
@@ -76,17 +81,17 @@ describe("subscription cost per credit — formula", () => {
 
   it("builds a dense series from 2026-01-01 on NET paid, gross beside, and leaves out customer-key units", () => {
     const spend = spendPerDayAndVendor([
-      { id: "postmarkapp com:2026-01-19", vendor: "postmarkapp com", bookedOn: "2026-01-19", direction: "payment" as const, usdAmount: 15, vat: declaredVat(15) },
-      { id: "postmarkapp com:2026-02-19", vendor: "postmarkapp com", bookedOn: "2026-02-19", direction: "payment" as const, usdAmount: 15, vat: declaredVat(15) },
-      { id: "postmarkapp com:2026-02-20", vendor: "postmarkapp com", bookedOn: "2026-02-20", direction: "refund" as const, usdAmount: 10, vat: declaredVat(10) },
+      { id: "firecrawl dev:2026-01-19", vendor: "firecrawl dev", bookedOn: "2026-01-19", direction: "payment" as const, usdAmount: 15, vat: declaredVat(15) },
+      { id: "firecrawl dev:2026-02-19", vendor: "firecrawl dev", bookedOn: "2026-02-19", direction: "payment" as const, usdAmount: 15, vat: declaredVat(15) },
+      { id: "firecrawl dev:2026-02-20", vendor: "firecrawl dev", bookedOn: "2026-02-20", direction: "refund" as const, usdAmount: 10, vat: declaredVat(10) },
       { id: "apollo io:2026-02-01", vendor: "apollo io", bookedOn: "2026-02-01", direction: "payment" as const, usdAmount: 99, vat: declaredVat(99) },
     ]);
     const units = consumptionPerDay([
-      day("2026-01-20", "postmark-email-send", "500"),
-      day("2026-02-21", "postmark-email-send", "1500"),
-      day("2026-02-21", "postmark-email-send", "7000", "org"),
+      day("2026-01-20", "firecrawl-scrape-credit", "500"),
+      day("2026-02-21", "firecrawl-scrape-credit", "1500"),
+      day("2026-02-21", "firecrawl-scrape-credit", "7000", "org"),
     ]);
-    const series = subscriptionSeries(sub("postmark"), spend, units, "2026-01-01", "2026-03-01");
+    const series = subscriptionSeries(sub("firecrawl"), spend, units, "2026-01-01", "2026-03-01");
     expect(series[0].day).toBe("2026-01-01");
     expect(series).toHaveLength(31 + 28 + 1);
     expect(series.find((p) => p.day === "2026-01-19")!.costPerCreditUsdCents).toBeNull();

@@ -216,6 +216,9 @@ export const PAY_AS_YOU_GO_VENDORS: readonly PayAsYouGoVendor[] = [
 /** Providers deliberately kept on their catalogue vendor cost, with the reason (served as the flag's detail). */
 export const CATALOGUE_VENDOR_COST_PROVIDERS: Readonly<Record<string, string>> = {
   cloudflare: "The Cloudflare ledger line also pays DNS for the sending domains, already counted in the email send price",
+  // Owner 2026-11-07 (NEWSLETTER-COST-1107): "I am using the free Postmark plan right now, but assume standard cost".
+  // No bank line since 2026-07-19, so averaging past payments over today's ~60k emails/month would read near zero.
+  postmark: "On Postmark's free plan since 2026-08 (owner 2026-11-07), priced at its standard list cost per email",
 };
 
 /** Ledger keys of a prefix declaration, as whole words ("google cloud" matches "google cloud rxxsxl", not "google cloudy"). */
