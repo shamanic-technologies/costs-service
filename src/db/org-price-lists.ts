@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "./index.js";
 import { orgPriceLists } from "./schema.js";
 import { fetchOrgsCreatedFrom } from "../lib/client-service.js";
-import { decidePriceList } from "../lib/org-price-list.js";
+import { OWN_ORGS_AT_COST, decidePriceList } from "../lib/org-price-list.js";
 import { STANDARD_PRICE_LIST_FROM, type PriceListName } from "../lib/price-lists.js";
 
 /**
@@ -11,6 +11,7 @@ import { STANDARD_PRICE_LIST_FROM, type PriceListName } from "../lib/price-lists
  * client-service failing = `ClientServiceError` thrown (no price guessed).
  */
 export async function priceListOfOrg(orgId: string): Promise<PriceListName> {
+  if (OWN_ORGS_AT_COST.has(orgId)) return "standard";
   const [known] = await db.select({ priceList: orgPriceLists.priceList }).from(orgPriceLists).where(eq(orgPriceLists.orgId, orgId)).limit(1);
   if (known) return known.priceList as PriceListName;
   const createdFromCutoff = await fetchOrgsCreatedFrom(STANDARD_PRICE_LIST_FROM);
