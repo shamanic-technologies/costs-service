@@ -57,6 +57,11 @@ const VENDOR_USD_PER_MTOK: Array<[name: string, usdPerMTok: number]> = [
   // GPT-6 Luna on the Decisions API — input only ($0.10/MTok, 2x over 272K prompt tokens).
   ["openai-gpt-6-luna-decisions-tokens-input", 0.1],
   ["openai-gpt-6-luna-decisions-long-context-tokens-input", 0.2],
+  // Added 2026-11-12: Claude Fable 5.2 (vendor page read that day).
+  ["anthropic-fable-5.2-tokens-input", 8],
+  ["anthropic-fable-5.2-tokens-cached-input", 0.2],
+  ["anthropic-fable-5.2-tokens-cache-write-5m", 10],
+  ["anthropic-fable-5.2-tokens-output", 40],
   // Pre-existing anchors, unchanged — these define the scale.
   ["anthropic-haiku-4.5-tokens-input", 1],
   ["anthropic-haiku-4.5-tokens-output", 5],
@@ -136,6 +141,10 @@ describe("token price scale (regression: Fable 5.1 / GPT-6 Astra 10x under-price
       ["openai-gpt-6-luna-decisions-tokens-input", "openai-gpt-6-astra-tokens-input", 0.1 / 10],
       ["openai-gpt-6-luna-decisions-long-context-tokens-input", "openai-gpt-6-luna-decisions-tokens-input", 2],
       ["cloudflare-clef-tokens-input", "openai-gpt-6-luna-decisions-tokens-input", 0.24 / 0.1],
+      ["anthropic-fable-5.2-tokens-input", "anthropic-fable-5.1-tokens-input", 8 / 10],
+      ["anthropic-fable-5.2-tokens-output", "anthropic-fable-5.1-tokens-output", 40 / 50],
+      ["anthropic-fable-5.2-tokens-cached-input", "anthropic-opus-5.5-tokens-cached-input", 0.2 / 0.2],
+      ["anthropic-fable-5.2-tokens-cache-write-5m", "anthropic-opus-5.5-tokens-cache-write-5m", 10 / 5],
       ["cloudflare-clef-flash-tokens-input", "typesafe-jev-1.13-tokens-input", 0.038 / 0.042],
     ];
     for (const [a, b, r] of cases) expect(ratio(a, b), `${a} / ${b}`).toBeCloseTo(r, 9);

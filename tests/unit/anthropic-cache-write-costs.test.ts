@@ -10,6 +10,7 @@ import { SEED_PROVIDERS_COSTS, SEED_PLATFORM_COSTS } from "../../src/db/seed.js"
 // 1.25x the input row of its own tier.
 const MODELS = [
   { model: "fable-5.1", label: "Fable 5.1" },
+  { model: "fable-5.2", label: "Fable 5.2" },
   { model: "sonnet-5.5", label: "Sonnet 5.5" },
   { model: "opus-5.5", label: "Opus 5.5" },
   { model: "haiku-5.5", label: "Haiku 5.5" },
