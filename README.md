@@ -281,6 +281,9 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `google-argon-4-tokens-input` | 0.002 | 1M tokens | Input tokens (Gemini 4 Argon) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-argon-4-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (Gemini 4 Argon) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-argon-4-tokens-output` | 0.01 | 1M tokens | Output tokens (Gemini 4 Argon) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-hydrogen-4-tokens-input` | 0.00075 | 1M tokens | Input tokens (Gemini 4 Hydrogen) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-hydrogen-4-tokens-cached-input` | 0.0000375 | 1M tokens | Cached input tokens (Gemini 4 Hydrogen) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-hydrogen-4-tokens-output` | 0.00375 | 1M tokens | Output tokens (Gemini 4 Hydrogen) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `openai-gpt-6-luna-decisions-tokens-input` | 0.00005 | 1M tokens | Input tokens (GPT-6 Luna, Decisions API) | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `openai-gpt-6-luna-decisions-long-context-tokens-input` | 0.0001 | 1M tokens | Input tokens (GPT-6 Luna, Decisions API), prompt over 272K tokens | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `typesafe-jev-1.13-tokens-input` | 0.000021 | 1M tokens | Input tokens (Jev 1.13) | typesafe | typesafe.ai | pay-as-you-go | monthly | marked-up |
