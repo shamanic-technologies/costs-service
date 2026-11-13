@@ -590,6 +590,21 @@ export const GEMINI_4_ARGON_COSTS: SeedProviderCost[] = [
   googleGeminiCost("google-argon-4-tokens-output", "Output tokens (Gemini 4 Argon)", "0.0020000000"),
 ];
 
+/**
+ * Gemini 4 Hydrogen (API id `gemini-4-hydrogen`), released 2026-11-12. Google's Standard paid
+ * tier, read from the raw HTML of ai.google.dev/gemini-api/docs/pricing on 2026-11-13:
+ * $1.50 input / $7.50 output (thinking tokens included) / $0.075 cached input, flat across the
+ * whole 1M context (no long-context tier), implicit caching only (no explicit cache, so no
+ * cache-storage row). A new model: one version dated at its release, never back-dated.
+ */
+const GEMINI_4_HYDROGEN_RELEASED = new Date("2026-11-12T00:00:00Z");
+
+export const GEMINI_4_HYDROGEN_COSTS: SeedProviderCost[] = [
+  { ...googleGeminiCost("google-hydrogen-4-tokens-input", "Input tokens (Gemini 4 Hydrogen)", "0.0001500000"), effectiveFrom: GEMINI_4_HYDROGEN_RELEASED },
+  { ...googleGeminiCost("google-hydrogen-4-tokens-cached-input", "Cached input tokens (Gemini 4 Hydrogen)", "0.0000075000"), effectiveFrom: GEMINI_4_HYDROGEN_RELEASED },
+  { ...googleGeminiCost("google-hydrogen-4-tokens-output", "Output tokens (Gemini 4 Hydrogen)", "0.0007500000"), effectiveFrom: GEMINI_4_HYDROGEN_RELEASED },
+];
+
 /** Anthropic released Claude Fable 5.2 on 2026-11-09; its prices start then. */
 const FABLE_5_2_RELEASED = new Date("2026-11-09T00:00:00Z");
 
@@ -1638,6 +1653,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   ...OPENAI_CACHE_WRITE_AND_LONG_CONTEXT_COSTS,
   ...KIMI_K3_1_PRO_COSTS,
   ...GEMINI_4_ARGON_COSTS,
+  ...GEMINI_4_HYDROGEN_COSTS,
   // Google Gemini Embedding 001: $0.15/MTok input (standard tier).
   // Synchronous batchEmbedContents bills at standard tier, NOT the $0.075 Batch API
   // (async 24h jobs). Embeddings bill input only — the vector output is not token-billed.

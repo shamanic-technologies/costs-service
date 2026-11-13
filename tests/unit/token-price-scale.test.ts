@@ -62,6 +62,10 @@ const VENDOR_USD_PER_MTOK: Array<[name: string, usdPerMTok: number]> = [
   ["anthropic-fable-5.2-tokens-cached-input", 0.2],
   ["anthropic-fable-5.2-tokens-cache-write-5m", 10],
   ["anthropic-fable-5.2-tokens-output", 40],
+  // Added 2026-11-13: Gemini 4 Hydrogen (ai.google.dev pricing page read that day).
+  ["google-hydrogen-4-tokens-input", 1.5],
+  ["google-hydrogen-4-tokens-cached-input", 0.075],
+  ["google-hydrogen-4-tokens-output", 7.5],
   // Pre-existing anchors, unchanged — these define the scale.
   ["anthropic-haiku-4.5-tokens-input", 1],
   ["anthropic-haiku-4.5-tokens-output", 5],
