@@ -35,6 +35,9 @@ function toVersion({ pc, v }: VersionRow) {
     pricingBasis: pc.pricingBasis,
     pricingRegime: pc.pricingRegime,
     billedPricePerUnitInUsdCents: pc.costPerUnitInUsdCents,
+    // The x1 standard list price this version served (PRICE-X1-1029): rows of orgs on the
+    // standard list, and our own org, froze THIS figure, not the billed one. Same vendor cost.
+    standardPricePerUnitInUsdCents: pc.standardPricePerUnitInUsdCents,
     vendorCostPerUnitInUsdCents: vendor,
     vendorCostKnown: vendor !== null,
     vendorCostUnknownReason: v ? v.unknownReason : "not-yet-stated",
@@ -63,6 +66,8 @@ function toReconstructedVersion(r: ReconstructedPriceVersion) {
     pricingBasis: "marked-up",
     pricingRegime: null,
     billedPricePerUnitInUsdCents: r.billedPricePerUnitInUsdCents,
+    // Pre-v0.25.0: there was one list only.
+    standardPricePerUnitInUsdCents: null,
     vendorCostPerUnitInUsdCents: r.vendorCostPerUnitInUsdCents,
     vendorCostKnown: true,
     vendorCostUnknownReason: null,
@@ -80,7 +85,7 @@ function toReconstructedVersion(r: ReconstructedPriceVersion) {
 
 // GET /internal/vendor-costs[?names=a,b] — every price version (all plans, all dates) with its
 // vendor cost. Built for bulk joins: a consumer holding (cost name, billed unit price, date)
-// matches on name + billedPricePerUnitInUsdCents, using effectiveFrom/createdAt as tie-break.
+// matches on name + (billedPricePerUnitInUsdCents OR standardPricePerUnitInUsdCents), using effectiveFrom/createdAt as tie-break.
 router.get("/internal/vendor-costs", async (req, res) => {
   try {
     const namesParam = typeof req.query.names === "string" ? req.query.names : undefined;

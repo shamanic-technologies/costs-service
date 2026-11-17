@@ -507,7 +507,7 @@ What one unit of each price version REALLY cost us from the vendor, before our m
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/internal/vendor-costs` | Yes | Every price version (all names, plans, dates) with `billedPricePerUnitInUsdCents`, `vendorCostPerUnitInUsdCents`, `vendorCostKnown`, `vendorCostUnknownReason`, `markupMultiplier`, `effectiveFrom`, `createdAt`. `?names=a,b` narrows it |
+| GET | `/internal/vendor-costs` | Yes | Every price version (all names, plans, dates) with `billedPricePerUnitInUsdCents` (x2 grandfathered), `standardPricePerUnitInUsdCents` (x1 standard, null if none), `vendorCostPerUnitInUsdCents`, `vendorCostKnown`, `vendorCostUnknownReason`, `markupMultiplier`, `effectiveFrom`, `createdAt`. `?names=a,b` narrows it |
 | GET | `/internal/vendor-costs/:name?at=<ISO>` | Yes | The version `/v1/platform-prices/:name` served at instant `at` (default now), with its vendor cost |
 
 A version's vendor cost is stated only when a vendor rate the seed records reproduces its billed price EXACTLY under the markup in force when it was written (1x/2x overwrite era, 2x, 4x, 5x, 6x, 5x). Otherwise it is `null` with a reason (`no-billable-price`, `no-vendor-rate-on-record`, `ambiguous-vendor-rate`) and never the billed price.
