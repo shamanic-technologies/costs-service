@@ -108,6 +108,38 @@ describe("/internal/vendor-costs — vendor cost per price version, service-auth
     );
   });
 
+  it("states each version's x1 standard price beside its billed (x2) price (VENDOR-UNPRICED-1117)", async () => {
+    // A proposed-list version priced on both lists: billed x2, standard x1, one vendor cost.
+    const name = "anthropic-haiku-4.5-tokens-input";
+    const both = await insertTestProviderCost({
+      name,
+      provider: "anthropic",
+      planTier: "pay-as-you-go",
+      billingCycle: "monthly",
+      costPerUnitInUsdCents: "0.0002000000",
+      effectiveFrom: new Date("2026-11-01T00:00:00Z"),
+    });
+    await db
+      .update(providersCosts)
+      .set({ standardPricePerUnitInUsdCents: "0.0001000000", priceSource: "proposed-list" })
+      .where(eq(providersCosts.id, both.id));
+    await recordVendorCosts();
+
+    const res = await request(app).get(`/internal/vendor-costs?names=${name}`).set(API_KEY);
+    expect(res.status).toBe(200);
+    const v = res.body.versions.find((x: any) => x.id === both.id);
+    expect(v.billedPricePerUnitInUsdCents).toBe("0.0002000000");
+    expect(v.standardPricePerUnitInUsdCents).toBe("0.0001000000");
+    expect(v.standardPricePerUnitInUsdCents).not.toBe(v.billedPricePerUnitInUsdCents);
+    // A seed version the sync never priced carries no standard price: null, never the billed one.
+    const seeded = res.body.versions.find((x: any) => x.id !== both.id && !x.reconstructed);
+    expect(seeded).toHaveProperty("standardPricePerUnitInUsdCents", null);
+    // Every version carries the field, reconstructed ones included (null: one list only then).
+    const all = await request(app).get("/internal/vendor-costs").set(API_KEY);
+    for (const x of all.body.versions) expect(x).toHaveProperty("standardPricePerUnitInUsdCents");
+    expect(all.body.versions.filter((x: any) => x.reconstructed).every((x: any) => x.standardPricePerUnitInUsdCents === null)).toBe(true);
+  });
+
   it("resolves the version in force on a PAST date, at the markup it was written under", async () => {
     // A 6x-era row for Haiku, written and in force on 2026-09-01, superseded by the seeded 5x row.
     const name = "anthropic-haiku-4.5-tokens-input";

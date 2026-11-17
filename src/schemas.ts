@@ -680,6 +680,11 @@ export const VendorCostVersionSchema = z
         "The price this version charged per unit — byte-equal to what /v1/platform-prices/{name} served while it was in force. Null on a delisted version.",
       example: "0.0005000000",
     }),
+    standardPricePerUnitInUsdCents: z.string().nullable().openapi({
+      description:
+        "The standard (x1) list price this version served, byte-equal to what /v1/platform-prices/{name} served to an org on the standard list (orgs created from 2026-10-29T14:00Z, and our own org) while it was in force. billedPricePerUnitInUsdCents is the grandfathered (x2) price. A cost row may have frozen either one; the vendor cost is the same. Null when the version carries no standard price (a seed/api version the price sync has not priced yet serves billedPricePerUnitInUsdCents on both lists; a delisted or reconstructed version).",
+      example: "0.0002500000",
+    }),
     vendorCostPerUnitInUsdCents: z.string().nullable().openapi({
       description:
         "What one unit REALLY cost us from the vendor at this version, before our markup, non-recoverable VAT included (DeepSeek: list price x 1.06). Stated only when a vendor rate on record reproduces the billed price exactly under the markup in force when the version was written. Null = unknown (see vendorCostUnknownReason); never the billed price, never billed / today's multiplier.",
@@ -725,7 +730,7 @@ registry.registerPath({
   operationId: "listVendorCosts",
   summary: "Every price version of every cost name, with its vendor cost (service api key only)",
   description:
-    "Bulk read for joins: match a recorded cost on name + billedPricePerUnitInUsdCents, using the version served at the record's time (served from max(effectiveFrom, createdAt)). No identity headers.",
+    "Bulk read for joins: match a recorded cost on name + billedPricePerUnitInUsdCents or standardPricePerUnitInUsdCents (whichever list priced it), using the version served at the record's time (served from max(effectiveFrom, createdAt)). No identity headers.",
   security: [{ ApiKeyAuth: [] }],
   request: {
     query: z.object({
