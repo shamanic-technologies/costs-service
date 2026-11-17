@@ -56,6 +56,7 @@ const DECLARED: Record<string, Retirement> = {
   ...retiredModel("anthropic-opus-4.5", "anthropic-opus-4.6", "Claude Opus 4.5 is no longer offered by chat-service", ["tokens-input", "tokens-output"]),
   ...retiredModel("anthropic-sonnet-4.5", "anthropic-sonnet-4.6", "Claude Sonnet 4.5 is no longer offered by chat-service", ["tokens-input", "tokens-output"]),
   ...retiredModel("google-flash-lite-2.5", "google-flash-lite-3.5", "Gemini 2.5 Flash-Lite is no longer offered by chat-service"),
+  ...retiredModel("anthropic-fable-5.1", "anthropic-fable-5.2", "chat-service moved its Claude Fable line from 5.1 to 5.2", [...TOKEN_CLASSES, "tokens-cache-write-5m"]),
   ...retiredModel("openai-gpt-5.6-sol", "openai-gpt-6-sol", "GPT-5.6 Sol is not an OpenAI model we call; GPT-6 Sol is"),
   ...retiredDeepSeekV4("flash"),
   ...retiredDeepSeekV4("pro"),

@@ -87,6 +87,10 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `anthropic-fable-5.1-tokens-cached-input` | 0.000125 | 1M tokens | Cached input tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-fable-5.1-tokens-cache-write-5m` | 0.00625 | 1M tokens | Cache write tokens, 5-minute TTL (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-fable-5.1-tokens-output` | 0.025 | 1M tokens | Output tokens (Fable 5.1) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-fable-5.2-tokens-input` | 0.004 | 1M tokens | Input tokens (Fable 5.2) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-fable-5.2-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (Fable 5.2) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-fable-5.2-tokens-cache-write-5m` | 0.005 | 1M tokens | Cache write tokens, 5-minute TTL (Fable 5.2) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
+| `anthropic-fable-5.2-tokens-output` | 0.02 | 1M tokens | Output tokens (Fable 5.2) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-sonnet-5.5-tokens-input` | 0.001 | 1M tokens | Input tokens (Sonnet 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-sonnet-5.5-tokens-cached-input` | 0.00005 | 1M tokens | Cached input tokens (Sonnet 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-sonnet-5.5-tokens-cache-write-5m` | 0.00125 | 1M tokens | Cache write tokens, 5-minute TTL (Sonnet 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
@@ -277,6 +281,9 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `google-argon-4-tokens-input` | 0.002 | 1M tokens | Input tokens (Gemini 4 Argon) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-argon-4-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (Gemini 4 Argon) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-argon-4-tokens-output` | 0.01 | 1M tokens | Output tokens (Gemini 4 Argon) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-hydrogen-4-tokens-input` | 0.00075 | 1M tokens | Input tokens (Gemini 4 Hydrogen) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-hydrogen-4-tokens-cached-input` | 0.0000375 | 1M tokens | Cached input tokens (Gemini 4 Hydrogen) | google | google.com | pay-as-you-go | monthly | marked-up |
+| `google-hydrogen-4-tokens-output` | 0.00375 | 1M tokens | Output tokens (Gemini 4 Hydrogen) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `openai-gpt-6-luna-decisions-tokens-input` | 0.00005 | 1M tokens | Input tokens (GPT-6 Luna, Decisions API) | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `openai-gpt-6-luna-decisions-long-context-tokens-input` | 0.0001 | 1M tokens | Input tokens (GPT-6 Luna, Decisions API), prompt over 272K tokens | openai | openai.com | pay-as-you-go | monthly | marked-up |
 | `typesafe-jev-1.13-tokens-input` | 0.000021 | 1M tokens | Input tokens (Jev 1.13) | typesafe | typesafe.ai | pay-as-you-go | monthly | marked-up |
@@ -500,7 +507,7 @@ What one unit of each price version REALLY cost us from the vendor, before our m
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/internal/vendor-costs` | Yes | Every price version (all names, plans, dates) with `billedPricePerUnitInUsdCents`, `vendorCostPerUnitInUsdCents`, `vendorCostKnown`, `vendorCostUnknownReason`, `markupMultiplier`, `effectiveFrom`, `createdAt`. `?names=a,b` narrows it |
+| GET | `/internal/vendor-costs` | Yes | Every price version (all names, plans, dates) with `billedPricePerUnitInUsdCents` (x2 grandfathered), `standardPricePerUnitInUsdCents` (x1 standard, null if none), `vendorCostPerUnitInUsdCents`, `vendorCostKnown`, `vendorCostUnknownReason`, `markupMultiplier`, `effectiveFrom`, `createdAt`. `?names=a,b` narrows it |
 | GET | `/internal/vendor-costs/:name?at=<ISO>` | Yes | The version `/v1/platform-prices/:name` served at instant `at` (default now), with its vendor cost |
 
 A version's vendor cost is stated only when a vendor rate the seed records reproduces its billed price EXACTLY under the markup in force when it was written (1x/2x overwrite era, 2x, 4x, 5x, 6x, 5x). Otherwise it is `null` with a reason (`no-billable-price`, `no-vendor-rate-on-record`, `ambiguous-vendor-rate`) and never the billed price.

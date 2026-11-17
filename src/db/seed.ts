@@ -590,6 +590,24 @@ export const GEMINI_4_ARGON_COSTS: SeedProviderCost[] = [
   googleGeminiCost("google-argon-4-tokens-output", "Output tokens (Gemini 4 Argon)", "0.0020000000"),
 ];
 
+/**
+ * Gemini 4 Hydrogen (API id `gemini-4-hydrogen`), released 2026-11-12. Google's Standard paid
+ * tier, read from the raw HTML of ai.google.dev/gemini-api/docs/pricing on 2026-11-13:
+ * $1.50 input / $7.50 output (thinking tokens included) / $0.075 cached input, flat across the
+ * whole 1M context (no long-context tier), implicit caching only (no explicit cache, so no
+ * cache-storage row). A new model: one version dated at its release, never back-dated.
+ */
+const GEMINI_4_HYDROGEN_RELEASED = new Date("2026-11-12T00:00:00Z");
+
+export const GEMINI_4_HYDROGEN_COSTS: SeedProviderCost[] = [
+  { ...googleGeminiCost("google-hydrogen-4-tokens-input", "Input tokens (Gemini 4 Hydrogen)", "0.0001500000"), effectiveFrom: GEMINI_4_HYDROGEN_RELEASED },
+  { ...googleGeminiCost("google-hydrogen-4-tokens-cached-input", "Cached input tokens (Gemini 4 Hydrogen)", "0.0000075000"), effectiveFrom: GEMINI_4_HYDROGEN_RELEASED },
+  { ...googleGeminiCost("google-hydrogen-4-tokens-output", "Output tokens (Gemini 4 Hydrogen)", "0.0007500000"), effectiveFrom: GEMINI_4_HYDROGEN_RELEASED },
+];
+
+/** Anthropic released Claude Fable 5.2 on 2026-11-09; its prices start then. */
+const FABLE_5_2_RELEASED = new Date("2026-11-09T00:00:00Z");
+
 export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   // Apollo — unified credit: Basic plan $59/mo ÷ 2,500 credits = 2.36¢/credit
   // Covers enrichment + person match. Quantity comes from Apollo webhook (credits_consumed).
@@ -922,6 +940,61 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0050000000"),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Anthropic Claude Fable 5.2 (API id `claude-fable-5-2`, released 2026-11-09), per 1M tokens, from
+  // https://platform.claude.com/docs/en/about-claude/pricing (raw HTML read 2026-11-12):
+  //   input $8 · cache hit $0.20 (0.025x, the prompt-caching multiplier table) · 5-minute cache
+  //   write $10 (1.25x input) · output $40.
+  // A NEW model, not a re-price of Fable 5.1: chat-service moves its `claude-fable` line here and
+  // declares these four names; the 5.1 rows stay as written (past spend resolves them). One
+  // version each, dated at the release, never a back-dated 2025-01-01 (the model did not exist).
+  {
+    name: "anthropic-fable-5.2-tokens-input",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Input tokens (Fable 5.2)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0008000000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: FABLE_5_2_RELEASED,
+  },
+  {
+    name: "anthropic-fable-5.2-tokens-cached-input",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Cached input tokens (Fable 5.2)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0000200000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: FABLE_5_2_RELEASED,
+  },
+  {
+    name: "anthropic-fable-5.2-tokens-cache-write-5m",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Cache write tokens, 5-minute TTL (Fable 5.2)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0010000000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: FABLE_5_2_RELEASED,
+  },
+  {
+    name: "anthropic-fable-5.2-tokens-output",
+    provider: "anthropic",
+    providerDomain: PROVIDER_DOMAINS.anthropic,
+    type: "Output tokens (Fable 5.2)",
+    unit: "1M tokens",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0040000000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: FABLE_5_2_RELEASED,
   },
   // Anthropic Claude Sonnet 5.5 and Claude Opus 5.5, per 1M tokens, from
   // https://platform.claude.com/docs/en/about-claude/pricing (read 2026-09-29, cache hits re-read 2026-10-09):
@@ -1580,6 +1653,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   ...OPENAI_CACHE_WRITE_AND_LONG_CONTEXT_COSTS,
   ...KIMI_K3_1_PRO_COSTS,
   ...GEMINI_4_ARGON_COSTS,
+  ...GEMINI_4_HYDROGEN_COSTS,
   // Google Gemini Embedding 001: $0.15/MTok input (standard tier).
   // Synchronous batchEmbedContents bills at standard tier, NOT the $0.075 Batch API
   // (async 24h jobs). Embeddings bill input only — the vector output is not token-billed.
