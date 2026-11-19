@@ -109,6 +109,7 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `anthropic-haiku-5.5-long-context-tokens-output` | 0.00125 | 1M tokens | Output tokens, prompt over 100k (Haiku 5.5) | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `anthropic-web-search` | 5 | search | Web search | anthropic | anthropic.com | pay-as-you-go | monthly | marked-up |
 | `featured-api-pitch-submit` | 0.25 | call | API call (pitch submit) | featured | featured.com | pay-as-you-go | monthly | marked-up |
+| `ses-email-send` | 0.05 | email | Email send | aws-ses | aws.amazon.com | pay-as-you-go | monthly | marked-up |
 | `postmark-email-send` | 0.75 | email | Email send | postmark | postmarkapp.com | basic-10k | monthly | marked-up |
 | `postmark-email-send` | 0.825 | email | Email send | postmark | postmarkapp.com | pro-10k | monthly | marked-up |
 | `postmark-email-send` | 0.9 | email | Email send | postmark | postmarkapp.com | platform-10k | monthly | marked-up |
@@ -415,6 +416,7 @@ Each provider has an active platform cost config that determines which cost tier
 | moonshot | pay-as-you-go | monthly |
 | openai | pay-as-you-go | monthly |
 | postmark | pro-10k | monthly |
+| aws-ses | pay-as-you-go | monthly |
 | scrape-do | hobby | monthly |
 | serper-dev | pay-as-you-go | monthly |
 | stripe | pay-as-you-go | monthly |
