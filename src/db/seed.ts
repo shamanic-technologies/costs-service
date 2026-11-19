@@ -211,6 +211,9 @@ function emailVerdictCosts(): SeedProviderCost[] {
 export const PROVIDER_DOMAINS: Record<string, string> = {
   apollo: "apollo.io",
   apify: "apify.com",
+  // Amazon SES (us-east-1): our own product mail since 2026-11-19 (postmark-service
+  // SES-PLATFORM-SENDS-1119). Its own provider: a different vendor path from postmark.
+  "aws-ses": "aws.amazon.com",
   anthropic: "anthropic.com",
   cloudflare: "cloudflare.com",
   deepseek: "deepseek.com",
@@ -1240,6 +1243,22 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
     costPerUnitInUsdCents: applyCostRiskMultiplier("0.0500000000"),
     pricingBasis: "marked-up",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Amazon SES — outbound email, pay as you go: $0.10 per 1,000 emails = 0.01¢/email
+  // (AWS list price, https://aws.amazon.com/ses/pricing/). Our own product mail
+  // (sign-up codes, welcome, receipts, alerts) leaves through SES since 2026-11-19
+  // (postmark-service SES-PLATFORM-SENDS-1119); the newsletter stays on Postmark.
+  {
+    name: "ses-email-send",
+    provider: "aws-ses",
+    providerDomain: PROVIDER_DOMAINS["aws-ses"],
+    type: "Email send",
+    unit: "email",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    costPerUnitInUsdCents: applyCostRiskMultiplier("0.0100000000"),
+    pricingBasis: "marked-up",
+    effectiveFrom: new Date("2026-11-19T00:00:00Z"),
   },
   // Postmark — unit cost = plan price ÷ 10,000 emails (10k volume tier)
   // https://postmarkapp.com/pricing
@@ -2919,6 +2938,13 @@ export const SEED_PLATFORM_COSTS = [
     planTier: "pro-10k",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Amazon SES — pay as you go, no plan fee. Resolves ses-email-send.
+  {
+    provider: "aws-ses",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2026-11-19T00:00:00Z"),
   },
   {
     provider: "scrape-do",
