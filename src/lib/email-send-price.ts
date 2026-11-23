@@ -1,34 +1,37 @@
 /**
- * What sending ONE cold email to a lead really costs us — a DISPLAYED staff figure, never a
- * billed price (nothing in the catalogue reads it).
+ * What sending ONE cold email to a lead really costs us. Since 2026-10-02 this is ALSO what every
+ * customer is billed per email (real cost x the org's list multiplier, `src/lib/real-cost.ts` +
+ * the catalogue sync), so the formula is a billing rule.
  *
- * Owner rule (LOCKED 2026-10-01):
+ * Owner rule (EMAIL-PRICE-CURRENT-1123, 2026-11-23, REPLACES the 2026-10-01 since-inception rule):
  *
- *   price per email (US cents) = everything ever consumed from the email-infrastructure vendors
- *                                (`EMAIL_INFRA_VENDORS`, since inception, all included,
- *                                paid MINUS refunded: a refunded purchase was not consumed)
- *                              / every email ever sent to a lead (`outreach` sends, since inception)
+ *   price per email on day D (US cents) = what the email infrastructure costs per day on D
+ *                                         / emails sent to leads per day (the 30 full days before D)
  *
- * Recomputed daily and kept as a dense per-day series so a reader can chart how it converged.
- * Each day also carries the MONTH-ALONE price (month-to-date spend / month-to-date emails) so
- * both curves come from the producer and no reader divides.
+ *   cost per day on D = sum, over every vendor payment whose covered period includes D, of
+ *                       payment / days it covers (`src/lib/email-infra-coverage.ts`: a monthly plan
+ *                       covers its month, a domain registration its year)
+ *
+ * Money paid for a period that is over is sunk: it loads no email sent after it (owner: the ~$5,300
+ * paid since inception is never re-billed). No payment covering D = price 0, not null and not the old
+ * average; a price over zero emails is null.
+ *
+ * Do NOT restore the since-inception average as the price: it kept billing ~2.69c per email for
+ * mailboxes and plans the owner had already cut. It is still computed and served beside, labelled
+ * `sinceInceptionPriceUsdCents` (net) / `grossPriceUsdCents` (gross), so the change stays visible.
+ * Each day also carries the MONTH-ALONE cash figure (month-to-date spend / month-to-date emails).
  *
  * Layering (pure functions here; storage in `src/db/email-send-price.ts`):
  *   bronze = the raw ledger and instantly-service bodies as read
- *   silver = spend per (day, vendor) in USD, emails to leads per day
+ *   silver = spend per (day, vendor) in USD, each bank line with its covered period, emails per day
  *   gold   = the per-day series below
  *
- * Spend is NET (owner, 2026-10-01: "total consommé"). The GROSS figure (every payment line,
- * refunds ignored — what the first brief measured, ~3.34c) is carried beside it on every point
- * as `cumulativePaid*` / `grossPriceUsdCents`, so a reader can show both and see the gap.
- * A price over a NEGATIVE spend (a month whose refunds exceed its payments) does not exist:
- * `null`, like a price over zero emails.
- *
- * Money is summed in integer US cents (the ledger rounds each line to the cent), so a long
- * cumulative sum cannot drift. A price over zero emails is `null`, never zero and never infinite.
+ * Spend is NET (owner, 2026-10-01: "total consommé"): a refund is spread negative over its own term.
+ * Money is summed in integer US cents for the cumulative figures; the per-day cost is fractional cents.
  */
 
 import { LedgerError } from "./ledger.js";
+import { linesCovering, perDayUsdCents, type CoveredLine } from "./email-infra-coverage.js";
 
 export type SpendLine = {
   id: string;
@@ -76,8 +79,17 @@ export type GoldDay = {
   emailsToLeads: number;
   cumulativeSpendUsdCents: number;
   cumulativeEmailsToLeads: number;
-  /** US cents per email on NET spend, since inception through this day. null while no email was ever sent. */
+  /**
+   * THE price (EMAIL-PRICE-CURRENT-1123): runningCostUsdCentsPerDay / trailingEmailsPerDay. 0 when no
+   * payment covers the day; null when the 30 days before sent nothing (or the running cost is negative).
+   */
   priceUsdCents: number | null;
+  /** What the email infrastructure costs per day on this day: every covering payment / its covered days. */
+  runningCostUsdCentsPerDay: number;
+  /** Emails to leads per day over the 30 full days before this day (fewer at the start of the series). */
+  trailingEmailsPerDay: number;
+  /** The superseded 2026-10-01 figure, served beside: NET spend since inception / emails since inception. */
+  sinceInceptionPriceUsdCents: number | null;
   /** Gross: every payment since inception, refunds ignored. */
   cumulativePaidUsdCents: number;
   /** US cents per email on GROSS paid, since inception. */
@@ -98,6 +110,14 @@ export function pricePerEmail(spendUsdCents: number, emails: number): number | n
   if (emails === 0 || spendUsdCents < 0) return null;
   const factor = 10 ** PRICE_DECIMALS;
   return Math.round((spendUsdCents / emails) * factor) / factor;
+}
+
+const roundTo = (x: number, decimals: number) => Math.round(x * 10 ** decimals) / 10 ** decimals;
+
+/** The current price: cost per day / emails per day. 0 when nothing covers the day, null over zero emails. */
+export function currentPricePerEmail(runningCostUsdCentsPerDay: number, emailsPerDay: number): number | null {
+  if (emailsPerDay === 0 || runningCostUsdCentsPerDay < 0) return null;
+  return roundTo(runningCostUsdCentsPerDay / emailsPerDay, PRICE_DECIMALS);
 }
 
 /** One VAT basis as served: "declared 20%: <evidence>". */
@@ -185,7 +205,9 @@ export function addDays(day: string, n: number): string {
  * came first) through `today` (or the last fact, if a bank line is booked later than today UTC).
  * Empty when there is no fact at all.
  */
-export function priceSeries(spend: SilverSpendDay[], emails: SendDay[], today: string): GoldDay[] {
+export const TRAILING_EMAIL_DAYS = 30;
+
+export function priceSeries(spend: SilverSpendDay[], emails: SendDay[], covered: CoveredLine[], today: string): GoldDay[] {
   const spendByDay = new Map<string, number>();
   const paidByDay = new Map<string, number>();
   for (const s of spend) {
@@ -200,6 +222,8 @@ export function priceSeries(spend: SilverSpendDay[], emails: SendDay[], today: s
   const last = factDays[factDays.length - 1] > today ? factDays[factDays.length - 1] : today;
 
   const series: GoldDay[] = [];
+  const trailing: number[] = [];
+  let trailingEmails = 0;
   let cumSpend = 0;
   let cumPaid = 0;
   let cumEmails = 0;
@@ -217,19 +241,28 @@ export function priceSeries(spend: SilverSpendDay[], emails: SendDay[], today: s
     cumEmails += emailsToday;
     mtdSpend += spendToday;
     mtdEmails += emailsToday;
+    // The window holds the full days BEFORE `day`: today's own sends are partial until midnight.
+    const trailingEmailsPerDay = trailing.length === 0 ? 0 : trailingEmails / trailing.length;
+    const runningCost = linesCovering(covered, day).reduce((t, l) => t + perDayUsdCents(l), 0);
     series.push({
       day,
       spendUsdCents: spendToday,
       emailsToLeads: emailsToday,
       cumulativeSpendUsdCents: cumSpend,
       cumulativeEmailsToLeads: cumEmails,
-      priceUsdCents: pricePerEmail(cumSpend, cumEmails),
+      priceUsdCents: currentPricePerEmail(runningCost, trailingEmailsPerDay),
+      runningCostUsdCentsPerDay: roundTo(runningCost, PRICE_DECIMALS),
+      trailingEmailsPerDay: roundTo(trailingEmailsPerDay, PRICE_DECIMALS),
+      sinceInceptionPriceUsdCents: pricePerEmail(cumSpend, cumEmails),
       cumulativePaidUsdCents: cumPaid,
       grossPriceUsdCents: pricePerEmail(cumPaid, cumEmails),
       monthToDateSpendUsdCents: mtdSpend,
       monthToDateEmailsToLeads: mtdEmails,
       monthPriceUsdCents: pricePerEmail(mtdSpend, mtdEmails),
     });
+    trailing.push(emailsToday);
+    trailingEmails += emailsToday;
+    if (trailing.length > TRAILING_EMAIL_DAYS) trailingEmails -= trailing.shift()!;
   }
   return series;
 }
@@ -245,8 +278,10 @@ export type MonthRollup = {
   monthPriceUsdCents: number | null;
   cumulativeSpendUsdCents: number;
   cumulativeEmailsToLeads: number;
-  /** The since-inception price at the month's last day in the series (month end, or today). */
+  /** The current price at the month's last day in the series (month end, or today). */
   priceUsdCents: number | null;
+  /** The superseded since-inception price at that same day. */
+  sinceInceptionPriceUsdCents: number | null;
   cumulativePaidUsdCents: number;
   grossPriceUsdCents: number | null;
 };
@@ -280,6 +315,7 @@ export function monthlyRollup(spend: SilverSpendDay[], series: GoldDay[], vendor
     cumulativeSpendUsdCents: p.cumulativeSpendUsdCents,
     cumulativeEmailsToLeads: p.cumulativeEmailsToLeads,
     priceUsdCents: p.priceUsdCents,
+    sinceInceptionPriceUsdCents: p.sinceInceptionPriceUsdCents,
     cumulativePaidUsdCents: p.cumulativePaidUsdCents,
     grossPriceUsdCents: p.grossPriceUsdCents,
   }));

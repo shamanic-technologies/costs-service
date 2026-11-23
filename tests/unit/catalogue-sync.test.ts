@@ -91,6 +91,15 @@ describe("planCatalogueSync: the proposed list becomes the billed price", () => 
     expect(plan.writes[0]).toMatchObject({ priceUsdCents: "0.0000000000", vendorCostUsdCents: "0.0000000000" });
   });
 
+  it("bills an email at 0 when no email-infrastructure payment covers today (EMAIL-PRICE-CURRENT-1123)", () => {
+    const plan = planCatalogueSync(
+      [item("instantly-account-email-sent", "0.0000000000", { method: "email-send-price", realCostUsdCents: "0.0000000000" })],
+      catalogue,
+      NOW,
+    );
+    expect(plan.writes[0]).toMatchObject({ costName: "instantly-account-email-sent", priceUsdCents: "0.0000000000" });
+  });
+
   it("refuses the whole sync when any other item is proposed at 0: nothing silently becomes free", () => {
     expect(() => planCatalogueSync([item("anthropic-sonnet-5.5-tokens-input", "0.0000000000")], catalogue, NOW)).toThrow(ZeroProposedPriceError);
   });

@@ -107,10 +107,13 @@ export function planCatalogueSync(items: ProposedItem[], catalogue: CatalogueHis
       continue;
     }
     const proposed = cents(item.proposedPriceUsdCents);
-    // A price already in force is not "becoming" 0: only a move to 0 is refused.
-    if (Number(proposed) === 0 && item.method !== "included-at-vendor" && billed !== proposed) {
+    // A price already in force is not "becoming" 0: only a move to 0 is refused. An email priced
+    // from the email send price may be 0: no email-infrastructure payment covers today
+    // (EMAIL-PRICE-CURRENT-1123, owner: the current running cost, never the old average).
+    const zeroAllowed = item.method === "included-at-vendor" || item.method === "email-send-price";
+    if (Number(proposed) === 0 && !zeroAllowed && billed !== proposed) {
       throw new ZeroProposedPriceError(
-        `Proposed price of '${item.costName}' is 0 (method ${item.method}): only a unit declared included at the vendor may be billed 0`,
+        `Proposed price of '${item.costName}' is 0 (method ${item.method}): only a unit declared included at the vendor, or an email whose infrastructure costs nothing today, may be billed 0`,
       );
     }
     if (item.proposedBasis === "current-price-kept") {
