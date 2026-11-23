@@ -191,7 +191,7 @@ describe("catalogue sync: the proposed list is the billed price", { timeout: 30_
     await catalogue();
     await proposedList();
     await db.update(realUnitCostsDaily).set({ proposedPriceUsdCents: "0.0000000000" }).where(eq(realUnitCostsDaily.costName, "anthropic-sonnet-5.5-tokens-input"));
-    await expect(syncCatalogueToProposed()).rejects.toThrow(/only a unit declared included at the vendor may be billed 0/);
+    await expect(syncCatalogueToProposed()).rejects.toThrow(/only a unit declared included at the vendor, or an email whose infrastructure costs nothing today, may be billed 0/);
     expect(await price("anthropic-sonnet-5.5-tokens-input")).toMatchObject({ pricePerUnitInUsdCents: "0.0010000000" });
     expect(await db.select().from(providersCosts).where(eq(providersCosts.priceSource, "proposed-list"))).toEqual([]);
   });

@@ -155,6 +155,13 @@
       "when": 1794000000000,
       "tag": "0021_real_cost_vendor_failures",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1795400000000,
+      "tag": "0022_email_price_current",
+      "breakpoints": true
     }
   ]
 }

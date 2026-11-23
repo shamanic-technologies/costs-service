@@ -183,6 +183,21 @@ export const emailInfraSpendDaily = pgTable(
   (table) => [primaryKey({ name: "email_infra_spend_daily_pk", columns: [table.day, table.vendor] })],
 );
 
+/**
+ * Silver: every email-infrastructure bank line with the period it covers (EMAIL-PRICE-CURRENT-1123,
+ * terms declared in src/lib/email-infra-coverage.ts). Excluding VAT, signed (a refund is negative).
+ */
+export const emailInfraSpendCoverage = pgTable("email_infra_spend_coverage", {
+  lineId: text("line_id").primaryKey(),
+  vendor: text("vendor").notNull(),
+  bookedOn: date("booked_on").notNull(),
+  netUsdCents: bigint("net_usd_cents", { mode: "number" }).notNull(),
+  coversFrom: date("covers_from").notNull(),
+  /** First day NOT covered (exclusive). */
+  coversUntil: date("covers_until").notNull(),
+  basis: text("basis").notNull(),
+});
+
 /** Silver: emails sent to leads per UTC day (instantly-service `outreach` sends). Zero days are not stored. */
 export const emailsToLeadsDaily = pgTable("emails_to_leads_daily", {
   day: date("day").primaryKey(),
@@ -196,9 +211,13 @@ export const emailSendPriceDaily = pgTable("email_send_price_daily", {
   emailsToLeads: integer("emails_to_leads").notNull(),
   cumulativeSpendUsdCents: bigint("cumulative_spend_usd_cents", { mode: "number" }).notNull(),
   cumulativeEmailsToLeads: integer("cumulative_emails_to_leads").notNull(),
-  // Spend columns are NET (paid - refunded). NULL price = no email sent yet (since inception / this
-  // month) or a negative net spend: neither is a price.
+  // THE price since EMAIL-PRICE-CURRENT-1123: running cost per day / trailing emails per day (0 when
+  // no payment covers the day). NULL = no email in the 30 days before, or a negative running cost.
   priceUsdCents: numeric("price_usd_cents", { precision: 14, scale: 4 }),
+  runningCostUsdCentsPerDay: numeric("running_cost_usd_cents_per_day", { precision: 14, scale: 4 }).notNull().default("0"),
+  trailingEmailsPerDay: numeric("trailing_emails_per_day", { precision: 14, scale: 4 }).notNull().default("0"),
+  // The superseded 2026-10-01 figure, served beside: NET spend since inception / emails since inception.
+  sinceInceptionPriceUsdCents: numeric("since_inception_price_usd_cents", { precision: 14, scale: 4 }),
   // Gross: every payment, refunds ignored, carried beside the net figures above.
   cumulativePaidUsdCents: bigint("cumulative_paid_usd_cents", { mode: "number" }).notNull(),
   grossPriceUsdCents: numeric("gross_price_usd_cents", { precision: 14, scale: 4 }),

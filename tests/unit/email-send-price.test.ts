@@ -21,7 +21,7 @@ const pay = (vendor: string, bookedOn: string, usdAmount: number, direction: "pa
   vat: declaredVat(usdAmount, vatRate),
 });
 
-describe("email send price — owner formula: infra spend since inception / emails to leads since inception", () => {
+describe("email send price — since-inception figure, superseded 2026-11-23 and served beside the current price", () => {
   it("declares exactly the owner's email-infrastructure vendors, Google Workspace excluded", () => {
     expect(EMAIL_INFRA_VENDORS.map((v) => v.key)).toEqual(["instantly", "forge", "gandi order", "cloudflare"]);
     expect(EXCLUDED_EMAIL_VENDORS.map((v) => v.key)).toContain("google workspace");
@@ -69,31 +69,31 @@ describe("email send price — owner formula: infra spend since inception / emai
   it("is dense from the first PAYMENT (before any send) through today, price null until the first send", () => {
     const spend = spendPerDayAndVendor([pay("gandi order", "2026-01-30", 12)]);
     const emails = emailsPerDay([{ day: "2026-02-02", toLeads: 100 }, { day: "2026-02-01", toLeads: 0 }]);
-    const series = priceSeries(spend, emails, "2026-02-03");
+    const series = priceSeries(spend, emails, [], "2026-02-03");
     expect(series.map((p) => p.day)).toEqual(["2026-01-30", "2026-01-31", "2026-02-01", "2026-02-02", "2026-02-03"]);
-    expect(series[0].priceUsdCents).toBeNull();
-    expect(series[3]).toMatchObject({ cumulativeSpendUsdCents: 1200, cumulativeEmailsToLeads: 100, priceUsdCents: 12 });
+    expect(series[0].sinceInceptionPriceUsdCents).toBeNull();
+    expect(series[3]).toMatchObject({ cumulativeSpendUsdCents: 1200, cumulativeEmailsToLeads: 100, sinceInceptionPriceUsdCents: 12 });
     // month-alone: February spent nothing, sent 100.
     expect(series[3]).toMatchObject({ monthToDateSpendUsdCents: 0, monthToDateEmailsToLeads: 100, monthPriceUsdCents: 0 });
     expect(series[4].day).toBe("2026-02-03");
-    expect(series[4].priceUsdCents).toBe(12);
+    expect(series[4].sinceInceptionPriceUsdCents).toBe(12);
   });
 
   it("resets the month-alone figures on the 1st while the cumulative keeps running", () => {
     const spend = spendPerDayAndVendor([pay("instantly", "2026-05-31", 100), pay("instantly", "2026-06-01", 50)]);
     const emails = emailsPerDay([{ day: "2026-05-31", toLeads: 1000 }, { day: "2026-06-01", toLeads: 1000 }]);
-    const [may31, jun1] = priceSeries(spend, emails, "2026-06-01");
-    expect(may31).toMatchObject({ priceUsdCents: 10, monthPriceUsdCents: 10 });
-    expect(jun1).toMatchObject({ cumulativeSpendUsdCents: 15000, priceUsdCents: 7.5, monthToDateSpendUsdCents: 5000, monthPriceUsdCents: 5 });
+    const [may31, jun1] = priceSeries(spend, emails, [], "2026-06-01");
+    expect(may31).toMatchObject({ sinceInceptionPriceUsdCents: 10, monthPriceUsdCents: 10 });
+    expect(jun1).toMatchObject({ cumulativeSpendUsdCents: 15000, sinceInceptionPriceUsdCents: 7.5, monthToDateSpendUsdCents: 5000, monthPriceUsdCents: 5 });
   });
 
   it("prices on NET consumed (owner: a refunded purchase was not consumed), gross carried beside", () => {
     const spend = spendPerDayAndVendor([pay("forge", "2026-05-01", 100), pay("forge", "2026-05-02", 40, "refund")]);
-    const series = priceSeries(spend, emailsPerDay([{ day: "2026-05-01", toLeads: 1000 }]), "2026-05-02");
+    const series = priceSeries(spend, emailsPerDay([{ day: "2026-05-01", toLeads: 1000 }]), [], "2026-05-02");
     expect(series[1]).toMatchObject({
       spendUsdCents: -4000,
       cumulativeSpendUsdCents: 6000,
-      priceUsdCents: 6,
+      sinceInceptionPriceUsdCents: 6,
       cumulativePaidUsdCents: 10000,
       grossPriceUsdCents: 10,
     });
@@ -101,14 +101,14 @@ describe("email send price — owner formula: infra spend since inception / emai
 
   it("states no month-alone price for a month whose refunds exceed its payments", () => {
     const spend = spendPerDayAndVendor([pay("forge", "2026-05-01", 100), pay("forge", "2026-06-02", 40, "refund")]);
-    const series = priceSeries(spend, emailsPerDay([{ day: "2026-06-01", toLeads: 1000 }]), "2026-06-02");
-    expect(series[series.length - 1]).toMatchObject({ monthToDateSpendUsdCents: -4000, monthPriceUsdCents: null, priceUsdCents: 6 });
+    const series = priceSeries(spend, emailsPerDay([{ day: "2026-06-01", toLeads: 1000 }]), [], "2026-06-02");
+    expect(series[series.length - 1]).toMatchObject({ monthToDateSpendUsdCents: -4000, monthPriceUsdCents: null, sinceInceptionPriceUsdCents: 6 });
   });
 
   it("rolls up per month with per-vendor spend and both prices at the month's last point", () => {
     const spend = spendPerDayAndVendor([pay("instantly", "2026-05-10", 100), pay("forge", "2026-06-02", 30), pay("forge", "2026-06-03", 10, "refund")]);
     const emails = emailsPerDay([{ day: "2026-05-11", toLeads: 1000 }, { day: "2026-06-05", toLeads: 1000 }]);
-    const series = priceSeries(spend, emails, "2026-06-10");
+    const series = priceSeries(spend, emails, [], "2026-06-10");
     const months = monthlyRollup(spend, series, ["instantly", "forge"]);
     expect(months).toEqual([
       {
@@ -121,7 +121,8 @@ describe("email send price — owner formula: infra spend since inception / emai
         monthPriceUsdCents: 10,
         cumulativeSpendUsdCents: 10000,
         cumulativeEmailsToLeads: 1000,
-        priceUsdCents: 10,
+        priceUsdCents: 0,
+        sinceInceptionPriceUsdCents: 10,
         cumulativePaidUsdCents: 10000,
         grossPriceUsdCents: 10,
       },
@@ -135,7 +136,8 @@ describe("email send price — owner formula: infra spend since inception / emai
         monthPriceUsdCents: 2,
         cumulativeSpendUsdCents: 12000,
         cumulativeEmailsToLeads: 2000,
-        priceUsdCents: 6,
+        priceUsdCents: 0,
+        sinceInceptionPriceUsdCents: 6,
         cumulativePaidUsdCents: 13000,
         grossPriceUsdCents: 6.5,
       },
