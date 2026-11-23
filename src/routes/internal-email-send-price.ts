@@ -1,21 +1,24 @@
 import { Router } from "express";
 import { requireApiKey } from "../middleware/auth.js";
 import { EMAIL_INFRA_VENDORS, EXCLUDED_EMAIL_VENDORS } from "../lib/email-infra-vendors.js";
-import { monthlyRollup, VAT_RULE, vatServed } from "../lib/email-send-price.js";
+import { monthlyRollup, TRAILING_EMAIL_DAYS, VAT_RULE, vatServed } from "../lib/email-send-price.js";
 import { LedgerError } from "../lib/ledger.js";
 import { InstantlyServiceError } from "../lib/instantly-service.js";
+import { linesCovering, perDayUsdCents } from "../lib/email-infra-coverage.js";
 import { readStoredSeries, refreshEmailSendPrice, RefreshInProgressError, utcDay } from "../db/email-send-price.js";
 import { errorReason } from "../lib/pg-error.js";
 
 /**
  * The price of one cold email sent to a lead — STAFF-ONLY (service api key), read by dashboard v2
  * Monitoring > Price. Everything the page shows is computed here; the reader never divides.
- * Displayed only: no billed price reads it.
+ * `currentPriceUsdCents` is the real cost the billed email price is built on (x the org's list
+ * multiplier, src/lib/real-cost.ts); the superseded since-inception figure is served beside it.
  */
 const router = Router();
 router.use("/internal", requireApiKey);
 
 const usd = (cents: number) => Math.round(cents) / 100;
+const round4 = (x: number) => Math.round(x * 10000) / 10000;
 
 // GET /internal/email-send-price — the latest stored series (last SUCCEEDED refresh).
 router.get("/internal/email-send-price", async (_req, res) => {
@@ -40,13 +43,39 @@ router.get("/internal/email-send-price", async (_req, res) => {
 
     res.json({
       formula:
-        "everything consumed from the email-infrastructure vendors since inception (paid minus refunded, excluding VAT) / every email sent to a lead since inception",
+        "what the email infrastructure costs per day today (every vendor payment whose covered period includes today / the days it covers: a monthly plan its month, a domain its year; excluding VAT) / emails sent to leads per day over the 30 full days before. Money paid for a period that is over loads nothing (EMAIL-PRICE-CURRENT-1123, replaces the 2026-10-01 since-inception average)",
       vatRule: VAT_RULE,
       asOf: latest.day,
       refreshedAt: stored.lastSucceeded.finishedAt.toISOString(),
       stale: stored.lastSucceeded.asOf < today,
       lastRefresh,
       currentPriceUsdCents: latest.priceUsdCents,
+      runningCost: {
+        perDayUsd: round4(latest.runningCostUsdCentsPerDay / 100),
+        trailingEmailsPerDay: latest.trailingEmailsPerDay,
+        trailingDays: TRAILING_EMAIL_DAYS,
+        byVendor: EMAIL_INFRA_VENDORS.map((v) => {
+          const perDay = linesCovering(stored.covered, latest.day)
+            .filter((l) => l.vendor === v.key)
+            .reduce((t, l) => t + perDayUsdCents(l), 0);
+          return {
+            key: v.key,
+            label: v.label,
+            perDayUsdCents: round4(perDay),
+            priceUsdCents: latest.trailingEmailsPerDay === 0 ? null : round4(perDay / latest.trailingEmailsPerDay),
+          };
+        }),
+        lines: linesCovering(stored.covered, latest.day).map((l) => ({
+          vendor: l.vendor,
+          bookedOn: l.bookedOn,
+          netUsd: usd(l.netUsdCents),
+          coversFrom: l.coversFrom,
+          coversUntil: l.coversUntil,
+          perDayUsdCents: round4(perDayUsdCents(l)),
+          basis: l.basis,
+        })),
+      },
+      sinceInceptionPriceUsdCents: latest.sinceInceptionPriceUsdCents,
       currentGrossPriceUsdCents: latest.grossPriceUsdCents,
       currentMonthPriceUsdCents: latest.monthPriceUsdCents,
       totals: {
@@ -89,6 +118,7 @@ router.get("/internal/email-send-price", async (_req, res) => {
         cumulativeSpendUsd: usd(m.cumulativeSpendUsdCents),
         cumulativeEmailsToLeads: m.cumulativeEmailsToLeads,
         priceUsdCents: m.priceUsdCents,
+        sinceInceptionPriceUsdCents: m.sinceInceptionPriceUsdCents,
         cumulativePaidUsd: usd(m.cumulativePaidUsdCents),
         grossPriceUsdCents: m.grossPriceUsdCents,
       })),
@@ -99,6 +129,9 @@ router.get("/internal/email-send-price", async (_req, res) => {
         cumulativeSpendUsd: usd(p.cumulativeSpendUsdCents),
         cumulativeEmailsToLeads: p.cumulativeEmailsToLeads,
         priceUsdCents: p.priceUsdCents,
+        runningCostUsdCentsPerDay: p.runningCostUsdCentsPerDay,
+        trailingEmailsPerDay: p.trailingEmailsPerDay,
+        sinceInceptionPriceUsdCents: p.sinceInceptionPriceUsdCents,
         cumulativePaidUsd: usd(p.cumulativePaidUsdCents),
         grossPriceUsdCents: p.grossPriceUsdCents,
         monthToDateSpendUsd: usd(p.monthToDateSpendUsdCents),

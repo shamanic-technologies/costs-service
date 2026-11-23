@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, sql as dsql } from "drizzle-orm";
 import { db } from "./index.js";
 import {
+  emailInfraSpendCoverage,
   emailInfraSpendDaily,
   emailSendPriceDaily,
   emailSendPriceRawReads,
@@ -10,6 +11,7 @@ import {
 import { EMAIL_INFRA_VENDORS } from "../lib/email-infra-vendors.js";
 import { fetchLedgerVendorPayments } from "../lib/ledger.js";
 import { fetchEmailsToLeadsPerDay } from "../lib/instantly-service.js";
+import { coverLines, type CoveredLine } from "../lib/email-infra-coverage.js";
 import { emailsPerDay, priceSeries, spendPerDayAndVendor, type GoldDay, type SilverSpendDay } from "../lib/email-send-price.js";
 import { errorReason } from "../lib/pg-error.js";
 
@@ -59,7 +61,8 @@ export async function refreshEmailSendPrice(now: Date = new Date()): Promise<Ref
     }
     const spend = spendPerDayAndVendor(ledger.data.payments);
     const emails = emailsPerDay(sends.parsed.periods.map((p) => ({ day: p.periodStart, toLeads: p.toLeads })));
-    const series = priceSeries(spend, emails, asOf);
+    const covered = coverLines(ledger.data.payments);
+    const series = priceSeries(spend, emails, covered, asOf);
 
     await db.transaction(async (tx) => {
       // Serializes concurrent refreshes across processes; the in-process flag covers this one.
@@ -78,6 +81,8 @@ export async function refreshEmailSendPrice(now: Date = new Date()): Promise<Ref
       }
       await tx.delete(emailInfraSpendDaily);
       if (spend.length > 0) await tx.insert(emailInfraSpendDaily).values(spend);
+      await tx.delete(emailInfraSpendCoverage);
+      if (covered.length > 0) await tx.insert(emailInfraSpendCoverage).values(covered.map(({ id, ...c }) => ({ lineId: id, ...c })));
       await tx.delete(emailsToLeadsDaily);
       if (emails.length > 0) await tx.insert(emailsToLeadsDaily).values(emails);
       await tx.delete(emailSendPriceDaily);
@@ -86,6 +91,9 @@ export async function refreshEmailSendPrice(now: Date = new Date()): Promise<Ref
           series.slice(i, i + 500).map((p) => ({
             ...p,
             priceUsdCents: p.priceUsdCents === null ? null : p.priceUsdCents.toFixed(4),
+            runningCostUsdCentsPerDay: p.runningCostUsdCentsPerDay.toFixed(4),
+            trailingEmailsPerDay: p.trailingEmailsPerDay.toFixed(4),
+            sinceInceptionPriceUsdCents: p.sinceInceptionPriceUsdCents === null ? null : p.sinceInceptionPriceUsdCents.toFixed(4),
             grossPriceUsdCents: p.grossPriceUsdCents === null ? null : p.grossPriceUsdCents.toFixed(4),
             monthPriceUsdCents: p.monthPriceUsdCents === null ? null : p.monthPriceUsdCents.toFixed(4),
             refreshId: attempt.id,
@@ -150,6 +158,7 @@ export type StoredSeries = {
   lastSucceeded: { id: string; asOf: string; finishedAt: Date } | null;
   lastAttempt: { id: string; asOf: string; status: string; error: string | null; startedAt: Date; finishedAt: Date | null } | null;
   spend: SilverSpendDay[];
+  covered: CoveredLine[];
   emailDays: { day: string; toLeads: number }[];
   series: GoldDay[];
 };
@@ -166,8 +175,9 @@ export async function readStoredSeries(): Promise<StoredSeries> {
     .where(eq(emailSendPriceRefreshes.status, "succeeded"))
     .orderBy(desc(emailSendPriceRefreshes.finishedAt))
     .limit(1);
-  const [spend, emailDays, gold] = await Promise.all([
+  const [spend, coverage, emailDays, gold] = await Promise.all([
     db.select().from(emailInfraSpendDaily).orderBy(asc(emailInfraSpendDaily.day), asc(emailInfraSpendDaily.vendor)),
+    db.select().from(emailInfraSpendCoverage).orderBy(asc(emailInfraSpendCoverage.bookedOn), asc(emailInfraSpendCoverage.vendor)),
     db.select().from(emailsToLeadsDaily).orderBy(asc(emailsToLeadsDaily.day)),
     db.select().from(emailSendPriceDaily).orderBy(asc(emailSendPriceDaily.day)),
   ]);
@@ -175,10 +185,14 @@ export async function readStoredSeries(): Promise<StoredSeries> {
     lastSucceeded: lastSucceeded ? { id: lastSucceeded.id, asOf: lastSucceeded.asOf, finishedAt: lastSucceeded.finishedAt! } : null,
     lastAttempt: lastAttempt ?? null,
     spend,
+    covered: coverage.map(({ lineId, ...c }) => ({ id: lineId, ...c })),
     emailDays,
     series: gold.map(({ refreshId: _r, ...p }) => ({
       ...p,
       priceUsdCents: p.priceUsdCents === null ? null : Number(p.priceUsdCents),
+      runningCostUsdCentsPerDay: Number(p.runningCostUsdCentsPerDay),
+      trailingEmailsPerDay: Number(p.trailingEmailsPerDay),
+      sinceInceptionPriceUsdCents: p.sinceInceptionPriceUsdCents === null ? null : Number(p.sinceInceptionPriceUsdCents),
       grossPriceUsdCents: p.grossPriceUsdCents === null ? null : Number(p.grossPriceUsdCents),
       monthPriceUsdCents: p.monthPriceUsdCents === null ? null : Number(p.monthPriceUsdCents),
     })),

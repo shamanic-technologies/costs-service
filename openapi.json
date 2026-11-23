@@ -874,12 +874,109 @@
           "currentPriceUsdCents": {
             "type": "number",
             "nullable": true,
-            "description": "US cents per email sent to a lead, since inception, on NET spend (paid minus refunded)"
+            "description": "US cents per email sent to a lead NOW (EMAIL-PRICE-CURRENT-1123): the running cost per day / emails per day; the real cost the billed email price is built on"
+          },
+          "runningCost": {
+            "type": "object",
+            "properties": {
+              "perDayUsd": {
+                "type": "number",
+                "description": "What the email infrastructure costs per day on asOf, excluding VAT"
+              },
+              "trailingEmailsPerDay": {
+                "type": "number"
+              },
+              "trailingDays": {
+                "type": "integer"
+              },
+              "byVendor": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "perDayUsdCents": {
+                      "type": "number"
+                    },
+                    "priceUsdCents": {
+                      "type": "number",
+                      "nullable": true,
+                      "description": "This vendor's share of the price"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "label",
+                    "perDayUsdCents",
+                    "priceUsdCents"
+                  ]
+                }
+              },
+              "lines": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "vendor": {
+                      "type": "string"
+                    },
+                    "bookedOn": {
+                      "type": "string"
+                    },
+                    "netUsd": {
+                      "type": "number"
+                    },
+                    "coversFrom": {
+                      "type": "string"
+                    },
+                    "coversUntil": {
+                      "type": "string",
+                      "description": "First day not covered"
+                    },
+                    "perDayUsdCents": {
+                      "type": "number"
+                    },
+                    "basis": {
+                      "type": "string",
+                      "description": "The declared term and its evidence"
+                    }
+                  },
+                  "required": [
+                    "vendor",
+                    "bookedOn",
+                    "netUsd",
+                    "coversFrom",
+                    "coversUntil",
+                    "perDayUsdCents",
+                    "basis"
+                  ]
+                },
+                "description": "Every bank line whose covered period includes asOf"
+              }
+            },
+            "required": [
+              "perDayUsd",
+              "trailingEmailsPerDay",
+              "trailingDays",
+              "byVendor",
+              "lines"
+            ],
+            "description": "The numerator of currentPriceUsdCents, line by line"
+          },
+          "sinceInceptionPriceUsdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "SUPERSEDED (owner rule 2026-10-01, replaced 2026-11-23): net spend since inception / emails since inception, served beside so the change stays visible"
           },
           "currentGrossPriceUsdCents": {
             "type": "number",
             "nullable": true,
-            "description": "Same on GROSS paid (refunds ignored), shown beside"
+            "description": "Since inception on GROSS paid (refunds ignored), superseded like sinceInceptionPriceUsdCents"
           },
           "currentMonthPriceUsdCents": {
             "type": "number",
@@ -1055,7 +1152,13 @@
                 },
                 "priceUsdCents": {
                   "type": "number",
-                  "nullable": true
+                  "nullable": true,
+                  "description": "The current price at the month's last point"
+                },
+                "sinceInceptionPriceUsdCents": {
+                  "type": "number",
+                  "nullable": true,
+                  "description": "The superseded since-inception price at that point"
                 },
                 "cumulativePaidUsd": {
                   "type": "number"
@@ -1076,6 +1179,7 @@
                 "cumulativeSpendUsd",
                 "cumulativeEmailsToLeads",
                 "priceUsdCents",
+                "sinceInceptionPriceUsdCents",
                 "cumulativePaidUsd",
                 "grossPriceUsdCents"
               ]
@@ -1097,6 +1201,8 @@
           "stale",
           "lastRefresh",
           "currentPriceUsdCents",
+          "runningCost",
+          "sinceInceptionPriceUsdCents",
           "currentGrossPriceUsdCents",
           "currentMonthPriceUsdCents",
           "totals",
@@ -1170,7 +1276,20 @@
           "priceUsdCents": {
             "type": "number",
             "nullable": true,
-            "description": "cumulativeSpendUsd*100 / cumulativeEmailsToLeads (net); null before the first send"
+            "description": "THE price that day: runningCostUsdCentsPerDay / trailingEmailsPerDay; 0 when no payment covers the day, null when the 30 days before sent nothing"
+          },
+          "runningCostUsdCentsPerDay": {
+            "type": "number",
+            "description": "Email-infrastructure cost per day that day: every payment covering it / the days it covers (US cents, excluding VAT)"
+          },
+          "trailingEmailsPerDay": {
+            "type": "number",
+            "description": "Emails to leads per day over the 30 full days before"
+          },
+          "sinceInceptionPriceUsdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "SUPERSEDED 2026-10-01 figure, shown beside: cumulativeSpendUsd*100 / cumulativeEmailsToLeads (net)"
           },
           "cumulativePaidUsd": {
             "type": "number",
@@ -1200,6 +1319,9 @@
           "cumulativeSpendUsd",
           "cumulativeEmailsToLeads",
           "priceUsdCents",
+          "runningCostUsdCentsPerDay",
+          "trailingEmailsPerDay",
+          "sinceInceptionPriceUsdCents",
           "cumulativePaidUsd",
           "grossPriceUsdCents",
           "monthToDateSpendUsd",
@@ -2932,7 +3054,7 @@
     "/internal/email-send-price": {
       "get": {
         "operationId": "getEmailSendPrice",
-        "summary": "Price of one cold email sent to a lead: infra spend since inception / emails to leads since inception, daily series (service api key only)",
+        "summary": "Price of one cold email sent to a lead: the email infrastructure's running cost per day / emails to leads per day (since-inception average served beside), daily series (service api key only)",
         "description": "Displayed figure only, no billed price reads it. Served from the last SUCCEEDED daily refresh; when a refresh fails the previous series stays served (`stale: true`, `lastRefresh.error` says why).",
         "security": [
           {
