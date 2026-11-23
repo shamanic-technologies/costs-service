@@ -4,6 +4,7 @@ import request from "supertest";
 import { createTestApp } from "../helpers/test-app.js";
 import { db } from "../../src/db/index.js";
 import {
+  emailInfraSpendCoverage,
   emailInfraSpendDaily,
   emailSendPriceDaily,
   emailSendPriceRawReads,
@@ -59,6 +60,7 @@ function stubUpstreams(u: Upstream) {
 async function cleanTables() {
   await db.delete(emailSendPriceDaily);
   await db.delete(emailInfraSpendDaily);
+  await db.delete(emailInfraSpendCoverage);
   await db.delete(emailsToLeadsDaily);
   await db.delete(emailSendPriceRawReads);
   await db.delete(emailSendPriceRefreshes);
@@ -97,7 +99,7 @@ describe("/internal/email-send-price — price of one cold email sent to a lead"
     expect((await request(app).post("/internal/email-send-price/refresh").set(API_KEY)).status).toBe(200);
     const res = await request(app).get("/internal/email-send-price").set(API_KEY);
     expect(res.body.totals).toMatchObject({ spendUsd: 197, paidUsd: 200, vatUsd: 8 });
-    expect(res.body.currentPriceUsdCents).toBeCloseTo(3.2833, 4);
+    expect(res.body.sinceInceptionPriceUsdCents).toBeCloseTo(3.2833, 4);
     expect(res.body.vendors.find((v: { key: string }) => v.key === "gandi order")).toMatchObject({ paidUsd: 40, vatUsd: 8, vatBasis: "declared 20%: Every line is a price x 1.2" });
     expect(res.body.vatRule).toMatch(/EXCLUDING VAT/);
   });
@@ -132,20 +134,32 @@ describe("/internal/email-send-price — price of one cold email sent to a lead"
     expect(res.status).toBe(200);
     // net: (40 + 97 + 63 - 3) USD = 197 USD over 6000 emails = 3.2833 US cents; gross 200 USD = 3.3333 beside it
     expect(res.body.totals).toEqual({ spendUsd: 197, paidUsd: 200, refundedUsd: 3, emailsToLeads: 6000, vatUsd: 0, vatBasis: "declared 0%: Bills excluding VAT (owner 2026-10-01)" });
-    expect(res.body.currentPriceUsdCents).toBeCloseTo(3.2833, 4);
+    expect(res.body.sinceInceptionPriceUsdCents).toBeCloseTo(3.2833, 4);
     expect(res.body.currentGrossPriceUsdCents).toBeCloseTo(3.3333, 4);
+    // Nothing was sent in the last 30 days: no current price over zero emails, whatever still runs.
+    expect(res.body.currentPriceUsdCents).toBeNull();
+    expect(res.body.runningCost.trailingEmailsPerDay).toBe(0);
+    for (const l of res.body.runningCost.lines as { coversFrom: string; coversUntil: string }[]) {
+      expect(l.coversFrom <= today && today < l.coversUntil).toBe(true);
+    }
     expect(res.body.asOf).toBe(today);
     expect(res.body.stale).toBe(false);
     expect(res.body.firstPaymentOn).toBe("2026-02-10");
     expect(res.body.firstSendOn).toBe("2026-02-19");
 
-    const daily = res.body.daily as { day: string; priceUsdCents: number | null }[];
+    const daily = res.body.daily as { day: string; priceUsdCents: number | null; sinceInceptionPriceUsdCents: number | null }[];
     expect(daily[0].day).toBe("2026-02-10");
     expect(daily[daily.length - 1].day).toBe(today);
     const days = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse("2026-02-10T00:00:00Z")) / 86_400_000) + 1;
     expect(daily).toHaveLength(days);
-    expect(daily.find((d) => d.day === "2026-02-18")!.priceUsdCents).toBeNull();
-    expect(daily.find((d) => d.day === "2026-02-19")!.priceUsdCents).toBe(4); // 40 USD / 1000
+    expect(daily.find((d) => d.day === "2026-02-18")!.sinceInceptionPriceUsdCents).toBeNull();
+    expect(daily.find((d) => d.day === "2026-02-19")!.sinceInceptionPriceUsdCents).toBe(4); // 40 USD / 1000
+    // Current price on 2026-03-12, every payment covering that day / its days: Gandi 40 USD over a year,
+    // Instantly 97 USD over Feb 20 - Mar 20 (28 days), forge 63 USD minus its 3 USD refund over a month
+    // each (31 days); 6000 emails over the 30 days before = 200 a day.
+    expect(daily.find((d) => d.day === "2026-03-12")!.priceUsdCents).toBeCloseTo((4000 / 365 + 9700 / 28 + 6000 / 31) / 200, 4);
+    // Instantly's month is over on 2026-03-20: it stops loading.
+    expect(daily.find((d) => d.day === "2026-03-20")!.priceUsdCents).toBeCloseTo((4000 / 365 + 6000 / 31) / 200, 4);
 
     const forge = res.body.vendors.find((v: { key: string }) => v.key === "forge");
     expect(forge).toMatchObject({ firstPaidOn: "2026-03-05", lastPaidOn: "2026-03-05", paidUsd: 63, refundedUsd: 3, netUsd: 60, refunds: 1 });
@@ -158,6 +172,35 @@ describe("/internal/email-send-price — price of one cold email sent to a lead"
 
     const raw = await db.select().from(emailSendPriceRawReads);
     expect(raw.map((r) => r.source).sort()).toEqual(["bank-ledger", "instantly-service"]);
+  });
+
+  it("prices today on the payments whose period covers today, over the last 30 days of sends (EMAIL-PRICE-CURRENT-1123)", async () => {
+    const today = utcDay(new Date());
+    const shift = (n: number) => {
+      const d = new Date(`${today}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + n);
+      return d.toISOString().slice(0, 10);
+    };
+    const periods = Array.from({ length: 30 }, (_, i) => ({
+      periodStart: shift(-30 + i), periodEnd: shift(-29 + i), inProgress: false, toLeads: 1000, manualReplies: 0, warmup: 0, warmupReplies: 0, seeds: 0, leadsEmailed: 1000,
+    }));
+    // Declared terms: instantly = 1 month (this plan is long over, sunk), gandi order = 12 months.
+    const ledger = {
+      ...LEDGER,
+      payments: [payment("instantly", shift(-400), 9700), payment("gandi order", shift(-10), 365)],
+    };
+    stubUpstreams({ ledger: () => json(ledger), instantly: () => json({ ...SENDS, periods }) });
+    expect((await request(app).post("/internal/email-send-price/refresh").set(API_KEY)).status).toBe(200);
+    const res = await request(app).get("/internal/email-send-price").set(API_KEY);
+    const lines = res.body.runningCost.lines as { vendor: string; coversUntil: string; perDayUsdCents: number }[];
+    expect(lines.map((l) => l.vendor)).toEqual(["gandi order"]);
+    const perDay = 36_500 / Math.round((Date.parse(`${lines[0].coversUntil}T00:00:00Z`) - Date.parse(`${shift(-10)}T00:00:00Z`)) / 86_400_000);
+    expect(res.body.currentPriceUsdCents).toBeCloseTo(perDay / 1000, 4);
+    expect(res.body.runningCost.trailingEmailsPerDay).toBe(1000);
+    expect(res.body.runningCost.byVendor.find((v: { key: string }) => v.key === "instantly")).toMatchObject({ perDayUsdCents: 0, priceUsdCents: 0 });
+    // The superseded average still carries the 9,700 USD plan: served beside, much higher.
+    expect(res.body.sinceInceptionPriceUsdCents).toBeGreaterThan(res.body.currentPriceUsdCents * 100);
+    expect(await db.select().from(emailInfraSpendCoverage)).toHaveLength(2);
   });
 
   it("is idempotent: a second refresh the same day writes the same series", async () => {

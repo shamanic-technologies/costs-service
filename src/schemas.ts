@@ -819,7 +819,7 @@ registry.registerPath({
   },
 });
 
-// --- Price of one cold email sent to a lead (staff-only, displayed, never billed) ---
+// --- Price of one cold email sent to a lead (staff-only; the real cost the billed email price is built on) ---
 
 const RefreshAttemptSchema = z
   .object({
@@ -850,7 +850,10 @@ const EmailSendPriceDaySchema = z
     emailsToLeads: z.number().int().describe("Emails sent to leads that UTC day"),
     cumulativeSpendUsd: z.number(),
     cumulativeEmailsToLeads: z.number().int(),
-    priceUsdCents: z.number().nullable().describe("cumulativeSpendUsd*100 / cumulativeEmailsToLeads (net); null before the first send"),
+    priceUsdCents: z.number().nullable().describe("THE price that day: runningCostUsdCentsPerDay / trailingEmailsPerDay; 0 when no payment covers the day, null when the 30 days before sent nothing"),
+    runningCostUsdCentsPerDay: z.number().describe("Email-infrastructure cost per day that day: every payment covering it / the days it covers (US cents, excluding VAT)"),
+    trailingEmailsPerDay: z.number().describe("Emails to leads per day over the 30 full days before"),
+    sinceInceptionPriceUsdCents: z.number().nullable().describe("SUPERSEDED 2026-10-01 figure, shown beside: cumulativeSpendUsd*100 / cumulativeEmailsToLeads (net)"),
     cumulativePaidUsd: z.number().describe("Gross: every payment since inception, refunds ignored"),
     grossPriceUsdCents: z.number().nullable().describe("cumulativePaidUsd*100 / cumulativeEmailsToLeads"),
     monthToDateSpendUsd: z.number(),
@@ -867,8 +870,32 @@ export const EmailSendPriceResponseSchema = z
     refreshedAt: z.string().describe("When the served series was computed"),
     stale: z.boolean().describe("True when the served series was not computed today (UTC): the last refresh failed or has not run yet"),
     lastRefresh: RefreshAttemptSchema.nullable().describe("The most recent attempt, failed ones included"),
-    currentPriceUsdCents: z.number().nullable().describe("US cents per email sent to a lead, since inception, on NET spend (paid minus refunded)"),
-    currentGrossPriceUsdCents: z.number().nullable().describe("Same on GROSS paid (refunds ignored), shown beside"),
+    currentPriceUsdCents: z.number().nullable().describe("US cents per email sent to a lead NOW (EMAIL-PRICE-CURRENT-1123): the running cost per day / emails per day; the real cost the billed email price is built on"),
+    runningCost: z
+      .object({
+        perDayUsd: z.number().describe("What the email infrastructure costs per day on asOf, excluding VAT"),
+        trailingEmailsPerDay: z.number(),
+        trailingDays: z.number().int(),
+        byVendor: z.array(
+          z.object({ key: z.string(), label: z.string(), perDayUsdCents: z.number(), priceUsdCents: z.number().nullable().describe("This vendor's share of the price") }),
+        ),
+        lines: z
+          .array(
+            z.object({
+              vendor: z.string(),
+              bookedOn: z.string(),
+              netUsd: z.number(),
+              coversFrom: z.string(),
+              coversUntil: z.string().describe("First day not covered"),
+              perDayUsdCents: z.number(),
+              basis: z.string().describe("The declared term and its evidence"),
+            }),
+          )
+          .describe("Every bank line whose covered period includes asOf"),
+      })
+      .describe("The numerator of currentPriceUsdCents, line by line"),
+    sinceInceptionPriceUsdCents: z.number().nullable().describe("SUPERSEDED (owner rule 2026-10-01, replaced 2026-11-23): net spend since inception / emails since inception, served beside so the change stays visible"),
+    currentGrossPriceUsdCents: z.number().nullable().describe("Since inception on GROSS paid (refunds ignored), superseded like sinceInceptionPriceUsdCents"),
     currentMonthPriceUsdCents: z.number().nullable(),
     totals: z.object({
       spendUsd: z.number().describe("Net consumed since inception = paidUsd - refundedUsd: the numerator of the price"),
@@ -908,7 +935,8 @@ export const EmailSendPriceResponseSchema = z
         monthPriceUsdCents: z.number().nullable(),
         cumulativeSpendUsd: z.number().describe("At the month's last point (month end, or today)"),
         cumulativeEmailsToLeads: z.number().int(),
-        priceUsdCents: z.number().nullable(),
+        priceUsdCents: z.number().nullable().describe("The current price at the month's last point"),
+        sinceInceptionPriceUsdCents: z.number().nullable().describe("The superseded since-inception price at that point"),
         cumulativePaidUsd: z.number(),
         grossPriceUsdCents: z.number().nullable(),
       }),
@@ -921,7 +949,7 @@ registry.registerPath({
   method: "get",
   path: "/internal/email-send-price",
   operationId: "getEmailSendPrice",
-  summary: "Price of one cold email sent to a lead: infra spend since inception / emails to leads since inception, daily series (service api key only)",
+  summary: "Price of one cold email sent to a lead: the email infrastructure's running cost per day / emails to leads per day (since-inception average served beside), daily series (service api key only)",
   description:
     "Displayed figure only, no billed price reads it. Served from the last SUCCEEDED daily refresh; when a refresh fails the previous series stays served (`stale: true`, `lastRefresh.error` says why).",
   security: [{ ApiKeyAuth: [] }],

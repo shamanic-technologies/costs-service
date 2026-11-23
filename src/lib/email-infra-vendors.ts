@@ -7,8 +7,9 @@
  * lower-cased words). A key the ledger has never paid makes the refresh fail loud (the ledger
  * answers 404), so a typo here cannot read as "we spent nothing".
  *
- * Owner rule (2026-10-01, LOCKED): everything ever paid to these vendors since inception, all
- * included — Gandi orders placed before the first send count too ("tout confondu").
+ * Each vendor's payments are spread over the period they cover (`src/lib/email-infra-coverage.ts`,
+ * EMAIL-PRICE-CURRENT-1123, owner 2026-11-23): the price follows the CURRENT running cost. The
+ * 2026-10-01 since-inception rule ("tout confondu") is superseded and only served beside, labelled.
  */
 export type EmailInfraVendor = { key: string; label: string; what: string };
 

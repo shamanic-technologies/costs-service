@@ -316,8 +316,9 @@ describe("replaying consumption at its real cost", () => {
     p("2026-10-01", "zai", "catalogue-vendor-cost", 0.7),
   ]);
 
-  it("spreads lump spend at its latest value (an early email is not priced at the setup average)", () => {
-    expect(real("2026-03-01", "email")).toBe(3.11);
+  it("prices an email at its consumption day's own running cost, never at a later value (EMAIL-PRICE-CURRENT-1123)", () => {
+    expect(real("2026-03-01", "email")).toBe(494.7);
+    expect(real("2026-10-01", "email")).toBe(3.11);
   });
 
   it("prices an API unit at the list cost of its consumption day, never averaged", () => {

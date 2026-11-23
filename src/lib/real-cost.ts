@@ -376,12 +376,11 @@ export type GoldPoint = {
 /**
  * Real cost of ONE unit consumed on `day`, for replaying consumption (`/internal/price-comparison`).
  *
- * Spend we pay as a lump is spread over EVERY unit since 2026-01-01 at its latest value, so the
- * real cost summed over all units equals what we paid: the email send price and a subscription's
- * cost per credit are since-inception averages whose early values are setup spend over a handful of
- * units (the email price was ~$5 an email on 2026-03-01, over 74 emails). Every other method (an
- * API at its list cost, a catalogue vendor cost) uses the consumption day's own real cost: a vendor
- * price change is a fact of that day.
+ * A subscription's cost per credit is a since-inception average whose early values are setup spend
+ * over a handful of units, so it is spread over EVERY unit since 2026-01-01 at its latest value.
+ * Every other method uses the consumption day's own real cost: an API at its list cost, a catalogue
+ * vendor cost, and since EMAIL-PRICE-CURRENT-1123 the email send price, which is that day's running
+ * cost of the email infrastructure (an average would re-load sunk spend onto today's emails).
  */
 export function replayRealCost(points: GoldPoint[]): (day: string, costName: string) => number | null {
   const byKey = new Map<string, GoldPoint>();
@@ -391,7 +390,7 @@ export function replayRealCost(points: GoldPoint[]): (day: string, costName: str
     const l = latest.get(p.costName);
     if (!l || p.day > l.day) latest.set(p.costName, p);
   }
-  const AMORTIZED = new Set(["email-send-price", "subscription", "included-at-vendor"]);
+  const AMORTIZED = new Set(["subscription", "included-at-vendor"]);
   return (day, costName) => {
     const last = latest.get(costName);
     const own = byKey.get(`${day}|${costName}`);
