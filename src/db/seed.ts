@@ -132,6 +132,17 @@ export function withChinaVat(costPerUnitInUsdCents: string): string {
 }
 
 /**
+ * OpenRouter's fee on every credit purchase (5.5%). We pay it on top of the host's list price
+ * for every token we buy through OpenRouter and never get it back, so, like DeepSeek's VAT, it
+ * is part of the vendor basis (applied BEFORE the markup), never part of the markup.
+ */
+export const OPENROUTER_CREDIT_FEE_MULTIPLIER = 1.055;
+
+export function withOpenRouterFee(costPerUnitInUsdCents: string): string {
+  return scaleFixedDecimalCost(costPerUnitInUsdCents, OPENROUTER_CREDIT_FEE_MULTIPLIER, "OpenRouter fee multiplier");
+}
+
+/**
  * How a catalog line's price relates to what the vendor charges. Two values, no third, and no
  * default anywhere: every seed row states its own class (the field is required on
  * `SeedProviderCost`, so a row that omits it does not compile) and the column is NOT NULL.
@@ -223,9 +234,8 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   google: "google.com",
   instantly: "instantly.ai",
   moonshot: "moonshot.ai",
-  // Open-weight LLM hosts, OpenAI-compatible APIs (OPEN-LLM-FREE-1124).
-  cerebras: "cerebras.ai",
-  groq: "groq.com",
+  // OpenRouter, one direct vendor, each model pinned to one host (OPENROUTER-CHEAP-LLM-1124).
+  openrouter: "openrouter.ai",
   openai: "openai.com",
   postmark: "postmarkapp.com",
   revolut: "revolut.com",
@@ -659,32 +669,45 @@ export const KIMI_K3_1_PRO_COSTS: SeedProviderCost[] = [
 ];
 
 /**
- * Open-weight models (gpt-oss-120b, Qwen 3.8 27B) on Cerebras and Groq, direct vendors over
- * their OpenAI-compatible APIs (chat-service OPEN-LLM-FREE-1124). Full Developer /
- * pay-as-you-go list price, read 2026-11-24; each free tier is a vendor discount = our margin,
- * never seeded at $0.
- * - Cerebras (inference-docs.cerebras.ai/models/openai-oss, /models/qwen-3.8-27b): no cached-input
- *   price ("Input tokens, whether served from the cache or processed fresh, are billed at the
- *   standard input token rate"), so no cached-input row.
- * - Groq (console.groq.com/docs/models): cached input 50% off, caching listed only for gpt-oss
- *   models (console.groq.com/docs/prompt-caching), so the Qwen cached row is the full input rate.
+ * Cheap open models through OpenRouter (chat-service OPENROUTER-CHEAP-LLM-1124): ONE vendor
+ * (`openrouter`), each model pinned to ONE host (provider routing, no fallback). Price = the
+ * pinned host's FULL list price on OpenRouter's endpoints API
+ * (openrouter.ai/api/v1/models/<id>/endpoints, read 2026-11-24) + OpenRouter's 5.5% credit fee
+ * (`withOpenRouterFee`), then the store markup. Never a `:free` variant, never $0, never a promo:
+ * - Tencent HY4 Flash: the endpoint carries a 50% OpenRouter `discount` today; the FULL list is seeded.
+ * - DeepSeek V4.1 Flash 1017 on Alibaba: time-of-day `overrides` (00:00-14:00 UTC = 2x); the PEAK
+ *   rate is seeded flat (cheap hours are margin).
+ * - Qwen 3.7 Flash: prompt-length tiers (>32K, >256K); chat-service bills a prompt over 32K under
+ *   the `-long-context-` rows, which carry the TOP (>256K) tier.
+ * A dimension the host does not price is seeded at its input price (what the host invoices).
  */
-function openWeightTokenCost(provider: "cerebras" | "groq", name: string, type: string, vendorUsdPerMTok: number): SeedProviderCost {
-  return { ...openAiTokenCost(name, type, vendorUsdPerMTok), provider, providerDomain: PROVIDER_DOMAINS[provider] };
+const OPENROUTER_MODELS: Array<{ prefix: string; label: string; input: number; cached: number; cacheWrite: number; output: number }> = [
+  { prefix: "openrouter-antdigital-ling-3.0-tiny", label: "Ling 3.0 Tiny, OpenRouter/AntDigital", input: 0.015, cached: 0.003, cacheWrite: 0.015, output: 0.045 },
+  { prefix: "openrouter-nexagi-nex-n2.5-mini", label: "Nex N2.5 Mini, OpenRouter/Nex AGI", input: 0.025, cached: 0.0025, cacheWrite: 0.025, output: 0.1 },
+  { prefix: "openrouter-tencent-hy4-flash", label: "HY4 Flash, OpenRouter/Tencent", input: 0.07, cached: 0.003, cacheWrite: 0.07, output: 0.281 },
+  { prefix: "openrouter-alibaba-deepseek-v4.1-flash-1017", label: "DeepSeek V4.1 Flash 1017, OpenRouter/Alibaba", input: 0.18, cached: 0.0036, cacheWrite: 0.18, output: 0.72 },
+  { prefix: "openrouter-alibaba-qwen3.7-flash", label: "Qwen 3.7 Flash, OpenRouter/Alibaba", input: 0.03, cached: 0.006, cacheWrite: 0.038, output: 0.13 },
+  { prefix: "openrouter-alibaba-qwen3.7-flash-long-context", label: "Qwen 3.7 Flash, prompt over 32K, OpenRouter/Alibaba", input: 0.2, cached: 0.04, cacheWrite: 0.25, output: 0.8 },
+  { prefix: "openrouter-deepinfra-llama-3.1-8b-instruct", label: "Llama 3.1 8B Instruct, OpenRouter/DeepInfra", input: 0.02, cached: 0.02, cacheWrite: 0.02, output: 0.04 },
+  { prefix: "openrouter-deepinfra-gpt-oss-20b", label: "gpt-oss-20b, OpenRouter/DeepInfra", input: 0.03, cached: 0.015, cacheWrite: 0.03, output: 0.14 },
+  { prefix: "openrouter-deepinfra-gpt-oss-120b", label: "gpt-oss-120b, OpenRouter/DeepInfra", input: 0.037, cached: 0.0185, cacheWrite: 0.037, output: 0.17 },
+];
+
+function openRouterTokenCost(name: string, type: string, hostUsdPerMTok: number): SeedProviderCost {
+  return {
+    ...openAiTokenCost(name, type, hostUsdPerMTok),
+    provider: "openrouter",
+    providerDomain: PROVIDER_DOMAINS.openrouter,
+    costPerUnitInUsdCents: applyCostRiskMultiplier(withOpenRouterFee((hostUsdPerMTok / 10_000).toFixed(10))),
+  };
 }
 
-export const OPEN_WEIGHT_LLM_COSTS: SeedProviderCost[] = [
-  openWeightTokenCost("cerebras", "cerebras-gpt-oss-120b-tokens-input", "Input tokens (gpt-oss-120b, Cerebras)", 0.35),
-  openWeightTokenCost("cerebras", "cerebras-gpt-oss-120b-tokens-output", "Output tokens (gpt-oss-120b, Cerebras)", 0.75),
-  openWeightTokenCost("cerebras", "cerebras-qwen-3.8-27b-tokens-input", "Input tokens (Qwen 3.8 27B, Cerebras)", 0.99),
-  openWeightTokenCost("cerebras", "cerebras-qwen-3.8-27b-tokens-output", "Output tokens (Qwen 3.8 27B, Cerebras)", 1.49),
-  openWeightTokenCost("groq", "groq-gpt-oss-120b-tokens-input", "Input tokens (gpt-oss-120b, Groq)", 0.15),
-  openWeightTokenCost("groq", "groq-gpt-oss-120b-tokens-cached-input", "Cached input tokens (gpt-oss-120b, Groq)", 0.075),
-  openWeightTokenCost("groq", "groq-gpt-oss-120b-tokens-output", "Output tokens (gpt-oss-120b, Groq)", 0.6),
-  openWeightTokenCost("groq", "groq-qwen3.8-27b-tokens-input", "Input tokens (Qwen 3.8 27B, Groq)", 0.8),
-  openWeightTokenCost("groq", "groq-qwen3.8-27b-tokens-cached-input", "Cached input tokens (Qwen 3.8 27B, Groq)", 0.8),
-  openWeightTokenCost("groq", "groq-qwen3.8-27b-tokens-output", "Output tokens (Qwen 3.8 27B, Groq)", 4),
-];
+export const OPENROUTER_LLM_COSTS: SeedProviderCost[] = OPENROUTER_MODELS.flatMap((m) => [
+  openRouterTokenCost(`${m.prefix}-tokens-input`, `Input tokens (${m.label})`, m.input),
+  openRouterTokenCost(`${m.prefix}-tokens-cached-input`, `Cached input tokens (${m.label})`, m.cached),
+  openRouterTokenCost(`${m.prefix}-tokens-cache-write`, `Cache write tokens (${m.label})`, m.cacheWrite),
+  openRouterTokenCost(`${m.prefix}-tokens-output`, `Output tokens (${m.label})`, m.output),
+]);
 
 export const GEMINI_4_ARGON_COSTS: SeedProviderCost[] = [
   googleGeminiCost("google-argon-4-tokens-input", "Input tokens (Gemini 4 Argon)", "0.0004000000"),
@@ -1770,7 +1793,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   ...GOOGLE_GEMINI_CACHE_AND_LONG_CONTEXT_COSTS,
   ...OPENAI_CACHE_WRITE_AND_LONG_CONTEXT_COSTS,
   ...KIMI_K3_1_PRO_COSTS,
-  ...OPEN_WEIGHT_LLM_COSTS,
+  ...OPENROUTER_LLM_COSTS,
   ...GEMINI_4_ARGON_COSTS,
   ...GEMINI_4_HYDROGEN_COSTS,
   // Google Gemini Embedding 001: $0.15/MTok input (standard tier).
@@ -3019,16 +3042,9 @@ export const SEED_PLATFORM_COSTS = [
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
-  // Cerebras / Groq — direct vendor accounts (OPEN-LLM-FREE-1124). Resolve the
-  // cerebras-* / groq-* open-weight model prices.
+  // OpenRouter — direct vendor account (OPENROUTER-CHEAP-LLM-1124). Resolves openrouter-*.
   {
-    provider: "cerebras",
-    planTier: "pay-as-you-go",
-    billingCycle: "monthly",
-    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
-  },
-  {
-    provider: "groq",
+    provider: "openrouter",
     planTier: "pay-as-you-go",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),

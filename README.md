@@ -279,16 +279,42 @@ A routed line is priced at **1 cent per USD cent of vendor spend**, so the consu
 | `moonshot-kimi-k3.1-pro-tokens-input` | 0.001 | 1M tokens | Input tokens (Kimi K3.1 Pro) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
 | `moonshot-kimi-k3.1-pro-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (Kimi K3.1 Pro) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
 | `moonshot-kimi-k3.1-pro-tokens-output` | 0.005 | 1M tokens | Output tokens (Kimi K3.1 Pro) | moonshot | moonshot.ai | pay-as-you-go | monthly | marked-up |
-| `cerebras-gpt-oss-120b-tokens-input` | 0.000175 | 1M tokens | Input tokens (gpt-oss-120b, Cerebras) | cerebras | cerebras.ai | pay-as-you-go | monthly | marked-up |
-| `cerebras-gpt-oss-120b-tokens-output` | 0.000375 | 1M tokens | Output tokens (gpt-oss-120b, Cerebras) | cerebras | cerebras.ai | pay-as-you-go | monthly | marked-up |
-| `cerebras-qwen-3.8-27b-tokens-input` | 0.000495 | 1M tokens | Input tokens (Qwen 3.8 27B, Cerebras) | cerebras | cerebras.ai | pay-as-you-go | monthly | marked-up |
-| `cerebras-qwen-3.8-27b-tokens-output` | 0.000745 | 1M tokens | Output tokens (Qwen 3.8 27B, Cerebras) | cerebras | cerebras.ai | pay-as-you-go | monthly | marked-up |
-| `groq-gpt-oss-120b-tokens-input` | 0.000075 | 1M tokens | Input tokens (gpt-oss-120b, Groq) | groq | groq.com | pay-as-you-go | monthly | marked-up |
-| `groq-gpt-oss-120b-tokens-cached-input` | 0.0000375 | 1M tokens | Cached input tokens (gpt-oss-120b, Groq) | groq | groq.com | pay-as-you-go | monthly | marked-up |
-| `groq-gpt-oss-120b-tokens-output` | 0.0003 | 1M tokens | Output tokens (gpt-oss-120b, Groq) | groq | groq.com | pay-as-you-go | monthly | marked-up |
-| `groq-qwen3.8-27b-tokens-input` | 0.0004 | 1M tokens | Input tokens (Qwen 3.8 27B, Groq) | groq | groq.com | pay-as-you-go | monthly | marked-up |
-| `groq-qwen3.8-27b-tokens-cached-input` | 0.0004 | 1M tokens | Cached input tokens (Qwen 3.8 27B, Groq) | groq | groq.com | pay-as-you-go | monthly | marked-up |
-| `groq-qwen3.8-27b-tokens-output` | 0.002 | 1M tokens | Output tokens (Qwen 3.8 27B, Groq) | groq | groq.com | pay-as-you-go | monthly | marked-up |
+| `openrouter-antdigital-ling-3.0-tiny-tokens-input` | 0.0000079125 | 1M tokens | Input tokens (Ling 3.0 Tiny, OpenRouter/AntDigital) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-antdigital-ling-3.0-tiny-tokens-cached-input` | 0.0000015825 | 1M tokens | Cached input tokens (Ling 3.0 Tiny, OpenRouter/AntDigital) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-antdigital-ling-3.0-tiny-tokens-cache-write` | 0.0000079125 | 1M tokens | Cache write tokens (Ling 3.0 Tiny, OpenRouter/AntDigital) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-antdigital-ling-3.0-tiny-tokens-output` | 0.0000237375 | 1M tokens | Output tokens (Ling 3.0 Tiny, OpenRouter/AntDigital) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-nexagi-nex-n2.5-mini-tokens-input` | 0.0000131875 | 1M tokens | Input tokens (Nex N2.5 Mini, OpenRouter/Nex AGI) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-nexagi-nex-n2.5-mini-tokens-cached-input` | 0.000001319 | 1M tokens | Cached input tokens (Nex N2.5 Mini, OpenRouter/Nex AGI) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-nexagi-nex-n2.5-mini-tokens-cache-write` | 0.0000131875 | 1M tokens | Cache write tokens (Nex N2.5 Mini, OpenRouter/Nex AGI) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-nexagi-nex-n2.5-mini-tokens-output` | 0.00005275 | 1M tokens | Output tokens (Nex N2.5 Mini, OpenRouter/Nex AGI) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-tencent-hy4-flash-tokens-input` | 0.000036925 | 1M tokens | Input tokens (HY4 Flash, OpenRouter/Tencent) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-tencent-hy4-flash-tokens-cached-input` | 0.0000015825 | 1M tokens | Cached input tokens (HY4 Flash, OpenRouter/Tencent) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-tencent-hy4-flash-tokens-cache-write` | 0.000036925 | 1M tokens | Cache write tokens (HY4 Flash, OpenRouter/Tencent) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-tencent-hy4-flash-tokens-output` | 0.0001482275 | 1M tokens | Output tokens (HY4 Flash, OpenRouter/Tencent) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-alibaba-deepseek-v4.1-flash-1017-tokens-input` | 0.00009495 | 1M tokens | Input tokens (DeepSeek V4.1 Flash 1017, OpenRouter/Alibaba) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-alibaba-deepseek-v4.1-flash-1017-tokens-cached-input` | 0.000001899 | 1M tokens | Cached input tokens (DeepSeek V4.1 Flash 1017, OpenRouter/Alibaba) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-alibaba-deepseek-v4.1-flash-1017-tokens-cache-write` | 0.00009495 | 1M tokens | Cache write tokens (DeepSeek V4.1 Flash 1017, OpenRouter/Alibaba) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-alibaba-deepseek-v4.1-flash-1017-tokens-output` | 0.0003798 | 1M tokens | Output tokens (DeepSeek V4.1 Flash 1017, OpenRouter/Alibaba) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-alibaba-qwen3.7-flash-tokens-input` | 0.000015825 | 1M tokens | Input tokens (Qwen 3.7 Flash, OpenRouter/Alibaba) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-alibaba-qwen3.7-flash-tokens-cached-input` | 0.000003165 | 1M tokens | Cached input tokens (Qwen 3.7 Flash, OpenRouter/Alibaba) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-alibaba-qwen3.7-flash-tokens-cache-write` | 0.000020045 | 1M tokens | Cache write tokens (Qwen 3.7 Flash, OpenRouter/Alibaba) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-alibaba-qwen3.7-flash-tokens-output` | 0.000068575 | 1M tokens | Output tokens (Qwen 3.7 Flash, OpenRouter/Alibaba) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-alibaba-qwen3.7-flash-long-context-tokens-input` | 0.0001055 | 1M tokens | Input tokens (Qwen 3.7 Flash, prompt over 32K, OpenRouter/Alibaba) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-alibaba-qwen3.7-flash-long-context-tokens-cached-input` | 0.0000211 | 1M tokens | Cached input tokens (Qwen 3.7 Flash, prompt over 32K, OpenRouter/Alibaba) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-alibaba-qwen3.7-flash-long-context-tokens-cache-write` | 0.000131875 | 1M tokens | Cache write tokens (Qwen 3.7 Flash, prompt over 32K, OpenRouter/Alibaba) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-alibaba-qwen3.7-flash-long-context-tokens-output` | 0.000422 | 1M tokens | Output tokens (Qwen 3.7 Flash, prompt over 32K, OpenRouter/Alibaba) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-deepinfra-llama-3.1-8b-instruct-tokens-input` | 0.00001055 | 1M tokens | Input tokens (Llama 3.1 8B Instruct, OpenRouter/DeepInfra) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-deepinfra-llama-3.1-8b-instruct-tokens-cached-input` | 0.00001055 | 1M tokens | Cached input tokens (Llama 3.1 8B Instruct, OpenRouter/DeepInfra) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-deepinfra-llama-3.1-8b-instruct-tokens-cache-write` | 0.00001055 | 1M tokens | Cache write tokens (Llama 3.1 8B Instruct, OpenRouter/DeepInfra) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-deepinfra-llama-3.1-8b-instruct-tokens-output` | 0.0000211 | 1M tokens | Output tokens (Llama 3.1 8B Instruct, OpenRouter/DeepInfra) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-deepinfra-gpt-oss-20b-tokens-input` | 0.000015825 | 1M tokens | Input tokens (gpt-oss-20b, OpenRouter/DeepInfra) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-deepinfra-gpt-oss-20b-tokens-cached-input` | 0.0000079125 | 1M tokens | Cached input tokens (gpt-oss-20b, OpenRouter/DeepInfra) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-deepinfra-gpt-oss-20b-tokens-cache-write` | 0.000015825 | 1M tokens | Cache write tokens (gpt-oss-20b, OpenRouter/DeepInfra) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-deepinfra-gpt-oss-20b-tokens-output` | 0.00007385 | 1M tokens | Output tokens (gpt-oss-20b, OpenRouter/DeepInfra) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-deepinfra-gpt-oss-120b-tokens-input` | 0.0000195175 | 1M tokens | Input tokens (gpt-oss-120b, OpenRouter/DeepInfra) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-deepinfra-gpt-oss-120b-tokens-cached-input` | 0.000009759 | 1M tokens | Cached input tokens (gpt-oss-120b, OpenRouter/DeepInfra) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-deepinfra-gpt-oss-120b-tokens-cache-write` | 0.0000195175 | 1M tokens | Cache write tokens (gpt-oss-120b, OpenRouter/DeepInfra) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
+| `openrouter-deepinfra-gpt-oss-120b-tokens-output` | 0.000089675 | 1M tokens | Output tokens (gpt-oss-120b, OpenRouter/DeepInfra) | openrouter | openrouter.ai | pay-as-you-go | monthly | marked-up |
 | `google-argon-4-tokens-input` | 0.002 | 1M tokens | Input tokens (Gemini 4 Argon) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-argon-4-tokens-cached-input` | 0.0001 | 1M tokens | Cached input tokens (Gemini 4 Argon) | google | google.com | pay-as-you-go | monthly | marked-up |
 | `google-argon-4-tokens-output` | 0.01 | 1M tokens | Output tokens (Gemini 4 Argon) | google | google.com | pay-as-you-go | monthly | marked-up |
@@ -438,8 +464,7 @@ Each provider has an active platform cost config that determines which cost tier
 | google | pay-as-you-go | monthly |
 | instantly | hypergrowth | monthly |
 | moonshot | pay-as-you-go | monthly |
-| cerebras | pay-as-you-go | monthly |
-| groq | pay-as-you-go | monthly |
+| openrouter | pay-as-you-go | monthly |
 | openai | pay-as-you-go | monthly |
 | postmark | pro-10k | monthly |
 | aws-ses | pay-as-you-go | monthly |
