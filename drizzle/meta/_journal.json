@@ -162,6 +162,13 @@
       "when": 1795400000000,
       "tag": "0022_email_price_current",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795500000000,
+      "tag": "0023_drop_cerebras_groq",
+      "breakpoints": true
     }
   ]
 }

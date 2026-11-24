@@ -36,12 +36,6 @@ const VENDOR_USD_PER_MTOK: Array<[name: string, usdPerMTok: number]> = [
   ["anthropic-fable-5.1-tokens-cache-write-5m", 12.5],
   ["anthropic-sonnet-5.5-tokens-cache-write-5m", 2.5],
   ["anthropic-opus-5.5-tokens-cache-write-5m", 5],
-  // Added 2026-11-24 (OPEN-LLM-FREE-1124): open-weight models on Cerebras / Groq.
-  ["cerebras-gpt-oss-120b-tokens-input", 0.35],
-  ["cerebras-gpt-oss-120b-tokens-output", 0.75],
-  ["groq-gpt-oss-120b-tokens-input", 0.15],
-  ["groq-gpt-oss-120b-tokens-cached-input", 0.075],
-  ["groq-qwen3.8-27b-tokens-output", 4],
   // Added 2026-10-09: Haiku 5.5, both prompt-size tiers (vendor page read that day).
   ["anthropic-haiku-5.5-tokens-input", 0.1],
   ["anthropic-haiku-5.5-tokens-cached-input", 0.01],
