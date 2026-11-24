@@ -223,6 +223,9 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   google: "google.com",
   instantly: "instantly.ai",
   moonshot: "moonshot.ai",
+  // Open-weight LLM hosts, OpenAI-compatible APIs (OPEN-LLM-FREE-1124).
+  cerebras: "cerebras.ai",
+  groq: "groq.com",
   openai: "openai.com",
   postmark: "postmarkapp.com",
   revolut: "revolut.com",
@@ -585,6 +588,34 @@ export const KIMI_K3_1_PRO_COSTS: SeedProviderCost[] = [
   moonshotTokenCost("moonshot-kimi-k3.1-pro-tokens-input", "Input tokens (Kimi K3.1 Pro)", 2),
   moonshotTokenCost("moonshot-kimi-k3.1-pro-tokens-cached-input", "Cached input tokens (Kimi K3.1 Pro)", 0.2),
   moonshotTokenCost("moonshot-kimi-k3.1-pro-tokens-output", "Output tokens (Kimi K3.1 Pro)", 10),
+];
+
+/**
+ * Open-weight models (gpt-oss-120b, Qwen 3.8 27B) on Cerebras and Groq, direct vendors over
+ * their OpenAI-compatible APIs (chat-service OPEN-LLM-FREE-1124). Full Developer /
+ * pay-as-you-go list price, read 2026-11-24; each free tier is a vendor discount = our margin,
+ * never seeded at $0.
+ * - Cerebras (inference-docs.cerebras.ai/models/openai-oss, /models/qwen-3.8-27b): no cached-input
+ *   price ("Input tokens, whether served from the cache or processed fresh, are billed at the
+ *   standard input token rate"), so no cached-input row.
+ * - Groq (console.groq.com/docs/models): cached input 50% off, caching listed only for gpt-oss
+ *   models (console.groq.com/docs/prompt-caching), so the Qwen cached row is the full input rate.
+ */
+function openWeightTokenCost(provider: "cerebras" | "groq", name: string, type: string, vendorUsdPerMTok: number): SeedProviderCost {
+  return { ...openAiTokenCost(name, type, vendorUsdPerMTok), provider, providerDomain: PROVIDER_DOMAINS[provider] };
+}
+
+export const OPEN_WEIGHT_LLM_COSTS: SeedProviderCost[] = [
+  openWeightTokenCost("cerebras", "cerebras-gpt-oss-120b-tokens-input", "Input tokens (gpt-oss-120b, Cerebras)", 0.35),
+  openWeightTokenCost("cerebras", "cerebras-gpt-oss-120b-tokens-output", "Output tokens (gpt-oss-120b, Cerebras)", 0.75),
+  openWeightTokenCost("cerebras", "cerebras-qwen-3.8-27b-tokens-input", "Input tokens (Qwen 3.8 27B, Cerebras)", 0.99),
+  openWeightTokenCost("cerebras", "cerebras-qwen-3.8-27b-tokens-output", "Output tokens (Qwen 3.8 27B, Cerebras)", 1.49),
+  openWeightTokenCost("groq", "groq-gpt-oss-120b-tokens-input", "Input tokens (gpt-oss-120b, Groq)", 0.15),
+  openWeightTokenCost("groq", "groq-gpt-oss-120b-tokens-cached-input", "Cached input tokens (gpt-oss-120b, Groq)", 0.075),
+  openWeightTokenCost("groq", "groq-gpt-oss-120b-tokens-output", "Output tokens (gpt-oss-120b, Groq)", 0.6),
+  openWeightTokenCost("groq", "groq-qwen3.8-27b-tokens-input", "Input tokens (Qwen 3.8 27B, Groq)", 0.8),
+  openWeightTokenCost("groq", "groq-qwen3.8-27b-tokens-cached-input", "Cached input tokens (Qwen 3.8 27B, Groq)", 0.8),
+  openWeightTokenCost("groq", "groq-qwen3.8-27b-tokens-output", "Output tokens (Qwen 3.8 27B, Groq)", 4),
 ];
 
 export const GEMINI_4_ARGON_COSTS: SeedProviderCost[] = [
@@ -1671,6 +1702,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   ...GOOGLE_GEMINI_CACHE_AND_LONG_CONTEXT_COSTS,
   ...OPENAI_CACHE_WRITE_AND_LONG_CONTEXT_COSTS,
   ...KIMI_K3_1_PRO_COSTS,
+  ...OPEN_WEIGHT_LLM_COSTS,
   ...GEMINI_4_ARGON_COSTS,
   ...GEMINI_4_HYDROGEN_COSTS,
   // Google Gemini Embedding 001: $0.15/MTok input (standard tier).
@@ -2914,6 +2946,20 @@ export const SEED_PLATFORM_COSTS = [
   {
     provider: "instantly",
     planTier: "hypergrowth",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  // Cerebras / Groq — direct vendor accounts (OPEN-LLM-FREE-1124). Resolve the
+  // cerebras-* / groq-* open-weight model prices.
+  {
+    provider: "cerebras",
+    planTier: "pay-as-you-go",
+    billingCycle: "monthly",
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+  },
+  {
+    provider: "groq",
+    planTier: "pay-as-you-go",
     billingCycle: "monthly",
     effectiveFrom: new Date("2025-01-01T00:00:00Z"),
   },
