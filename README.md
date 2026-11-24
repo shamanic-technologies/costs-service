@@ -344,6 +344,19 @@ between 01:00 and 10:00 UTC — well inside the stretch of a UTC day that shares
 Beijing — so the rule lands on whole UTC Saturdays and Sundays. That reduction depends on where
 the windows sit; if the vendor ever moves one past 16:00 UTC it stops holding.
 
+**Chinese public holidays are off-peak all day** (DEEPSEEK-HOLIDAYS-1124; DeepSeek's page, read
+2026-11-24: peak is Mon-Fri "excluding Chinese public holidays"). The live names
+(`deepseek-v4.1-flash-*`) carry each holiday period of the State Council's yearly notice as a
+date-scoped window: off-peak adds `2027-10-01..2027-10-07@00:00-24:00`, peak drops it with
+`!2027-10-01..2027-10-07@00:00-24:00`. Grammar: comma-separated `[!]<scope>@HH:MM-HH:MM`, scope =
+weekday range, UTC date or inclusive UTC date range; an instant is in a regime when a plain
+window covers it and no `!` window does. Holidays are Beijing dates; a Beijing date D runs
+D-1 16:00 to D 16:00 UTC, and every peak window sits on UTC date D, so the UTC date is exact.
+Make-up workdays moved onto a weekend stay off-peak (weekends in full). The list is
+`CHINA_PUBLIC_HOLIDAYS` in `src/db/seed.ts` (2026 + 2027); add next year's periods each
+November, a unit test fails once the current year has none. The retired V4 Flash / V4 Pro
+names keep the weekday-only windows above.
+
 The windows are on the price itself (`regimeHoursUtc`, alongside `pricingRegime`) in every
 `/v1/platform-prices` response, so a consumer reads them rather than hard-coding them.
 A vendor's regimes partition the week, so for one model and one token class exactly one name
@@ -367,7 +380,8 @@ prices already declared keep whatever they were written with.
 **2026-09-10 04:00 UTC**, the instant the vendor states. Its API model id is `deepseek-flash`
 (DeepSeek renamed the Flash id in the same release). It carries a single price version: the
 model did not exist before that instant, so it never had a regime-free rate. Its peak windows
-are DeepSeek's unchanged `Mon-Fri@01:00-04:00,Mon-Fri@06:00-10:00`.
+are DeepSeek's unchanged `Mon-Fri@01:00-04:00,Mon-Fri@06:00-10:00`, minus Chinese public holidays
+(above).
 
 It is a **new model, not a re-price of V4 Flash** — peak cache-miss input is $0.3/1M against
 V4 Flash's $0.44/1M — so it gets its own names and every `deepseek-v4-flash-*` row is left

@@ -313,9 +313,72 @@ export interface SeedProviderCost {
  * strings stop being expressible as whole UTC days.
  */
 export const DEEPSEEK_TIME_OF_DAY_PRICING_FROM = new Date("2026-08-16T16:00:00Z");
-export const DEEPSEEK_PEAK_HOURS_UTC = "Mon-Fri@01:00-04:00,Mon-Fri@06:00-10:00";
-export const DEEPSEEK_OFF_PEAK_HOURS_UTC =
+/**
+ * The weekday-only windows, as written before the holiday rule (DEEPSEEK-HOLIDAYS-1124). Kept
+ * verbatim on the RETIRED V4 Flash / V4 Pro names, whose rows stay exactly as written.
+ */
+export const DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC = "Mon-Fri@01:00-04:00,Mon-Fri@06:00-10:00";
+export const DEEPSEEK_WEEKDAY_OFF_PEAK_HOURS_UTC =
   "Mon-Fri@00:00-01:00,Mon-Fri@04:00-06:00,Mon-Fri@10:00-24:00,Sat-Sun@00:00-24:00";
+
+/**
+ * Chinese public holidays, as the State Council publishes them each November for the next
+ * year (国务院办公厅关于<year>年部分节假日安排的通知). Each range is one holiday period exactly as
+ * the notice states it (放假), weekend days included, as Beijing calendar dates.
+ *   2026: 国办发明电〔2025〕 notice, read on news.cn 2026-11-24 (published 2025-11-04).
+ *   2027: 国办发明电〔2026〕10号, read on news.cn 2026-11-24 (published 2026-11-05).
+ *
+ * DeepSeek's pricing page (read 2026-11-24): "Peak hours are 01:00 - 04:00 and 06:00 - 10:00
+ * UTC, Monday through Friday, excluding Chinese public holidays. All other hours are off-peak,
+ * including weekends and Chinese public holidays in full." So a holiday is off-peak all day.
+ * The make-up WORKDAYS the notice moves onto a weekend (调休上班) are not listed: DeepSeek
+ * keeps weekends off-peak in full, so they change nothing.
+ *
+ * UTC reduction: Beijing date D runs from D-1 16:00 UTC to D 16:00 UTC. Every peak window sits
+ * between 01:00 and 10:00 UTC, inside the part of UTC day D that IS Beijing date D, so "no peak
+ * on Beijing date D" is exactly "no peak on UTC date D" (same argument as the weekend rule).
+ *
+ * ⚠️ Add next year's periods when the State Council publishes them (early November). The
+ * unit test `pricing-regime.test.ts` fails once the current year has no entry.
+ */
+export const CHINA_PUBLIC_HOLIDAYS: ReadonlyArray<{ from: string; to: string; name: string }> = [
+  { from: "2026-01-01", to: "2026-01-03", name: "New Year 2026" },
+  { from: "2026-02-15", to: "2026-02-23", name: "Spring Festival 2026" },
+  { from: "2026-04-04", to: "2026-04-06", name: "Qingming 2026" },
+  { from: "2026-05-01", to: "2026-05-05", name: "Labour Day 2026" },
+  { from: "2026-06-19", to: "2026-06-21", name: "Dragon Boat 2026" },
+  { from: "2026-09-25", to: "2026-09-27", name: "Mid-Autumn 2026" },
+  { from: "2026-10-01", to: "2026-10-07", name: "National Day 2026" },
+  { from: "2027-01-01", to: "2027-01-03", name: "New Year 2027" },
+  { from: "2027-02-05", to: "2027-02-13", name: "Spring Festival 2027" },
+  { from: "2027-04-03", to: "2027-04-05", name: "Qingming 2027" },
+  { from: "2027-05-01", to: "2027-05-05", name: "Labour Day 2027" },
+  { from: "2027-06-09", to: "2027-06-09", name: "Dragon Boat 2027" },
+  { from: "2027-09-15", to: "2027-09-15", name: "Mid-Autumn 2027" },
+  { from: "2027-10-01", to: "2027-10-07", name: "National Day 2027" },
+];
+
+/** `2026-10-01..2026-10-07`, or the bare date for a one-day period. */
+function holidayScope(h: { from: string; to: string }): string {
+  return h.from === h.to ? h.from : `${h.from}..${h.to}`;
+}
+
+/**
+ * Live DeepSeek windows, holidays included. Grammar (see `regimeHoursUtc` in schemas.ts):
+ * comma-separated `[!]<scope>@HH:MM-HH:MM`, half-open on the minute; `<scope>` is a weekday
+ * range (`Mon-Fri`), a UTC date (`2027-06-09`) or a UTC date range (`2027-10-01..2027-10-07`,
+ * both ends included). An instant is in the regime when a plain window covers it and no `!`
+ * window does. Peak drops each holiday; off-peak adds it whole, so the two still partition
+ * every instant.
+ */
+export const DEEPSEEK_PEAK_HOURS_UTC = [
+  DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC,
+  ...CHINA_PUBLIC_HOLIDAYS.map((h) => `!${holidayScope(h)}@00:00-24:00`),
+].join(",");
+export const DEEPSEEK_OFF_PEAK_HOURS_UTC = [
+  DEEPSEEK_WEEKDAY_OFF_PEAK_HOURS_UTC,
+  ...CHINA_PUBLIC_HOLIDAYS.map((h) => `${holidayScope(h)}@00:00-24:00`),
+].join(",");
 
 /**
  * DeepSeek V4.1 Flash, released 2026-09-10. Its price takes effect at 04:00 UTC that day,
@@ -368,6 +431,11 @@ function deepSeekModelCosts(args: {
   regimeFrom?: Date;
   peak: { input: string; cachedInput: string; output: string };
   offPeak: { input: string; cachedInput: string; output: string };
+  /**
+   * Windows to state. Defaults to the live ones (holidays included); a retired model keeps
+   * the weekday-only windows its rows were written with.
+   */
+  hours?: { peak: string; offPeak: string };
 }): SeedProviderCost[] {
   const base = {
     provider: "deepseek",
@@ -383,8 +451,8 @@ function deepSeekModelCosts(args: {
   ] as const;
   const keys = ["input", "cachedInput", "output"] as const;
   const regimes = [
-    { regime: "peak", hours: DEEPSEEK_PEAK_HOURS_UTC, rates: args.peak },
-    { regime: "off-peak", hours: DEEPSEEK_OFF_PEAK_HOURS_UTC, rates: args.offPeak },
+    { regime: "peak", hours: args.hours?.peak ?? DEEPSEEK_PEAK_HOURS_UTC, rates: args.peak },
+    { regime: "off-peak", hours: args.hours?.offPeak ?? DEEPSEEK_OFF_PEAK_HOURS_UTC, rates: args.offPeak },
   ] as const;
 
   return regimes.flatMap(({ regime, hours, rates }) =>
@@ -2202,6 +2270,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   //   Peak hours: 01:00-04:00 and 06:00-10:00 UTC; off-peak all other hours.
   ...deepSeekModelCosts({
     namePrefix: "deepseek-v4-flash",
+    hours: { peak: DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC, offPeak: DEEPSEEK_WEEKDAY_OFF_PEAK_HOURS_UTC },
     label: "DeepSeek V4 Flash",
     current: { input: "0.0000140000", cachedInput: "0.0000002800", output: "0.0000280000" },
     peak: { input: "0.0000440000", cachedInput: "0.0000014000", output: "0.0001320000" },
@@ -2215,6 +2284,7 @@ export const SEED_PROVIDERS_COSTS: SeedProviderCost[] = [
   // stops existing rather than changing.
   ...deepSeekModelCosts({
     namePrefix: "deepseek-v4-pro",
+    hours: { peak: DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC, offPeak: DEEPSEEK_WEEKDAY_OFF_PEAK_HOURS_UTC },
     label: "DeepSeek V4 Pro",
     current: { input: "0.0000435000", cachedInput: "0.0000003625", output: "0.0000870000" },
     peak: { input: "0.0001320000", cachedInput: "0.0000044000", output: "0.0003960000" },
