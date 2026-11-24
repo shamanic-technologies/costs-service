@@ -7,7 +7,7 @@ import {
   seedProvidersCosts,
   seedPlatformCosts,
   SEED_PROVIDERS_COSTS,
-  DEEPSEEK_PEAK_HOURS_UTC,
+  DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC,
 } from "../../src/db/seed.js";
 import { db } from "../../src/db/index.js";
 import { providersCosts } from "../../src/db/schema.js";
@@ -82,7 +82,7 @@ describe("Seed scheduled (future-dated) price points", { timeout: 30_000 }, () =
       expected.map((c) => c.costPerUnitInUsdCents)
     );
     expect(rows[0].pricingRegime).toBe("peak");
-    expect(rows[0].regimeHoursUtc).toBe(DEEPSEEK_PEAK_HOURS_UTC);
+    expect(rows[0].regimeHoursUtc).toBe(DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC) // retired V4 Flash keeps its weekday-only windows;
   });
 
   it("AC2: re-seeding is a no-op — no version is duplicated", async () => {
@@ -121,7 +121,7 @@ describe("Seed scheduled (future-dated) price points", { timeout: 30_000 }, () =
     const inForce = declaredVersions(SCHEDULED_NAME).find((c) => c.effectiveFrom <= new Date());
     expect(res.body.pricePerUnitInUsdCents).toBe(inForce!.costPerUnitInUsdCents);
     expect(res.body.pricingRegime).toBe("peak");
-    expect(res.body.regimeHoursUtc).toBe(DEEPSEEK_PEAK_HOURS_UTC);
+    expect(res.body.regimeHoursUtc).toBe(DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC) // retired V4 Flash keeps its weekday-only windows;
   });
 
   it("AC5: every priced dimension of the direct-vendor models resolves publicly", async () => {
