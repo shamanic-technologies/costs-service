@@ -4,6 +4,9 @@ import {
   DEEPSEEK_TIME_OF_DAY_PRICING_FROM,
   DEEPSEEK_PEAK_HOURS_UTC,
   DEEPSEEK_OFF_PEAK_HOURS_UTC,
+  DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC,
+  DEEPSEEK_WEEKDAY_OFF_PEAK_HOURS_UTC,
+  CHINA_PUBLIC_HOLIDAYS,
   applyCostRiskMultiplier,
   withChinaVat,
   type SeedProviderCost,
@@ -15,41 +18,79 @@ const WEEKDAYS = [0, 1, 2, 3, 4];
 const WEEKEND = [5, 6];
 
 /**
- * Parse "Mon-Fri@01:00-04:00,Sat-Sun@00:00-24:00" into half-open windows over
- * (Monday-indexed day, minute of day).
+ * Parse "Mon-Fri@01:00-04:00,!2027-10-01..2027-10-07@00:00-24:00" into half-open windows.
+ * A scope is a weekday range, a UTC date, or an inclusive UTC date range; a leading `!`
+ * makes the window an exclusion. An instant is covered when a plain window covers it and
+ * no exclusion does.
  *
  * Deliberately a SEPARATE implementation from anything in src: the point of the test is that
  * the published string means what the catalog claims, so re-using a shared parser would only
  * prove the parser agrees with itself.
  */
-function parseWindows(spec: string): Array<{ days: number[]; from: number; to: number }> {
-  return spec.split(",").map((window) => {
-    const [dayPart, hourPart] = window.split("@");
-    if (hourPart === undefined) {
-      throw new Error(`Window is missing its day scope: ${window}`);
-    }
-    const [firstDay, lastDay] = dayPart.split("-");
-    const firstIdx = DAY_NAMES.indexOf(firstDay as (typeof DAY_NAMES)[number]);
-    const lastIdx = DAY_NAMES.indexOf((lastDay ?? firstDay) as (typeof DAY_NAMES)[number]);
-    if (firstIdx < 0 || lastIdx < 0 || lastIdx < firstIdx) {
-      throw new Error(`Unparseable day scope: ${dayPart}`);
-    }
-    const days: number[] = [];
-    for (let d = firstIdx; d <= lastIdx; d++) days.push(d);
+type Window = {
+  exclude: boolean;
+  days?: number[];
+  dateFrom?: string;
+  dateTo?: string;
+  from: number;
+  to: number;
+};
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+function parseWindows(spec: string): Window[] {
+  return spec.split(",").map((raw) => {
+    const exclude = raw.startsWith("!");
+    const window = exclude ? raw.slice(1) : raw;
+    const [scope, hourPart] = window.split("@");
+    if (hourPart === undefined) {
+      throw new Error(`Window is missing its scope: ${raw}`);
+    }
     const toMinutes = (hhmm: string) => {
       const [h, m] = hhmm.split(":").map(Number);
       return h * 60 + m;
     };
     const [from, to] = hourPart.split("-");
-    return { days, from: toMinutes(from), to: toMinutes(to) };
+    const hours = { from: toMinutes(from), to: toMinutes(to) };
+
+    if (DATE.test(scope.slice(0, 10))) {
+      const [dateFrom, dateTo = dateFrom] = scope.split("..");
+      if (!DATE.test(dateFrom) || !DATE.test(dateTo) || dateTo < dateFrom) {
+        throw new Error(`Unparseable date scope: ${scope}`);
+      }
+      return { exclude, dateFrom, dateTo, ...hours };
+    }
+    const [firstDay, lastDay] = scope.split("-");
+    const firstIdx = DAY_NAMES.indexOf(firstDay as (typeof DAY_NAMES)[number]);
+    const lastIdx = DAY_NAMES.indexOf((lastDay ?? firstDay) as (typeof DAY_NAMES)[number]);
+    if (firstIdx < 0 || lastIdx < 0 || lastIdx < firstIdx) {
+      throw new Error(`Unparseable day scope: ${scope}`);
+    }
+    const days: number[] = [];
+    for (let d = firstIdx; d <= lastIdx; d++) days.push(d);
+    return { exclude, days, ...hours };
   });
 }
 
+const parsed = new Map<string, Window[]>();
+
+/** Is the UTC instant inside the regime? */
+function coversInstant(spec: string, at: Date): boolean {
+  const day = (at.getUTCDay() + 6) % 7; // Monday-indexed
+  const date = at.toISOString().slice(0, 10);
+  const minute = at.getUTCHours() * 60 + at.getUTCMinutes();
+  const hit = (w: Window) =>
+    minute >= w.from &&
+    minute < w.to &&
+    (w.days ? w.days.includes(day) : date >= w.dateFrom! && date <= w.dateTo!);
+  let windows = parsed.get(spec);
+  if (!windows) parsed.set(spec, (windows = parseWindows(spec)));
+  return windows.some((w) => !w.exclude && hit(w)) && !windows.some((w) => w.exclude && hit(w));
+}
+
+/** A Monday-indexed weekday of an ordinary week (2026-11-16 is a Monday with no holiday). */
 function covers(spec: string, day: number, minuteOfDay: number): boolean {
-  return parseWindows(spec).some(
-    (w) => w.days.includes(day) && minuteOfDay >= w.from && minuteOfDay < w.to,
-  );
+  const at = new Date(Date.UTC(2026, 10, 16 + day, 0, minuteOfDay));
+  return coversInstant(spec, at);
 }
 
 const PRE_SCHEDULE = "2025-01-01T00:00:00.000Z";
@@ -84,10 +125,12 @@ describe("Pricing regime — the priced dimension that is a property of the mome
   });
 
   it("declares peak as 01:00-04:00 and 06:00-10:00 UTC on WEEKDAYS, off-peak as the complement", () => {
-    expect(DEEPSEEK_PEAK_HOURS_UTC).toBe("Mon-Fri@01:00-04:00,Mon-Fri@06:00-10:00");
-    expect(DEEPSEEK_OFF_PEAK_HOURS_UTC).toBe(
-      "Mon-Fri@00:00-01:00,Mon-Fri@04:00-06:00,Mon-Fri@10:00-24:00,Sat-Sun@00:00-24:00",
-    );
+    expect(DEEPSEEK_PEAK_HOURS_UTC.startsWith("Mon-Fri@01:00-04:00,Mon-Fri@06:00-10:00,!")).toBe(true);
+    expect(
+      DEEPSEEK_OFF_PEAK_HOURS_UTC.startsWith(
+        "Mon-Fri@00:00-01:00,Mon-Fri@04:00-06:00,Mon-Fri@10:00-24:00,Sat-Sun@00:00-24:00,",
+      ),
+    ).toBe(true);
     for (const day of WEEKDAYS) {
       expect(covers(DEEPSEEK_PEAK_HOURS_UTC, day, 2 * 60), DAY_NAMES[day]).toBe(true); // 02:00 peak
       expect(covers(DEEPSEEK_PEAK_HOURS_UTC, day, 8 * 60), DAY_NAMES[day]).toBe(true); // 08:00 peak
@@ -116,6 +159,70 @@ describe("Pricing regime — the priced dimension that is a property of the mome
     }
   });
 
+  it("charges off-peak all day on a Chinese public holiday that falls on a weekday (DEEPSEEK-HOLIDAYS-1124)", () => {
+    // DeepSeek's page (read 2026-11-24): peak is Mon-Fri "excluding Chinese public holidays",
+    // off-peak covers "Chinese public holidays in full". Before this, 02:00 UTC on Thursday
+    // 2026-10-01 (National Day) resolved to the peak name: the customer paid 2x what DeepSeek
+    // billed us.
+    const instants = [
+      "2026-10-01T02:00:00Z", // Thu, National Day 2026, peak hour on an ordinary Thursday
+      "2026-10-07T08:30:00Z", // Wed, last day of National Day 2026
+      "2027-02-08T01:00:00Z", // Mon, Spring Festival 2027, first peak minute
+      "2027-06-09T09:59:00Z", // Wed, Dragon Boat 2027 (one-day period), last peak minute
+      "2027-09-15T06:00:00Z", // Wed, Mid-Autumn 2027
+    ];
+    for (const iso of instants) {
+      const at = new Date(iso);
+      expect(coversInstant(DEEPSEEK_PEAK_HOURS_UTC, at), iso).toBe(false);
+      expect(coversInstant(DEEPSEEK_OFF_PEAK_HOURS_UTC, at), iso).toBe(true);
+      // ...and the weekday-only windows the retired names keep would have said peak.
+      expect(coversInstant(DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC, at), iso).toBe(true);
+    }
+    // The make-up workday the notice moves onto a weekend stays off-peak (weekends in full).
+    expect(coversInstant(DEEPSEEK_PEAK_HOURS_UTC, new Date("2027-10-09T02:00:00Z"))).toBe(false);
+    // The working day right after a holiday is peak again.
+    expect(coversInstant(DEEPSEEK_PEAK_HOURS_UTC, new Date("2026-10-08T02:00:00Z"))).toBe(true);
+  });
+
+  it("partitions every minute of 2026 and 2027 between peak and off-peak, holidays included", () => {
+    const start = Date.UTC(2026, 0, 1);
+    const end = Date.UTC(2028, 0, 1);
+    for (let t = start; t < end; t += 30 * 60_000) {
+      // Every window edge sits on a whole hour, so half-hour steps visit both sides of each.
+      const at = new Date(t);
+      const n =
+        Number(coversInstant(DEEPSEEK_PEAK_HOURS_UTC, at)) +
+        Number(coversInstant(DEEPSEEK_OFF_PEAK_HOURS_UTC, at));
+      if (n !== 1) expect(n, at.toISOString()).toBe(1);
+    }
+  });
+
+  it("lists every holiday period exactly as the State Council notices state them", () => {
+    // 国务院办公厅关于2026年 / 2027年部分节假日安排的通知 (news.cn, read 2026-11-24).
+    expect(CHINA_PUBLIC_HOLIDAYS.map((h) => `${h.from}..${h.to}`)).toEqual([
+      "2026-01-01..2026-01-03",
+      "2026-02-15..2026-02-23",
+      "2026-04-04..2026-04-06",
+      "2026-05-01..2026-05-05",
+      "2026-06-19..2026-06-21",
+      "2026-09-25..2026-09-27",
+      "2026-10-01..2026-10-07",
+      "2027-01-01..2027-01-03",
+      "2027-02-05..2027-02-13",
+      "2027-04-03..2027-04-05",
+      "2027-05-01..2027-05-05",
+      "2027-06-09..2027-06-09",
+      "2027-09-15..2027-09-15",
+      "2027-10-01..2027-10-07",
+    ]);
+  });
+
+  it("has the current year's Chinese holidays on record (add next year's each November)", () => {
+    // Without them every weekday holiday of the year bills peak again, silently.
+    const year = String(new Date().getUTCFullYear());
+    expect(CHINA_PUBLIC_HOLIDAYS.some((h) => h.from.startsWith(year)), year).toBe(true);
+  });
+
   it("carries the regime windows on every regime-priced row, and on no other row", () => {
     for (const row of SEED_PROVIDERS_COSTS) {
       if (row.pricingRegime === undefined) {
@@ -123,9 +230,12 @@ describe("Pricing regime — the priced dimension that is a property of the mome
         continue;
       }
       expect(["peak", "off-peak"]).toContain(row.pricingRegime);
-      expect(row.regimeHoursUtc, row.name).toBe(
-        row.pricingRegime === "peak" ? DEEPSEEK_PEAK_HOURS_UTC : DEEPSEEK_OFF_PEAK_HOURS_UTC,
-      );
+      // The retired V4 Flash / V4 Pro names keep the weekday-only windows they were written with.
+      const retired = /^deepseek-v4-(flash|pro)-/.test(row.name);
+      const [peak, offPeak] = retired
+        ? [DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC, DEEPSEEK_WEEKDAY_OFF_PEAK_HOURS_UTC]
+        : [DEEPSEEK_PEAK_HOURS_UTC, DEEPSEEK_OFF_PEAK_HOURS_UTC];
+      expect(row.regimeHoursUtc, row.name).toBe(row.pricingRegime === "peak" ? peak : offPeak);
       // The name must agree with the column, or a consumer picking by name gets a rate that
       // applies at a different hour than it thinks.
       expect(row.name).toContain(`-${row.pricingRegime}-tokens-`);

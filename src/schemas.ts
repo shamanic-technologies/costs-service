@@ -58,8 +58,8 @@ export const ProviderCostSchema = z
     }),
     regimeHoursUtc: z.string().nullable().openapi({
       description:
-        "UTC windows during which this regime is in force, as comma-separated half-open HH:MM-HH:MM ranges. Null when pricingRegime is null. A provider's regimes partition the day, so exactly one cost name matches any instant.",
-      example: "01:00-04:00,06:00-10:00",
+        "UTC windows during which this regime is in force: comma-separated `[!]<scope>@HH:MM-HH:MM`, half-open on the minute. `<scope>` is a weekday range (`Mon-Fri`), a UTC date (`2027-06-09`) or an inclusive UTC date range (`2027-10-01..2027-10-07`). An instant is in the regime when a plain window covers it and no `!` window does (DeepSeek: peak drops each Chinese public holiday, off-peak adds it whole). Null when pricingRegime is null. A provider's regimes partition every instant, so for a given model and token class exactly one cost name matches.",
+      example: "Mon-Fri@01:00-04:00,Mon-Fri@06:00-10:00,!2027-10-01..2027-10-07@00:00-24:00",
     }),
     effectiveFrom: z.string().datetime(),
     createdAt: z.string().datetime(),
@@ -101,8 +101,8 @@ export const PriceSchema = z
     }),
     regimeHoursUtc: z.string().nullable().openapi({
       description:
-        "UTC windows during which this regime is in force, as comma-separated half-open HH:MM-HH:MM ranges (a window may wrap past 24:00 only as the literal end 24:00). Null when pricingRegime is null. A provider's regimes partition the day, so for a given model and token class exactly one cost name matches any instant.",
-      example: "01:00-04:00,06:00-10:00",
+        "UTC windows during which this regime is in force: comma-separated `[!]<scope>@HH:MM-HH:MM`, half-open on the minute. `<scope>` is a weekday range (`Mon-Fri`), a UTC date (`2027-06-09`) or an inclusive UTC date range (`2027-10-01..2027-10-07`). An instant is in the regime when a plain window covers it and no `!` window does (DeepSeek: peak drops each Chinese public holiday, off-peak adds it whole). Null when pricingRegime is null. A provider's regimes partition every instant, so for a given model and token class exactly one cost name matches.",
+      example: "Mon-Fri@01:00-04:00,Mon-Fri@06:00-10:00,!2027-10-01..2027-10-07@00:00-24:00",
     }),
     effectiveFrom: z.string().datetime(),
     status: z.enum(["current", "retired"]).openapi({
