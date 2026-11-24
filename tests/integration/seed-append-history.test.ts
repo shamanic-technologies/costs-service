@@ -13,6 +13,7 @@ import {
   seedPlatformCosts,
   SEED_PROVIDERS_COSTS,
   DEEPSEEK_PEAK_HOURS_UTC,
+  DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC,
 } from "../../src/db/seed.js";
 import { db } from "../../src/db/index.js";
 import { providersCosts, platformCosts } from "../../src/db/schema.js";
@@ -114,15 +115,16 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
     // Everything below is DERIVED from the seed rather than typed out, so this test cannot
     // rot into asserting a schedule the catalog no longer declares.
     const name = "deepseek-v4-flash-peak-tokens-input";
+    const frozenWindows = DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC; // retired V4 Flash: weekday-only
     const inForce = SEED_PROVIDERS_COSTS.filter(
       (c) => c.name === name && c.effectiveFrom <= new Date(),
     ).sort((a, b) => b.effectiveFrom.getTime() - a.effectiveFrom.getTime())[0];
     expect(inForce, `${name} has no in-force version`).toBeDefined();
-    expect(inForce.regimeHoursUtc).toBe(DEEPSEEK_PEAK_HOURS_UTC);
+    expect(inForce.regimeHoursUtc).toBe(frozenWindows);
 
     // The same price and basis the seed declares, under the PRE-weekend windows.
     const supersededWindows = "01:00-04:00,06:00-10:00";
-    expect(supersededWindows).not.toBe(DEEPSEEK_PEAK_HOURS_UTC);
+    expect(supersededWindows).not.toBe(frozenWindows);
     await insertTestProviderCost({
       name,
       provider: inForce.provider,
@@ -147,10 +149,50 @@ describe("Seed append-only price history", { timeout: 30_000 }, () => {
       .orderBy(desc(providersCosts.effectiveFrom));
 
     expect(rows.length).toBe(2);
-    expect(rows[0].regimeHoursUtc).toBe(DEEPSEEK_PEAK_HOURS_UTC);
+    expect(rows[0].regimeHoursUtc).toBe(frozenWindows);
     expect(rows[0].costPerUnitInUsdCents).toBe(inForce.costPerUnitInUsdCents); // price untouched
     expect(rows[1].regimeHoursUtc).toBe(supersededWindows); // the old schedule stays queryable
     expect(rows[1].effectiveFrom.getTime()).toBeLessThan(rows[0].effectiveFrom.getTime());
+  });
+
+  it("AC9b: the Chinese-holiday windows append a new row on the live V4.1 Flash names (DEEPSEEK-HOLIDAYS-1124)", async () => {
+    // Production holds V4.1 Flash under the weekday-only windows. Adding the holiday periods
+    // changes WHEN the peak rate applies without touching the rate, so the seed must append
+    // a now()-dated row carrying the new windows, and keep the old one as history.
+    const name = "deepseek-v4.1-flash-peak-tokens-input";
+    const inForce = SEED_PROVIDERS_COSTS.filter(
+      (c) => c.name === name && c.effectiveFrom <= new Date(),
+    ).sort((a, b) => b.effectiveFrom.getTime() - a.effectiveFrom.getTime())[0];
+    expect(inForce, `${name} has no in-force version`).toBeDefined();
+    expect(inForce.regimeHoursUtc).toBe(DEEPSEEK_PEAK_HOURS_UTC);
+    expect(DEEPSEEK_PEAK_HOURS_UTC).not.toBe(DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC);
+    await insertTestProviderCost({
+      name,
+      provider: inForce.provider,
+      providerDomain: inForce.providerDomain ?? null,
+      type: inForce.type,
+      unit: inForce.unit,
+      planTier: inForce.planTier,
+      billingCycle: inForce.billingCycle,
+      costPerUnitInUsdCents: inForce.costPerUnitInUsdCents!,
+      pricingBasis: inForce.pricingBasis,
+      pricingRegime: inForce.pricingRegime ?? null,
+      regimeHoursUtc: DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC,
+      effectiveFrom: inForce.effectiveFrom,
+    });
+
+    await seedProvidersCosts();
+
+    const rows = await db
+      .select()
+      .from(providersCosts)
+      .where(eq(providersCosts.name, name))
+      .orderBy(desc(providersCosts.effectiveFrom));
+
+    expect(rows.length).toBe(2);
+    expect(rows[0].regimeHoursUtc).toBe(DEEPSEEK_PEAK_HOURS_UTC);
+    expect(rows[0].costPerUnitInUsdCents).toBe(inForce.costPerUnitInUsdCents); // price untouched
+    expect(rows[1].regimeHoursUtc).toBe(DEEPSEEK_WEEKDAY_PEAK_HOURS_UTC);
   });
 
   it("AC2: re-running the seed with no change appends nothing (idempotent)", async () => {
